@@ -27,6 +27,12 @@ class MockLLM(BaseLLM):
             return json.dumps(self._check(context), ensure_ascii=False)
         if task == "set":
             return json.dumps(self._set(context), ensure_ascii=False)
+        if task == "critic":
+            items = context["items"]
+            return json.dumps({"verdicts": [{"n": it["n"], "verdict": "drop" if "[mock]" in it["problem"] and it["severity"] == "minor" else "keep",
+                                             "reason": "[mock] оценка критика"} for it in items]}, ensure_ascii=False)
+        if task == "extras":
+            return json.dumps(self._extras(context), ensure_ascii=False)
         if task == "split":
             doc = context["doc"]
             reqs = [{"doc_id": None, "quote": l.text.strip()} for l in doc.lines if MODAL_RE.search(l.text)]
@@ -51,8 +57,48 @@ class MockLLM(BaseLLM):
             if r.rid.endswith("1"):
                 findings.append({"criterion": "correct", "quote": "этой фразы нет в документе",
                                  "problem": "[mock] выдуманное замечание", "severity": "major", "fix": "-"})
-            out.append({"id": r.rid, "findings": findings, "dismissed_hints": dismissed, "suggested_rewrite": ""})
+            vague = next((h for h in ctx["hints"][r.rid] if h.criterion in ("verifiable", "complete") and h.severity == "critical"), None)
+            if vague:
+                test = {"possible": False, "reason": "[mock] нет объективного критерия приёмки", "blocker_quote": vague.quote, "gherkin": ""}
+            else:
+                gh = (f"Дано система в рабочем состоянии\nКогда выполняется сценарий {r.doc_id or r.rid}\n"
+                      f"Тогда {' '.join(r.text.split()[:12])}")
+                test = {"possible": True, "gherkin": gh, "reason": "", "blocker_quote": ""}
+            rewrite = ""
+            if findings:
+                # mock-«исправление»: убрать маркеры размытых формулировок из текста
+                t = r.text.strip()
+                for h in ctx["hints"][r.rid]:
+                    for term in (h.terms or [h.term]):
+                        t = re.sub(r"\s*,?\s*" + re.escape(term), "", t, flags=re.I)
+                t = re.sub(r"\s{2,}", " ", t).strip(" ,.")
+                if t and t != r.text.strip(" ."):
+                    rewrite = t + "."
+            ears = "event" if re.search(r"\b(после|когда|при)\b", r.text, re.I) else ("unwanted" if re.search(r"\bесли\b", r.text, re.I) else "ubiquitous")
+            out.append({"id": r.rid, "ears": ears, "findings": findings, "dismissed_hints": dismissed,
+                        "suggested_rewrite": rewrite, "test": test})
         return {"results": out}
+
+    def _extras(self, ctx):
+        doc_text = ctx["doc"].text
+        cov = []
+        for a in ctx.get("areas", []):
+            hit = None
+            for kw in a.get("keywords", []):
+                m = re.search(r"[^\n]{0,30}" + re.escape(kw) + r"[^\n]{0,30}", doc_text, re.I)
+                if m:
+                    hit = m.group(0).strip()
+                    break
+            cov.append({"id": a["id"], "status": "covered" if hit else "missing", "quotes": [hit] if hit else [],
+                        "comment": "[mock] найдено ключевое слово" if hit else "[mock] упоминаний не найдено"})
+        syn = []
+        low = doc_text.lower()
+        groups = [["клиент", "пользователь", "абонент"], ["перевод", "операция", "транзакция"]]
+        for g in groups:
+            present = [w for w in g if w in low]
+            if len(present) >= 2:
+                syn.append({"terms": present, "preferred": present[0], "problem": "[mock] разные термины для одного понятия"})
+        return {"coverage": cov, "synonyms": syn}
 
     def _set(self, ctx):
         reqs = ctx["reqs"]

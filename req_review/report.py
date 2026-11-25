@@ -6,6 +6,10 @@ from datetime import datetime
 
 from .checker import ReviewResult
 from .criteria import INDIVIDUAL, SET, SEVERITY, criterion_name, criterion_ref
+from .scoring import METHOD_MD, bar
+
+EARS = {"ubiquitous": "постоянное", "event": "по событию", "state": "по состоянию", "unwanted": "нежелательное поведение",
+        "optional": "опциональная функция", "complex": "составное"}
 
 ICON = {"critical": "🔴", "major": "🟠", "minor": "🟡"}
 KIND = {
@@ -24,7 +28,8 @@ def _q(s: str) -> str:
 
 
 def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, started: datetime,
-                 duration_s: float, llm_stats, input_path: str) -> str:
+                 duration_s: float, llm_stats, input_path: str, ctx=None) -> str:
+    sc = ctx.scores if ctx is not None else None
     doc, split = rv.doc, rv.split
     reqs = split.requirements
     by_rid = {r.rid: r for r in reqs}
@@ -56,7 +61,14 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     w(f"| Дата и время прогона | {started.strftime('%Y-%m-%d %H:%M:%S %Z').strip()} |")
     w(f"| Модель | {_cell(model_label)} |")
     w(f"| Версия агента | {_cell(agent_version)} |")
-    w(f"| Обращений к модели | {llm_stats.calls} (повторов: {llm_stats.retries}) |")
+    cached = getattr(llm_stats, "cached", 0)
+    w(f"| Обращений к модели | {llm_stats.calls} (повторов: {llm_stats.retries}"
+      + (f", из кэша: {cached}" if cached else "") + ") |")
+    if ctx is not None:
+        w(f"| Профиль / режим | {ctx.passport['profile']} / {ctx.passport['mode']} |")
+        w(f"| Критик-агент | {'включён' if rv.critic_used else 'выключен (профиль fast)'} |")
+        w(f"| **Балл документа** | **{sc.doc_score} / 100** `{bar(sc.doc_score)}` |")
+        w(f"| **Готовность к разработке** | **{sc.readiness} %** `{bar(sc.readiness)}` |")
     if llm_stats.prompt_tokens:
         w(f"| Токены (вход / выход) | {llm_stats.prompt_tokens} / {llm_stats.output_tokens} |")
     w(f"| Длительность | {duration_s:.0f} с |")
@@ -99,7 +111,12 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
                   "minor": "🟡 мелкие замечания", None: "✅ замечаний нет"}[worst]
         w(f"### {r.rid}{f' ({r.doc_id})' if r.doc_id else ''} — {status}")
         w("")
-        w(f"*Место:* {r.location}")
+        meta = f"*Место:* {r.location}"
+        if sc is not None:
+            meta += f" · *Балл:* `{bar(sc.req[r.rid])}`"
+        if rr.ears:
+            meta += f" · *Тип (EARS):* {EARS.get(rr.ears, rr.ears)}"
+        w(meta)
         w("")
         w(f"> {_cell(r.text)}")
         w("")
@@ -120,6 +137,17 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
             w("")
         if rr.rewrite and rr.findings:
             w(f"**Предлагаемая формулировка:** {_cell(rr.rewrite)}")
+            w("")
+        if rr.test_possible is True:
+            w("<details><summary>🧪 Тест-проба: приёмочный тест составлен</summary>")
+            w("")
+            w("```gherkin")
+            w(rr.test_gherkin)
+            w("```")
+            w("</details>")
+            w("")
+        elif rr.test_possible is False:
+            w(f"🧪 **Тест-проба: тест составить невозможно** — {_cell(rr.test_reason)} Мешает фрагмент: {_q(rr.test_blocker)}.")
             w("")
 
     # ------------------------------------------------------------------ 4
@@ -158,6 +186,31 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
         w("Нарушений на уровне набора не найдено.")
         w("")
 
+    if rv.domain:
+        d = rv.domain
+        w(f"### Доменная полнота: {d.name} — покрытие {d.coverage_pct} %")
+        w("")
+        w(f"*{_cell(d.disclaimer)}*")
+        w("")
+        w("| Область | Статус | Основание (цитата документа) |")
+        w("|---|---|---|")
+        st = {"covered": "✅ покрыта", "partial": "🟡 частично", "missing": "🔴 не покрыта"}
+        for a in d.areas:
+            w(f"| {a.title} | {st[a.status]} | {'; '.join(_q(q) for q in a.quotes) or '—'} |")
+        w("")
+    if rv.glossary and (rv.glossary.terms or rv.glossary.synonyms):
+        w("### Глоссарий и согласованность терминов")
+        w("")
+        for syn in rv.glossary.synonyms:
+            w(f"- ⚠️ Разнобой терминов: {', '.join(_q(t) for t in syn['terms'])} → рекомендуется «{_cell(syn['preferred'])}».")
+        if rv.glossary.synonyms:
+            w("")
+        w("| Термин | Определён в документе | Упоминаний в требованиях |")
+        w("|---|---|---|")
+        for t in rv.glossary.terms[:20]:
+            w(f"| {_cell(t.term)} | {'да' if t.defined else 'нет'} | {t.count} |")
+        w("")
+
     # ------------------------------------------------------------------ 5
     w("## 5. Сводка")
     w("")
@@ -170,6 +223,21 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     for s in ("critical", "major", "minor"):
         w(f"| — {SEVERITY[s].lower()} | {sev_counts.get(s, 0)} |")
     w("")
+    if sc is not None:
+        w(f"| **Балл документа** | **{sc.doc_score} / 100** (балл набора — {sc.set_score}) |")
+        w(f"| **Готовность к разработке** | **{sc.readiness} %** ({len(sc.ready_ids)} из {len(reqs)} требований без критичных и существенных замечаний) |")
+        if sc.tests_total:
+            w(f"| Покрыто тест-пробой | {sc.tests_ok} из {sc.tests_total} требований ({round(100 * sc.tests_ok / sc.tests_total)} %) |")
+        if rv.rejected:
+            w(f"| Отклонено критиком | {len(rv.rejected)} |")
+        w("")
+        w("**Профиль качества по критериям** (доля требований без нарушений):")
+        w("")
+        w("| Критерий | Профиль |")
+        w("|---|---|")
+        for k, v in sc.radar_req.items():
+            w(f"| {INDIVIDUAL[k][0]} | `{bar(v)}` |")
+        w("")
     w("**Нарушения по критериям:**")
     w("")
     w("| Критерий | Нарушений | Требования |")
@@ -232,6 +300,8 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     for i, p in enumerate(prio[:10], 1):
         w(f"{i}. {p}")
     w("")
+    if ctx is not None:
+        _extras_tail(w, ctx)
     w("---")
     w("")
     w("### Приложение. Критерии проверки")
@@ -251,7 +321,21 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
         for d in rv.dropped[:50]:
             w(f"| {_cell(d['where'])} | {_q(d['quote']) if d['quote'] else '—'} | {_cell(d['problem'])[:200]} |")
         w("")
-    w(f"*Отчёт сформирован автоматически агентом req-review ({_cell(agent_version)}).*")
+    if rv.rejected:
+        w(f"### Приложение. Замечания, отклонённые критиком ({len(rv.rejected)})")
+        w("")
+        w("| Где | Цитата | Суть | Причина отклонения |")
+        w("|---|---|---|---|")
+        for d in rv.rejected[:50]:
+            qq = _q(d["quote"]) if d["quote"] else "—"
+            w(f"| {_cell(d['where'])} | {qq} | {_cell(d['problem'])[:160]} | {_cell(d['reason'])[:160]} |")
+        w("")
+    if ctx is not None:
+        w("### Приложение. Методика оценки")
+        w("")
+        w(METHOD_MD)
+        w("")
+    w(f"*Отчёт сформирован автоматически агентом ReqLens / req-review ({_cell(agent_version)}).*")
     return "\n".join(L) + "\n"
 
 
@@ -280,3 +364,67 @@ def _label(rid: str, by_rid) -> str:
     if rid in by_rid and by_rid[rid].doc_id:
         return f"{rid} ({by_rid[rid].doc_id})"
     return rid if rid != "DOC" else "текст документа"
+
+
+def _extras_tail(w, ctx) -> None:
+    """Блоки итога: эффект исправлений, цена дефекта, динамика, вопросы заказчику, исправления, граф."""
+    sc = ctx.scores
+    if ctx.rescore:
+        rs = ctx.rescore
+        w(f"**Эффект исправлений (повторный прогон исправленного документа):** балл {rs['before']} → **{rs['after']}**, "
+          f"готовность {rs['readiness_before']} % → **{rs['readiness_after']} %**.")
+        w("")
+    if any(h for _, h in sc.cost):
+        w("**Цена дефекта** (ориентировочно: трудозатраты на исправление найденных дефектов в зависимости от момента обнаружения):")
+        w("")
+        w("| Когда исправлять | Трудозатраты |")
+        w("|---|---|")
+        for name, h in sc.cost:
+            w(f"| {name} | ≈ {h:g} ч |")
+        w("")
+    if ctx.compare:
+        c = ctx.compare
+        w(f"### Динамика относительно предыдущей версии: средний балл {c['score_before']} → {c['score_after']}")
+        w("")
+        lab = {"fixed": "✅ исправлено", "improved": "⬆️ улучшилось", "new": "⚠️ новое", "worse": "🔻 ухудшилось",
+               "same": "без изменений"}
+        line = " · ".join(f"{lab[k]}: {v}" for k, v in c["counts"].items())
+        if c["removed"]:
+            line += f" · удалено: {len(c['removed'])}"
+        w(line)
+        w("")
+        w("| Требование | Статус | Балл было → стало |")
+        w("|---|---|---|")
+        for r in c["rows"]:
+            if r["status"] == "same":
+                continue
+            name = r["rid"] + (f" ({r['doc_id']})" if r["doc_id"] else "")
+            before = r["before"] if r["before"] is not None else "—"
+            w(f"| {name} | {lab[r['status']]} | {before} → {r['after']} |")
+        w("")
+    if ctx.questions:
+        w(f"### Вопросы заказчику ({len(ctx.questions)})")
+        w("")
+        for i, q in enumerate(ctx.questions[:30], 1):
+            w(f"{i}. {ICON.get(q.severity, '')} **{_cell(q.ref)}** — {_cell(q.text)}")
+        w("")
+    if ctx.changes:
+        w("### Исправленный документ")
+        w("")
+        w(f"Агент подготовил исправленную версию документа ({len(ctx.changes)} формулировок). Топ-10 изменений:")
+        w("")
+        w("| Требование | Было | Стало |")
+        w("|---|---|---|")
+        for ch in ctx.changes[:10]:
+            name = ch.rid + (f" ({ch.doc_id})" if ch.doc_id else "")
+            w(f"| {name} | {_cell(ch.before)} | {_cell(ch.after)} |")
+        w("")
+    if ctx.graph and ctx.graph.get("edges"):
+        from .graph import mermaid
+
+        w("### Граф связей и противоречий")
+        w("")
+        w("```mermaid")
+        w(mermaid(ctx.graph))
+        w("```")
+        w("")

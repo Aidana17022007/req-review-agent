@@ -1,0 +1,196 @@
+"""Интерактивный HTML-отчёт ReqLens («Grammarly для требований»).
+
+Один самодостаточный файл: CSS, JS, иконки и данные встроены, внешних запросов нет — открывается офлайн.
+"""
+from __future__ import annotations
+
+import json
+import re
+from dataclasses import asdict
+from pathlib import Path
+
+from .criteria import INDIVIDUAL, SET, SEVERITY, criterion_name, criterion_ref
+from .fixer import word_diff
+from .scoring import METHOD_MD
+
+ORDER = {"critical": 0, "major": 1, "minor": 2}
+_Q = str.maketrans({"«": '"', "»": '"', "“": '"', "”": '"', "„": '"', "ё": "е", "Ё": "Е", "—": "-", "–": "-", " ": " "})
+
+
+def _find(quote: str, text: str) -> tuple[int, int] | None:
+    if not quote or not text:
+        return None
+    i = text.find(quote)
+    if i >= 0:
+        return i, i + len(quote)
+    tl, ql = text.translate(_Q).lower(), quote.translate(_Q).lower()
+    i = tl.find(ql)
+    if i >= 0:
+        return i, i + len(ql)
+    # нормализация пробелов: ищем по регулярке с \s+
+    parts = [re.escape(p) for p in re.split(r"\s+", ql.strip(" .,;:\"'")) if p]
+    if parts:
+        m = re.search(r"\s+".join(parts), tl)
+        if m:
+            return m.start(), m.end()
+    pieces = [p.strip(" .,;:\"'") for p in re.split(r"\.\.\.|…", ql) if len(p.strip()) >= 3]
+    if len(pieces) > 1:
+        a, b = tl.find(pieces[0]), -1
+        if a >= 0:
+            b = tl.find(pieces[-1], a)
+        if a >= 0 and b >= 0:
+            return a, b + len(pieces[-1])
+    return None
+
+
+def _locate(quote: str, lines, lo: int, hi: int, fallback: str = ""):
+    rng = [l for l in lines if lo <= l.lineno <= hi] if lo else lines
+    for l in rng:
+        span = _find(quote, l.text)
+        if span:
+            return l.lineno, span
+    if fallback:
+        for l in rng:
+            span = _find(fallback[:60], l.text)
+            if span:
+                return l.lineno, (span[0], min(len(l.text), span[0] + len(fallback)))
+    if lo and rng:
+        l = rng[0]
+        s = len(l.text) - len(l.text.lstrip())
+        return l.lineno, (s, len(l.text))
+    return None
+
+
+def _verdict(ctx) -> dict:
+    rv = ctx.rv
+    crit = sum(1 for rr in rv.req_results for f in rr.findings if f.severity == "critical") + \
+        sum(1 for f in rv.set_findings if f.severity == "critical")
+    major = sum(1 for rr in rv.req_results for f in rr.findings if f.severity == "major") + \
+        sum(1 for f in rv.set_findings if f.severity == "major")
+    if crit:
+        return {"level": "critical", "title": "Начинать разработку нельзя",
+                "text": f"{crit} критичных дефектов: по затронутым требованиям нельзя составить тесты и критерии приёмки."}
+    if major:
+        return {"level": "major", "title": "Можно условно",
+                "text": "Критичных дефектов нет, но существенные замечания нужно закрыть до написания тест-кейсов."}
+    return {"level": "ok", "title": "Можно начинать",
+            "text": "Критичных и существенных дефектов не найдено."}
+
+
+def build_data(ctx) -> dict:
+    rv, sc = ctx.rv, ctx.scores
+    lines = rv.doc.lines
+    findings: dict[str, dict] = {}
+    marks: dict[int, list] = {}
+
+    def add_mark(lineno, span, fid, sev, kind):
+        marks.setdefault(lineno, []).append([span[0], span[1], fid, sev, kind])
+
+    reqs = []
+    for rr in rv.req_results:
+        r = rr.req
+        fids = []
+        for i, f in enumerate(rr.findings, 1):
+            fid = f"{r.rid}.{i}"
+            fids.append(fid)
+            findings[fid] = {"fid": fid, "kind": "req", "rid": r.rid, "doc_id": r.doc_id, "criterion": f.criterion,
+                             "cname": criterion_name(f.criterion), "cref": criterion_ref(f.criterion), "quote": f.quote,
+                             "problem": f.problem, "severity": f.severity, "fix": f.fix, "source": f.source,
+                             "confidence": f.confidence, "critic": f.critic_note, "rewrite": rr.rewrite,
+                             "location": r.location}
+            loc = _locate(f.quote, lines, r.line_start, r.line_end, r.text)
+            if loc:
+                findings[fid]["line"] = loc[0]
+                add_mark(loc[0], loc[1], fid, f.severity, "req")
+        worst = min((f.severity for f in rr.findings), key=ORDER.get, default="ok")
+        reqs.append({"rid": r.rid, "doc_id": r.doc_id, "text": r.text, "section": r.section, "location": r.location,
+                     "line": r.line_start, "score": sc.req[r.rid], "ears": rr.ears, "rewrite": rr.rewrite,
+                     "llm_checked": rr.llm_checked, "note": rr.note, "worst": worst, "findings": fids,
+                     "crit": sorted({f.criterion for f in rr.findings}),
+                     "test": {"possible": rr.test_possible, "gherkin": rr.test_gherkin, "blocker": rr.test_blocker,
+                              "reason": rr.test_reason}})
+    by_rid = {r.rid: r for r in rv.split.requirements}
+    set_list = []
+    for i, f in enumerate(rv.set_findings, 1):
+        fid = f"S-{i:02d}"
+        refs = []
+        for ref in f.refs:
+            r = by_rid.get(ref.req_id)
+            refs.append({"rid": ref.req_id, "quote": ref.quote, "label": (r.doc_id or r.rid) if r else "документ"})
+            loc = _locate(ref.quote, lines, r.line_start if r else 0, r.line_end if r else 0)
+            if loc:
+                add_mark(loc[0], loc[1], fid, f.severity, "set")
+                refs[-1]["line"] = loc[0]
+        findings[fid] = {"fid": fid, "kind": "set", "set_kind": f.kind, "criterion": f.criterion,
+                         "cname": criterion_name(f.criterion), "cref": criterion_ref(f.criterion), "problem": f.problem,
+                         "severity": f.severity, "fix": f.fix, "source": f.source, "confidence": f.confidence,
+                         "critic": f.critic_note, "refs": refs, "quote": " / ".join(x["quote"] for x in refs)}
+        set_list.append(fid)
+
+    # снять пересечения: на строке оставляем более серьёзные метки
+    for ln, ms in marks.items():
+        ms.sort(key=lambda m: (ORDER[m[3]], m[4] != "req", m[0]))
+        kept = []
+        for m in ms:
+            if all(m[1] <= k[0] or m[0] >= k[1] for k in kept):
+                kept.append(m)
+        marks[ln] = sorted(kept, key=lambda m: m[0])
+
+    heading = re.compile(r"^\s*#{1,6}\s+")
+    for l in lines:
+        m = heading.match(l.text)
+        if m and l.lineno in marks:
+            k = m.end()
+            marks[l.lineno] = [[max(0, x[0] - k), max(0, x[1] - k)] + x[2:] for x in marks[l.lineno]]
+
+    set_criteria = []
+    for k, v in SET.items():
+        fs = [f for f in rv.set_findings if f.criterion == k]
+        set_criteria.append({"key": k, "name": v[0], "ref": v[1], "desc": v[2], "count": len(fs),
+                             "worst": min((f.severity for f in fs), key=ORDER.get, default="ok"),
+                             "fids": [fid for fid in set_list if findings[fid]["criterion"] == k]})
+    data = {
+        "passport": ctx.passport,
+        "mock": "mock" in ctx.model_label,
+        "verdict": _verdict(ctx),
+        "scores": {"doc": sc.doc_score, "set": sc.set_score, "readiness": sc.readiness, "ready": sc.ready_ids,
+                   "tests_ok": sc.tests_ok, "tests_total": sc.tests_total, "cost": sc.cost,
+                   "radar_req": [{"key": k, "name": INDIVIDUAL[k][0], "v": v} for k, v in sc.radar_req.items()],
+                   "radar_set": [{"key": k, "name": SET[k][0], "v": v} for k, v in sc.radar_set.items()]},
+        "counts": {s: sum(1 for f in findings.values() if f["severity"] == s) for s in SEVERITY},
+        "lines": [{"n": l.lineno, "t": heading.sub("", l.text) if heading.match(l.text) else l.text, "p": l.page,
+                   "h": bool(heading.match(l.text))} for l in lines],
+        "marks": marks,
+        "reqs": reqs,
+        "findings": findings,
+        "set": set_list,
+        "set_criteria": set_criteria,
+        "criteria": [{"key": k, "name": v[0], "ref": v[1]} for k, v in INDIVIDUAL.items()],
+        "domain": asdict(rv.domain) | {"coverage": rv.domain.coverage_pct} if rv.domain else None,
+        "glossary": asdict(rv.glossary) if rv.glossary else None,
+        "questions": [asdict(q) for q in ctx.questions],
+        "changes": [{**asdict(c), "diff": word_diff(c.before, c.after)} for c in ctx.changes],
+        "fixed_text": ctx.fixed_text,
+        "graph": ctx.graph,
+        "compare": ctx.compare,
+        "rescore": ctx.rescore,
+        "dropped": rv.dropped,
+        "rejected": rv.rejected,
+        "notes": rv.doc.warnings + rv.notes,
+        "method": METHOD_MD,
+        "split_method": rv.split.method,
+    }
+    return data
+
+
+def render_html(ctx) -> str:
+    from .ui import env
+
+    data = build_data(ctx)
+    blob = json.dumps(data, ensure_ascii=False, default=str).replace("</", "<\\/")
+    tpl = env().get_template("report.html.j2")
+    return tpl.render(title=ctx.rv.doc.title, data_json=blob, mock=data["mock"])
+
+
+def write_html(ctx, path: Path) -> None:
+    path.write_text(render_html(ctx), encoding="utf-8")

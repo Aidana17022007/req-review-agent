@@ -24,7 +24,9 @@ class Finding:
     problem: str
     severity: str
     fix: str
-    source: str  # "LLM" | "правило" | "LLM + правило"
+    source: str  # "LLM" | "правило" | "LLM + правило" | "тест-проба"
+    confidence: str = ""  # high | medium | low (после критика)
+    critic_note: str = ""
 
 
 @dataclass
@@ -34,6 +36,11 @@ class ReqResult:
     rewrite: str = ""
     llm_checked: bool = True
     note: str = ""
+    test_possible: bool | None = None  # результат Testability Probe
+    test_gherkin: str = ""
+    test_blocker: str = ""  # дословная цитата, мешающая составить тест
+    test_reason: str = ""
+    ears: str = ""  # тип по EARS
 
 
 @dataclass
@@ -51,6 +58,8 @@ class SetFinding:
     severity: str
     fix: str
     source: str
+    confidence: str = ""
+    critic_note: str = ""
 
 
 @dataclass
@@ -62,6 +71,10 @@ class ReviewResult:
     dropped: list[dict]  # отброшенные (неподтверждённые) замечания LLM
     set_llm_checked: bool = True
     notes: list[str] = field(default_factory=list)
+    rejected: list[dict] = field(default_factory=list)  # отклонены критиком
+    domain: object = None  # DomainResult (финтех-чек-лист)
+    glossary: object = None  # GlossaryResult
+    critic_used: bool = False
 
 
 # ---------------------------------------------------------------- промпты
@@ -83,8 +96,16 @@ ISO/IEC/IEEE 29148:2018 п. 5.2.5 и IEEE Std 830-1998 п. 4.3:
    проблема в контексте, или перечисли термин в dismissed_hints, если в контексте он допустим.
 6. Учитывай контекст документа (глоссарий, другие разделы): не считай термин неопределённым, если он определён в документе.
 7. suggested_rewrite — улучшенная формулировка требования целиком (одной строкой) или пустая строка, если правок не нужно.
-8. Пиши на русском языке. Верни ТОЛЬКО JSON по схеме:
-{{"results":[{{"id":"R-001","findings":[{{"criterion":"<ключ критерия>","quote":"...","problem":"...","severity":"critical|major|minor","fix":"..."}}],"dismissed_hints":["..."],"suggested_rewrite":"..."}}]}}
+   Формулируй по шаблону EARS, соответствующему типу требования.
+8. ears — тип требования по EARS: ubiquitous («Система должна …»), event («Когда <событие>, система должна …»),
+   state («Пока <состояние>, система должна …»), unwanted («Если <нежелательное событие>, то система должна …»),
+   optional («Там, где <функция включена>, система должна …»), complex.
+9. test — Testability Probe: попробуй написать приёмочный тест для требования В ТЕКУЩЕЙ формулировке
+   (Gherkin на русском: «Дано / Когда / Тогда», с конкретными значениями ИЗ ТЕКСТА требования, не выдумывай чисел).
+   Если тест составить можно — possible=true и gherkin. Если нельзя (нет измеримого критерия, открытый список, TBD,
+   субъективная оценка) — possible=false, reason (почему) и blocker_quote — ДОСЛОВНЫЙ фрагмент, который мешает.
+10. Пиши на русском языке. Верни ТОЛЬКО JSON по схеме:
+{{"results":[{{"id":"R-001","ears":"event","findings":[{{"criterion":"<ключ критерия>","quote":"...","problem":"...","severity":"critical|major|minor","fix":"..."}}],"dismissed_hints":["..."],"suggested_rewrite":"...","test":{{"possible":true,"gherkin":"Дано ...\\nКогда ...\\nТогда ...","reason":"","blocker_quote":""}}}}]}}
 Ключи критериев: {", ".join(INDIVIDUAL)}."""
 
 SYSTEM_SET = f"""Ты — опытный аналитик требований. Проведи статическое ревью НАБОРА требований целиком по критериям
@@ -214,6 +235,8 @@ def check_requirements(reqs: list[Requirement], doc: Document, llm: BaseLLM, bat
                                         str(f.get("fix", "")).strip(), "LLM"))
         if item:
             res.rewrite = str(item.get("suggested_rewrite", "") or "").strip()
+            res.ears = str(item.get("ears", "") or "").strip().lower()
+            _apply_test_probe(res, item.get("test") or {}, dropped)
         # срабатывания правил, которые модель не покрыла и не отклонила
         for h in hints_by_req[r.rid]:
             terms = [norm(t) for t in (h.terms or [h.term])]
@@ -234,6 +257,33 @@ def check_requirements(reqs: list[Requirement], doc: Document, llm: BaseLLM, bat
                                         h.severity, h.fix, "правило"))
         res.findings.sort(key=lambda f: {"critical": 0, "major": 1, "minor": 2}[f.severity])
     return [results[r.rid] for r in reqs]
+
+
+def _apply_test_probe(res: ReqResult, t: dict, dropped: list[dict]) -> None:
+    """Testability Probe: невозможность составить тест — доказательство непроверяемости."""
+    if not isinstance(t, dict) or "possible" not in t:
+        return
+    r = res.req
+    possible = bool(t.get("possible"))
+    if possible:
+        g = str(t.get("gherkin", "") or "").strip()
+        if g:
+            res.test_possible, res.test_gherkin = True, g
+        return
+    q = str(t.get("blocker_quote", "") or "").strip()
+    reason = str(t.get("reason", "") or "").strip()
+    if not quote_in(q, r.text):
+        dropped.append({"where": r.rid + " (тест-проба)", "quote": q, "problem": reason})
+        return
+    res.test_possible, res.test_blocker, res.test_reason = False, q, reason
+    for f in res.findings:
+        if f.criterion == "verifiable":
+            f.problem += f" Подтверждено тест-пробой: тест составить невозможно — {reason}"
+            f.severity = "critical"
+            return
+    res.findings.append(Finding(r.rid, "verifiable", q, f"Тест составить невозможно: {reason}", "critical",
+                                "Переформулировать так, чтобы появился объективный критерий приёмки (число, условие, ожидаемый результат).",
+                                "тест-проба"))
 
 
 def _overlap(a: str, b: str) -> bool:
@@ -330,9 +380,11 @@ def check_set(split: SplitResult, doc: Document, llm: BaseLLM, dropped: list[dic
     return found, True
 
 
-def run_review(doc: Document, split: SplitResult, llm: BaseLLM, batch_size: int = 8, log=print) -> ReviewResult:
+def run_review(doc: Document, split: SplitResult, llm: BaseLLM, batch_size: int = 8, log=print,
+               on_set=lambda: None) -> ReviewResult:
     dropped: list[dict] = []
     req_results = check_requirements(split.requirements, doc, llm, batch_size, dropped, log=log)
+    on_set()
     set_findings, set_ok = check_set(split, doc, llm, dropped, log=log)
     return ReviewResult(doc=doc, split=split, req_results=req_results, set_findings=set_findings,
                         dropped=dropped, set_llm_checked=set_ok)

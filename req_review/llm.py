@@ -5,11 +5,13 @@
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import requests
 
@@ -25,6 +27,7 @@ class LLMFatalError(LLMError):
 @dataclass
 class LLMStats:
     calls: int = 0
+    cached: int = 0
     retries: int = 0
     prompt_tokens: int = 0
     output_tokens: int = 0
@@ -44,6 +47,14 @@ class BaseLLM:
 
     # --- публичный метод ---
     def generate_json(self, system: str, prompt: str, *, task: str = "", context: dict | None = None) -> dict:
+        cache = self._cache_path(system, prompt)
+        if cache and cache.exists():
+            try:
+                data = parse_json(cache.read_text(encoding="utf-8"))
+                self.stats.cached += 1
+                return data
+            except (ValueError, OSError):
+                pass
         last_err: Exception | None = None
         for attempt in range(self.max_retries + 1):
             self._throttle()
@@ -52,7 +63,11 @@ class BaseLLM:
                                   else prompt + "\n\nВНИМАНИЕ: предыдущий ответ был невалидным JSON. Верни ТОЛЬКО валидный JSON.",
                                   task=task, context=context or {})
                 self.stats.calls += 1
-                return parse_json(text)
+                data = parse_json(text)
+                if cache:
+                    cache.parent.mkdir(parents=True, exist_ok=True)
+                    cache.write_text(text, encoding="utf-8")
+                return data
             except json.JSONDecodeError as e:
                 last_err = e
                 self.stats.retries += 1
@@ -66,6 +81,14 @@ class BaseLLM:
         msg = f"LLM не ответил после {self.max_retries} повторов: {last_err}"
         self.stats.errors.append(msg)
         raise LLMError(msg)
+
+    def _cache_path(self, system: str, prompt: str) -> Path | None:
+        """Кэш ответов по хэшу (провайдер + модель + температура + промпт): повторный прогон не тратит квоту."""
+        if self.provider == "mock" or os.getenv("LLM_CACHE", "1").strip() in ("0", "false", "no", ""):
+            return None
+        h = hashlib.sha256(f"{self.provider}|{self.model}|{getattr(self, 'temperature', '')}|{system}|{prompt}".encode()).hexdigest()
+        base = Path(os.getenv("LLM_CACHE_DIR", Path(__file__).resolve().parent.parent / ".cache" / "llm"))
+        return base / f"{h}.json"
 
     def _throttle(self):
         if self.min_interval <= 0:

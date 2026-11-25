@@ -1,0 +1,59 @@
+"""Дизайн-система ReqLens: токены, иконки, CSS/JS-ассеты и шаблоны (HTML-отчёт, веб-студия, styleguide)."""
+from __future__ import annotations
+
+import json
+from functools import lru_cache
+from pathlib import Path
+
+UI_DIR = Path(__file__).resolve().parent
+ASSETS = UI_DIR / "assets"
+TEMPLATES = UI_DIR / "templates"
+TOKENS_JSON = UI_DIR.parent.parent / "design" / "tokens.json"
+TOKENS_FALLBACK = ASSETS / "tokens.json"
+
+
+def load_tokens() -> dict:
+    p = TOKENS_JSON if TOKENS_JSON.exists() else TOKENS_FALLBACK
+    return json.loads(p.read_text(encoding="utf-8"))
+
+
+def tokens_css(tokens: dict | None = None) -> str:
+    """tokens.json → CSS custom properties (светлая, тёмная тема, prefers-color-scheme)."""
+    t = tokens or load_tokens()
+
+    def block(colors: dict) -> str:
+        return "\n".join(f"  --{k}: {v};" for k, v in colors.items())
+
+    common = [f"  --font-sans: {t['font']['sans']};", f"  --font-mono: {t['font']['mono']};"]
+    # шорткат font требует семейство — добавляем его в токен типографики
+    common += [f"  --t-{k}: {v} {t['font']['sans']};" for k, v in t["type"].items()]
+    common += [f"  --s-{k}: {v};" for k, v in t["space"].items()]
+    common += [f"  --r-{k}: {v};" for k, v in t["radius"].items()]
+    common += [f"  --shadow-{k}: {v};" for k, v in t["shadow"].items()]
+    common += [f"  --motion-{k}: {v};" for k, v in t["motion"].items()]
+    common += [f"  --max-width: {t['layout']['max-width']};"]
+    light, dark = block(t["color"]["light"]), block(t["color"]["dark"])
+    return (f":root {{\n{chr(10).join(common)}\n{light}\n  color-scheme: light;\n}}\n"
+            f":root[data-theme=\"dark\"] {{\n{dark}\n  color-scheme: dark;\n}}\n"
+            f"@media (prefers-color-scheme: dark) {{\n  :root:not([data-theme=\"light\"]) {{\n{dark}\n  color-scheme: dark;\n  }}\n}}\n")
+
+
+@lru_cache(maxsize=None)
+def asset(name: str) -> str:
+    return (ASSETS / name).read_text(encoding="utf-8")
+
+
+def env():
+    from jinja2 import Environment, FileSystemLoader, select_autoescape
+
+    from .icons import ICONS, icon
+
+    e = Environment(loader=FileSystemLoader(str(TEMPLATES)), autoescape=select_autoescape(["html", "j2"]))
+    e.globals.update(icon=icon, ICONS=ICONS, tokens_css=tokens_css, asset=asset)
+    return e
+
+
+def build_tokens_css_file() -> Path:
+    out = UI_DIR / "tokens.css"
+    out.write_text("/* Сгенерировано из design/tokens.json — не редактировать вручную */\n" + tokens_css(), encoding="utf-8")
+    return out

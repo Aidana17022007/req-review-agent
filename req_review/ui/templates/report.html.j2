@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="generator" content="ReqLens">
+<title>ReqLens · {{ title }}</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%230B5FFF'/%3E%3Ccircle cx='14.5' cy='14.5' r='6.5' fill='none' stroke='white' stroke-width='2.4'/%3E%3Cpath d='M19.5 19.5 24 24' stroke='white' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+{{ tokens_css()|safe }}
+{{ asset("base.css")|safe }}
+</style>
+<script>(function(){try{var t=localStorage.getItem("reqlens-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}})()</script>
+</head>
+<body>
+<a class="sr-only" href="#main">Перейти к содержимому</a>
+<header class="topbar">
+  <div class="container">
+    <div class="logo"><span class="logo-mark">{{ icon("lens", 18) }}</span>ReqLens<small>ревью требований</small></div>
+    <div class="grow small muted" id="doc-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ title }}</div>
+    <button class="btn btn-ghost btn-icon" id="btn-keys" aria-label="Горячие клавиши" data-tip="Горячие клавиши (?)">{{ icon("keyboard") }}</button>
+    <button class="btn btn-ghost btn-icon" id="btn-theme" aria-label="Сменить тему" data-tip="Тема (T)">{{ icon("moon") }}</button>
+    <button class="btn btn-secondary" id="btn-print">{{ icon("print", 16) }}<span>Печать / PDF</span></button>
+  </div>
+</header>
+
+<main id="main" class="container">
+  <h1 class="print-title h2">Отчёт о проверке требований: {{ title }}</h1>
+  {% if mock %}<div class="banner-mock">⚠️ Тестовый прогон (LLM_PROVIDER=mock): модель не вызывалась, замечания сгенерированы эвристиками. Отчёт не подходит для сдачи.</div>{% endif %}
+  <section class="hero" id="hero" aria-label="Итог проверки"></section>
+  <section class="grid g-3" id="overview" aria-label="Обзор" style="margin-bottom:32px"></section>
+  <nav class="tabs" role="tablist" id="tabs" aria-label="Разделы отчёта"></nav>
+  <div id="panels"></div>
+  <footer class="footer" id="footer"></footer>
+</main>
+
+<div class="overlay" id="overlay"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" aria-hidden="true">
+  <header><div class="grow h3" id="drawer-title">Замечание</div>
+    <button class="btn btn-ghost btn-icon" id="drawer-close" aria-label="Закрыть">{{ icon("x") }}</button></header>
+  <div class="body" id="drawer-body"></div>
+</aside>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="application/json" id="data">{{ data_json|safe }}</script>
+<script>const ICONS = {{ ICONS|tojson }};</script>
+<script>
+{{ asset("report.js")|safe }}
+</script>
+</body>
+</html>

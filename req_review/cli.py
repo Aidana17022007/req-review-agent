@@ -1,33 +1,38 @@
-"""Точка входа: python review.py <файл требований> <файл отчёта>"""
+"""Точка входа: python review.py <файл требований> <файл отчёта> [опции]"""
 from __future__ import annotations
 
 import argparse
-import os
-import subprocess
 import sys
-import time
-from datetime import datetime
+import webbrowser
 from pathlib import Path
 
-from . import __version__
-
-ROOT = Path(__file__).resolve().parent.parent
+from .pipeline import PROFILES, ROOT, Options, agent_version  # noqa: F401  (agent_version — обратная совместимость)
 
 
-def agent_version() -> str:
-    """Версия агента: git-тег/коммит, иначе версия пакета."""
-    try:
-        desc = subprocess.run(["git", "describe", "--tags", "--always", "--dirty"], cwd=ROOT,
-                              capture_output=True, text=True, timeout=5)
-        commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT,
-                                capture_output=True, text=True, timeout=5)
-        if commit.returncode == 0:
-            d = desc.stdout.strip()
-            c = commit.stdout.strip()
-            return f"v{__version__}, коммит {c}" + (f" ({d})" if d and d != c else "")
-    except Exception:
-        pass
-    return f"v{__version__} (вне git-репозитория)"
+def build_parser() -> argparse.ArgumentParser:
+    ap = argparse.ArgumentParser(
+        prog="review.py",
+        description="ReqLens — ИИ-агент статической проверки документа требований (ISO/IEC/IEEE 29148, IEEE 830).",
+    )
+    ap.add_argument("input", help="путь к документу требований (.pdf, .docx, .md, .txt)")
+    ap.add_argument("output", help="путь к файлу отчёта (.md); остальные артефакты ложатся рядом")
+    ap.add_argument("--env", default=None, help="путь к .env (по умолчанию .env в корне проекта)")
+    ap.add_argument("--profile", choices=list(PROFILES), default=None,
+                    help="fast — минимум запросов (по умолчанию); full — критик и повторная оценка; offline — локальная модель (Ollama)")
+    ap.add_argument("--domain", default=None, help="доменный чек-лист полноты: fintech (по умолчанию) или none")
+    ap.add_argument("--compare", default=None, metavar="СТАРЫЙ", help="предыдущая версия: документ или report.json прошлого прогона")
+    ap.add_argument("--critic", dest="critic", action="store_true", default=None, help="включить критик-агента")
+    ap.add_argument("--no-critic", dest="critic", action="store_false", help="выключить критик-агента")
+    ap.add_argument("--rescore", dest="rescore", action="store_true", default=None,
+                    help="повторно проверить исправленный документ («было → стало»)")
+    ap.add_argument("--no-tests", action="store_true", help="не включать тест-пробу (Gherkin) в отчёт")
+    for name, what in (("html", "интерактивный HTML-отчёт"), ("fixed", "исправленный документ"), ("xlsx", "Excel-трассировку"),
+                       ("jira", "CSV для Jira"), ("json", "report.json")):
+        ap.add_argument(f"--no-{name}", action="store_true", help=f"не создавать {what}")
+    ap.add_argument("--open", action="store_true", help="открыть HTML-отчёт в браузере после прогона")
+    ap.add_argument("--quiet", action="store_true", help="минимальный вывод")
+    ap.add_argument("--json", dest="json_out", default=None, help=argparse.SUPPRESS)  # совместимость с v1
+    return ap
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -36,93 +41,51 @@ def main(argv: list[str] | None = None) -> int:
             stream.reconfigure(encoding="utf-8")
         except Exception:
             pass
-    ap = argparse.ArgumentParser(
-        prog="review.py",
-        description="ИИ-агент статической проверки документа требований (ISO/IEC/IEEE 29148, IEEE 830).",
-    )
-    ap.add_argument("input", help="путь к документу требований (.pdf, .docx, .md, .txt)")
-    ap.add_argument("output", help="путь к файлу отчёта (.md)")
-    ap.add_argument("--env", default=None, help="путь к .env (по умолчанию .env в корне проекта)")
-    ap.add_argument("--json", dest="json_out", default=None, help="дополнительно сохранить сырые результаты в JSON")
-    args = ap.parse_args(argv)
+    args = build_parser().parse_args(argv)
+
+    import os
 
     from dotenv import load_dotenv
 
     load_dotenv(args.env or ROOT / ".env")
 
-    from .checker import llm_split, run_review
-    from .llm import LLMError, build_llm_from_env
-    from .reader import read_document
-    from .report import build_report
-    from .splitter import split_requirements
+    from .console import Console
+    from .llm import LLMError
+    from .pipeline import apply_profile_env, run
 
-    started = datetime.now().astimezone()
-    t0 = time.monotonic()
+    profile = args.profile or os.getenv("REQLENS_PROFILE", "fast")
+    opts = Options(
+        profile=profile,
+        html=not args.no_html, fixed=not args.no_fixed, xlsx=not args.no_xlsx, jira=not args.no_jira,
+        json=not args.no_json, tests=not args.no_tests, critic=args.critic, rescore=args.rescore,
+        domain=args.domain or os.getenv("REQLENS_DOMAIN", "fintech"), compare=args.compare,
+        batch_size=int(os.getenv("LLM_BATCH_SIZE", "8")),
+    )
+    con = Console(quiet=args.quiet)
+    apply_profile_env(profile)
     try:
-        llm = build_llm_from_env()
+        from .llm import build_llm_from_env
+
+        label = build_llm_from_env().label
     except LLMError as e:
-        print(f"Ошибка конфигурации LLM: {e}", file=sys.stderr)
+        con.error(f"Ошибка конфигурации LLM: {e}")
         return 2
-
-    print(f"[1/5] Чтение документа: {args.input}")
+    con.banner(args.input, label, profile)
     try:
-        doc = read_document(args.input)
+        ctx = run(args.input, args.output, opts, log=con.log, step=con.step)
     except (FileNotFoundError, ValueError) as e:
-        print(f"Ошибка: {e}", file=sys.stderr)
-        return 2
-    print(f"      «{doc.title}», строк: {len(doc.lines)}")
-
-    print("[2/5] Нарезка требований")
-    split = split_requirements(doc)
-    if not split.requirements:
-        print("      правила ничего не нашли — нарезка моделью")
-        try:
-            split.requirements = llm_split(doc, llm)
-            split.method = "llm"
-        except LLMError as e:
-            print(f"Ошибка: {e}", file=sys.stderr)
-            return 3
-    if not split.requirements:
-        print("Ошибка: в документе не найдено ни одного требования.", file=sys.stderr)
-        return 3
-    print(f"      выделено требований: {len(split.requirements)} (способ: {split.method})")
-
-    print(f"[3/5] Проверка каждого требования ({llm.label})")
-    batch = int(os.getenv("LLM_BATCH_SIZE", "8"))
-    print("[4/5] Проверка набора требований выполняется следом")
-    try:
-        rv = run_review(doc, split, llm, batch_size=batch, log=lambda m: print("     " + m, flush=True))
+        con.error(f"Ошибка: {e}")
+        return 2 if isinstance(e, FileNotFoundError) or "не поддерживается" in str(e) or "Домен" in str(e) else 3
     except LLMError as e:
-        print(f"Ошибка обращения к модели: {e}", file=sys.stderr)
+        con.error(f"Ошибка обращения к модели: {e}")
         return 4
-
-    print("[5/5] Запись отчёта")
-    report = build_report(rv, model_label=llm.label, agent_version=agent_version(), started=started,
-                          duration_s=time.monotonic() - t0, llm_stats=llm.stats, input_path=args.input)
-    out = Path(args.output)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(report, encoding="utf-8")
     if args.json_out:
-        import dataclasses
-        import json
+        from .exports import write_json
 
-        def conv(o):
-            if dataclasses.is_dataclass(o):
-                return {k: conv(v) for k, v in dataclasses.asdict(o).items() if k not in ("doc",)}
-            return str(o)
-
-        data = {
-            "requirements": [dataclasses.asdict(r) for r in split.requirements],
-            "req_results": [{"rid": rr.req.rid, "findings": [dataclasses.asdict(f) for f in rr.findings],
-                             "rewrite": rr.rewrite, "llm_checked": rr.llm_checked} for rr in rv.req_results],
-            "set_findings": [dataclasses.asdict(f) for f in rv.set_findings],
-            "dropped": rv.dropped,
-        }
-        Path(args.json_out).write_text(json.dumps(data, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
-
-    n_f = sum(len(r.findings) for r in rv.req_results) + len(rv.set_findings)
-    print(f"Готово: {out} — требований {len(split.requirements)}, нарушений {n_f}, "
-          f"обращений к модели {llm.stats.calls}, отброшено неподтверждённых цитат {len(rv.dropped)}")
+        write_json(ctx, Path(args.json_out))
+    con.summary(ctx)
+    if args.open and "Интерактивный отчёт (HTML)" in ctx.artifacts:
+        webbrowser.open(ctx.artifacts["Интерактивный отчёт (HTML)"].resolve().as_uri())
     return 0
 
 
