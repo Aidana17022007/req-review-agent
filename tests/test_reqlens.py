@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from req_review.checker import Finding, ReqResult, ReviewResult, SetFinding, SetRef, _apply_test_probe
+from req_review.checker import Finding, ReqResult, _apply_test_probe
 from req_review.cli import main
 from req_review.exports import compare
 from req_review.fixer import build_fixed_document, word_diff
@@ -12,10 +12,9 @@ from req_review.graph import build_graph, mermaid
 from req_review.llm import BaseLLM
 from req_review.mock_llm import MockLLM
 from req_review.pipeline import Options, review_document
-from req_review.reader import read_document
 from req_review.rules import check_requirement
 from req_review.scoring import compute, req_score
-from req_review.splitter import Requirement, split_requirements
+from req_review.splitter import Requirement
 from req_review.ui import tokens_css
 
 FIX = Path(__file__).parent / "fixtures" / "sample_requirements.md"
@@ -171,9 +170,10 @@ def test_full_run_writes_all_artifacts(tmp_path, monkeypatch):
 
 
 def test_html_highlights_every_finding(rv):
+    from datetime import datetime
+
     from req_review.html_report import build_data
     from req_review.pipeline import build_context
-    from datetime import datetime
 
     llm = MockLLM()
     ctx = build_context(rv, llm, Options(), datetime.now().astimezone(), 0.0, str(FIX))

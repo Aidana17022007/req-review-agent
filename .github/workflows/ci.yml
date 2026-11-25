@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Ruff
+        run: ruff check .
+      - name: Tests
+        run: pytest -q
+      - name: Mock run (all artifacts)
+        env:
+          LLM_PROVIDER: mock
+          LLM_MIN_INTERVAL: "0"
+        run: python review.py tests/fixtures/sample_requirements.md reports/mock.md --profile full
+      - name: Styleguide
+        run: python -m req_review.ui.styleguide
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mock-report
+          path: |
+            reports/
+            design/styleguide.html

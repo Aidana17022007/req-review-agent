@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ReqLens Studio</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%230B5FFF'/%3E%3Ccircle cx='14.5' cy='14.5' r='6.5' fill='none' stroke='white' stroke-width='2.4'/%3E%3Cpath d='M19.5 19.5 24 24' stroke='white' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+{{ tokens_css()|safe }}
+{{ asset("base.css")|safe }}
+.drop{display:block;position:relative;border:2px dashed color-mix(in srgb,var(--brand) 40%,var(--border));border-radius:var(--r-hero);padding:56px 24px;text-align:center;
+  background:radial-gradient(600px 200px at 50% 0%,var(--brand-soft),transparent 70%),var(--surface);cursor:pointer;
+  transition:border-color var(--motion-base),transform var(--motion-base) var(--motion-ease),box-shadow var(--motion-base)}
+.drop:hover,.drop.over{border-color:var(--brand);box-shadow:0 0 0 6px var(--brand-soft);transform:translateY(-1px)}
+.drop .big{width:64px;height:64px;border-radius:20px;display:grid;place-items:center;margin:0 auto 16px;color:#fff;
+  background:linear-gradient(135deg,#0B5FFF,#8FB2FF);box-shadow:0 12px 30px rgba(11,95,255,.35)}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.features{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:32px 0}
+@media (max-width:800px){.features{grid-template-columns:1fr 1fr}}
+.feat{padding:16px;border-radius:16px;background:var(--surface);border:1px solid var(--border)}
+.feat .ic{color:var(--brand)}
+.screen{display:none}.screen.active{display:block;animation:fade var(--motion-base) var(--motion-ease)}
+#frame{width:100%;height:80vh;border:1px solid var(--border);border-radius:var(--r-card);background:var(--surface)}
+.log{font:400 12px/18px var(--font-mono);color:var(--text-3);max-height:180px;overflow:auto;margin-top:16px;white-space:pre-wrap}
+.hero-title{font:800 52px/58px var(--font-sans);letter-spacing:-.035em}
+.grad{background:linear-gradient(90deg,var(--brand),#8B5CF6);-webkit-background-clip:text;background-clip:text;color:transparent}
+@media (max-width:640px){.hero-title{font-size:34px;line-height:40px}}
+</style>
+<script>(function(){try{var t=localStorage.getItem("reqlens-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}})()</script>
+</head>
+<body>
+<header class="topbar"><div class="container">
+  <div class="logo"><span class="logo-mark">{{ icon("lens", 18) }}</span>ReqLens<small>Studio</small></div>
+  <div class="grow"></div>
+  <span class="chip chip-brand">{{ icon("shield", 13) }}ключ модели хранится только на сервере</span>
+  <button class="btn btn-ghost btn-icon" id="btn-theme" aria-label="Сменить тему">{{ icon("moon") }}</button>
+</div></header>
+
+<main class="container" style="padding-top:48px;padding-bottom:64px">
+  <!-- Экран 1: загрузка -->
+  <section class="screen active" id="s-upload">
+    <div style="text-align:center;max-width:760px;margin:0 auto 32px">
+      <span class="chip chip-brand" style="margin-bottom:16px">{{ icon("spark", 13) }}ISO/IEC/IEEE 29148 · IEEE 830</span>
+      <h1 class="hero-title">Найдите дефекты требований <span class="grad">до первой строчки кода</span></h1>
+      <p class="muted" style="font-size:17px;line-height:28px;margin-top:16px">Загрузите документ — ReqLens разберёт каждое требование, проверит набор целиком,
+        попробует написать к нему тесты и предложит исправленную версию.</p>
+    </div>
+    <form id="form" class="stack" style="max-width:760px;margin:0 auto">
+      <label class="drop" id="drop">
+        <input type="file" id="file" name="file" accept="{{ formats }}" required>
+        <div class="big">{{ icon("upload", 28) }}</div>
+        <div class="h3" id="drop-title">Перетащите документ сюда или нажмите, чтобы выбрать</div>
+        <div class="small faint" style="margin-top:6px">{{ formats }} · до 20 МБ</div>
+      </label>
+      <div class="row wrap between">
+        <div class="row wrap">
+          <span class="small muted">Профиль</span>
+          <div class="seg" role="group" aria-label="Профиль" id="seg-profile">
+            {% for p in profiles %}<button type="button" data-v="{{ p }}" aria-pressed="{{ 'true' if p == 'fast' else 'false' }}">{{ {'fast':'Быстрый','full':'Полный','offline':'Офлайн'}[p] }}</button>{% endfor %}
+          </div>
+          <span class="small muted" style="margin-left:8px">Домен</span>
+          <div class="seg" role="group" aria-label="Домен" id="seg-domain">
+            <button type="button" data-v="fintech" aria-pressed="true">Финтех</button><button type="button" data-v="none" aria-pressed="false">Без домена</button>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="go" type="submit" disabled>{{ icon("lens", 16) }}Проверить</button>
+      </div>
+      <p class="small faint" id="hint">Быстрый — минимум обращений к модели (бесплатный тариф Gemini). Полный — плюс критик-агент и повторная оценка исправленного документа. Офлайн — локальная модель через Ollama, документ не покидает контур.</p>
+    </form>
+    <div class="features">
+      <div class="feat">{{ icon("file") }}<div class="h3" style="margin-top:8px">Подсветка дефектов</div><p class="small muted">Как Grammarly — прямо в тексте документа.</p></div>
+      <div class="feat">{{ icon("flask") }}<div class="h3" style="margin-top:8px">Тест-проба</div><p class="small muted">Gherkin-тест к каждому требованию — или доказательство, что он невозможен.</p></div>
+      <div class="feat">{{ icon("wand") }}<div class="h3" style="margin-top:8px">Автоисправление</div><p class="small muted">Исправленный документ и «было → стало».</p></div>
+      <div class="feat">{{ icon("bank") }}<div class="h3" style="margin-top:8px">Финтех-экспертиза</div><p class="small muted">Чек-лист полноты для банковских продуктов.</p></div>
+    </div>
+  </section>
+
+  <!-- Экран 2: прогресс -->
+  <section class="screen" id="s-progress" style="max-width:640px;margin:0 auto">
+    <div class="card">
+      <div class="caption">Идёт проверка</div>
+      <div class="h2" id="p-name" style="margin:6px 0 20px">документ</div>
+      <div class="stepper" id="stepper">
+        {% for s in steps %}<div class="step" data-i="{{ loop.index0 }}"><span class="b">{{ loop.index }}</span><span>{{ s }}</span><span class="small faint" data-t></span></div>{% endfor %}
+      </div>
+      <div class="log" id="log" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- Экран 3: результат -->
+  <section class="screen" id="s-result">
+    <div class="row wrap between" style="margin-bottom:16px">
+      <div><div class="caption">Готово</div><div class="h2" id="r-title">Отчёт</div></div>
+      <div class="row wrap" id="downloads"></div>
+    </div>
+    <iframe id="frame" title="Интерактивный отчёт"></iframe>
+  </section>
+  <div class="card" id="err" style="display:none;max-width:640px;margin:24px auto;border-color:var(--critical)"></div>
+</main>
+<div class="toast" id="toast" role="status"></div>
+<script>
+(function(){
+  const $=s=>document.querySelector(s);
+  const t=$("#btn-theme");
+  const cur=()=>document.documentElement.dataset.theme||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
+  t.onclick=()=>{const n=cur()==="dark"?"light":"dark";document.documentElement.dataset.theme=n;try{localStorage.setItem("reqlens-theme",n)}catch(e){}};
+  const state={profile:"fast",domain:"fintech"};
+  for(const id of ["seg-profile","seg-domain"]) $("#"+id).addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+    [...$("#"+id).children].forEach(x=>x.setAttribute("aria-pressed",x===b));state[id==="seg-profile"?"profile":"domain"]=b.dataset.v;});
+  const file=$("#file"),drop=$("#drop");
+  const pick=()=>{const f=file.files[0];$("#go").disabled=!f;$("#drop-title").textContent=f?`${f.name} · ${(f.size/1024).toFixed(0)} КБ`:"Перетащите документ сюда или нажмите, чтобы выбрать";};
+  file.onchange=pick;
+  ["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over")}));
+  ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,()=>drop.classList.remove("over")));
+  drop.addEventListener("drop",e=>{e.preventDefault();if(e.dataTransfer.files.length){file.files=e.dataTransfer.files;pick();}});
+  const show=id=>document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("active",s.id===id));
+  const err=m=>{const e=$("#err");e.style.display="block";e.innerHTML=`<b style="color:var(--critical)">Ошибка:</b> ${m.replace(/[<>&]/g,"")}`;$("#go").classList.remove("loading");show("s-upload");};
+  $("#form").onsubmit=async e=>{
+    e.preventDefault();$("#err").style.display="none";$("#go").classList.add("loading");
+    const fd=new FormData();fd.append("file",file.files[0]);fd.append("profile",state.profile);fd.append("domain",state.domain);
+    let r;try{r=await fetch("/api/review",{method:"POST",body:fd});}catch(x){return err("сервер недоступен");}
+    if(!r.ok){const j=await r.json().catch(()=>({detail:r.statusText}));return err(j.detail||"не удалось начать проверку");}
+    const {job}=await r.json();$("#p-name").textContent=file.files[0].name;show("s-progress");
+    const t0=Date.now();let cur=-1;
+    const steps=[...document.querySelectorAll(".step")];
+    const es=new EventSource(`/api/jobs/${job}/events`);
+    es.onmessage=m=>{const ev=JSON.parse(m.data);
+      if(ev.kind==="step"){steps.forEach((s,i)=>{s.classList.toggle("done",i<ev.i);s.classList.toggle("run",i===ev.i);});
+        if(cur>=0&&steps[cur])steps[cur].querySelector("[data-t]").textContent=((Date.now()-t0)/1000).toFixed(0)+" с";cur=ev.i;}
+      else if(ev.kind==="log"){const l=$("#log");l.textContent+=ev.msg+"\n";l.scrollTop=l.scrollHeight;}
+      else if(ev.kind==="error"){es.close();err(ev.msg);}
+      else if(ev.kind==="done"){es.close();steps.forEach(s=>{s.classList.remove("run");s.classList.add("done")});
+        const a=ev.artifacts,html=Object.entries(a).find(([k,v])=>v.endsWith(".html"));
+        $("#r-title").textContent=`${file.files[0].name} — балл ${ev.summary.score}/100, готовность ${ev.summary.readiness}%`;
+        $("#downloads").innerHTML=Object.entries(a).map(([k,v])=>`<a class="btn btn-secondary btn-sm" href="/jobs/${job}/${v}" ${v.endsWith(".html")?'target="_blank"':"download"}>${k}</a>`).join("");
+        if(html)$("#frame").src=`/jobs/${job}/${html[1]}`;
+        setTimeout(()=>show("s-result"),500);}
+    };
+    es.onerror=()=>{};
+  };
+})();
+</script>
+</body>
+</html>

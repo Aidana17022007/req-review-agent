@@ -1,0 +1,33 @@
+# Пример GitHub Action «requirements as code»: скопируйте в .github/workflows/ своего проекта.
+# При изменении docs/requirements* в pull request ReqLens проверяет документ и прикладывает отчёт как артефакт.
+# Ключ Gemini храните в секрете репозитория GEMINI_API_KEY.
+name: Requirements review
+
+on:
+  pull_request:
+    paths:
+      - "docs/requirements*"
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: <owner>/req-review-agent   # репозиторий агента
+          path: reqlens
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r reqlens/requirements.txt
+      - name: Review
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          f=$(ls docs/requirements.* | head -1)
+          python reqlens/review.py "$f" review/report.md --profile fast
+      - uses: actions/upload-artifact@v4
+        with:
+          name: requirements-review
+          path: review/

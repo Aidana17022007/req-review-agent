@@ -1,0 +1,20 @@
+[project]
+name = "reqlens"
+version = "2.0.0"
+description = "ReqLens — ИИ-агент статической проверки требований (ISO/IEC/IEEE 29148, IEEE 830)"
+requires-python = ">=3.10"
+
+[tool.ruff]
+line-length = 140
+target-version = "py310"
+extend-exclude = [".cache", "reports"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501", "E731", "E741", "E701", "E702"]  # длинные регулярки и промпты читаются лучше одной строкой
+
+[tool.ruff.lint.isort]
+known-first-party = ["req_review"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

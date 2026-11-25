@@ -1,0 +1,12 @@
+services:
+  studio:
+    build: .
+    image: reqlens
+    entrypoint: ["python", "-m", "req_review.web"]
+    working_dir: /app
+    env_file: .env
+    environment:
+      STUDIO_HOST: 0.0.0.0
+      STUDIO_PORT: "8000"
+    ports:
+      - "127.0.0.1:8000:8000"

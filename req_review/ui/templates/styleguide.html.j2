@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ReqLens · Design System</title>
+<style>
+{{ tokens_css()|safe }}
+{{ asset("base.css")|safe }}
+.sg-section{padding:48px 0;border-bottom:1px solid var(--border)}
+.sg-h{display:flex;align-items:baseline;gap:12px;margin-bottom:24px}
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.sw{border-radius:14px;overflow:hidden;border:1px solid var(--border);background:var(--surface)}
+.sw i{display:block;height:64px}
+.sw div{padding:8px 10px;font:500 12px/16px var(--font-sans)}
+.sw code{color:var(--text-3);font:400 11px/16px var(--font-mono)}
+.themes{display:grid;grid-template-columns:1fr 1fr;gap:0;border-radius:var(--r-hero);overflow:hidden;border:1px solid var(--border)}
+@media (max-width:900px){.themes{grid-template-columns:1fr}}
+.themes>div{background:var(--bg);color:var(--text);padding:28px}
+.themes>div>*+*{margin-top:18px}
+.typo-row{display:grid;grid-template-columns:120px 1fr 160px;gap:16px;align-items:baseline;padding:12px 0;border-bottom:1px dashed var(--border)}
+.space-row{display:flex;align-items:center;gap:12px;margin:6px 0}
+.space-row i{display:block;height:14px;background:var(--brand);border-radius:3px}
+</style>
+</head>
+<body>
+<header class="topbar"><div class="container">
+  <div class="logo"><span class="logo-mark">{{ icon("lens", 18) }}</span>ReqLens<small>Design System · v{{ tokens.version }}</small></div>
+  <div class="grow"></div><span class="small faint">Источник правды: design/tokens.json</span>
+</div></header>
+<main class="container">
+  <section class="sg-section">
+    <div class="caption">ReqLens</div>
+    <h1 class="display" style="margin:8px 0">Дизайн-система</h1>
+    <p class="muted" style="max-width:720px">Единые токены и компоненты для HTML-отчёта, веб-студии, слайдов и README.
+      Сетка 8 pt, банковский минимализм, светлая и тёмная темы, контраст WCAG AA.</p>
+  </section>
+
+  <section class="sg-section"><div class="sg-h"><h2 class="h2">Цвет</h2><span class="faint small">light / dark</span></div>
+    {% for theme in ["light", "dark"] %}
+    <div class="caption" style="margin:16px 0 10px">{{ theme }}</div>
+    <div class="swatches" data-theme="{{ theme }}" style="background:var(--bg);padding:16px;border-radius:16px">
+      {% for k, v in tokens.color[theme].items() %}<div class="sw"><i style="background:{{ v }}"></i><div>--{{ k }}<br><code>{{ v }}</code></div></div>{% endfor %}
+    </div>{% endfor %}
+  </section>
+
+  <section class="sg-section"><div class="sg-h"><h2 class="h2">Типографика</h2><span class="faint small">Inter · JetBrains Mono</span></div>
+    {% for k, v in tokens.type.items() %}<div class="typo-row"><span class="caption">{{ k }}</span>
+      <span style="font:var(--t-{{ k }}){% if k == 'caption' %};text-transform:uppercase;letter-spacing:.04em{% endif %}">Проверка требований до разработки</span><code class="mono faint">{{ v }}</code></div>{% endfor %}
+  </section>
+
+  <section class="sg-section"><div class="sg-h"><h2 class="h2">Отступы, радиусы, тени</h2></div>
+    <div class="grid g-3">
+      <div>{% for k, v in tokens.space.items() %}<div class="space-row"><i style="width:{{ v }}"></i><span class="small">space-{{ k }} · {{ v }}</span></div>{% endfor %}</div>
+      <div class="row wrap">{% for k, v in tokens.radius.items() %}<div style="width:96px;height:72px;border-radius:{{ v }};background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center" class="small">{{ k }} {{ v }}</div>{% endfor %}</div>
+      <div class="row wrap">{% for k, v in tokens.shadow.items() %}<div class="card" style="box-shadow:{{ v }};width:110px;text-align:center" ><span class="small">shadow-{{ k }}</span></div>{% endfor %}</div>
+    </div>
+  </section>
+
+  <section class="sg-section"><div class="sg-h"><h2 class="h2">Компоненты</h2><span class="faint small">обе темы</span></div>
+    <div class="themes">
+      {% for theme in ["light", "dark"] %}
+      <div data-theme="{{ theme }}">
+        <div class="caption">{{ theme }}</div>
+        <div class="row wrap"><button class="btn btn-primary">{{ icon("lens", 16) }}Проверить</button><button class="btn btn-secondary">{{ icon("download", 16) }}Скачать</button>
+          <button class="btn btn-ghost">Отмена</button><button class="btn btn-primary" disabled>Disabled</button><button class="btn btn-primary loading">Загрузка</button></div>
+        <div class="row wrap"><span class="chip sev-critical"><span class="dot"></span>Критичный</span><span class="chip sev-major"><span class="dot"></span>Существенный</span>
+          <span class="chip sev-minor"><span class="dot"></span>Незначительный</span><span class="chip sev-ok"><span class="dot"></span>Без замечаний</span><span class="chip chip-brand">FR-02</span><span class="kbd">J</span><span class="kbd">K</span></div>
+        <div class="grid g-2"><div class="stat"><div class="caption">Требований</div><div class="v">31 <span class="delta up">▲ +4</span></div></div>
+          <div class="stat"><div class="caption">Критичных</div><div class="v" style="color:var(--critical)">7 <span class="delta down">▼ −2</span></div></div></div>
+        <div class="tabs" style="margin:0"><button class="tab" aria-selected="true">{{ icon("file", 16) }}Документ<span class="count">24</span></button><button class="tab" aria-selected="false">{{ icon("list", 16) }}Требования<span class="count">31</span></button><button class="tab" aria-selected="false">{{ icon("graph", 16) }}Граф</button></div>
+        <div class="row wrap"><label class="search">{{ icon("search", 16) }}<input placeholder="Поиск…"></label>
+          <div class="seg"><button aria-pressed="true">Все</button><button aria-pressed="false">Критичные</button></div>
+          <button class="pill" aria-pressed="true">Критичный</button><button class="pill" aria-pressed="false">Минор</button></div>
+        <div class="card"><div class="req-head"><div class="score-ring" style="--v:65;--c:var(--major-accent)"><span>65</span></div>
+          <div class="grow"><div class="row"><b>R-002</b><span class="chip chip-brand">FR-02</span><span class="chip sev-critical"><span class="dot"></span>Критичный</span></div>
+          <div class="small faint">раздел «3.1 Переводы», строка 20</div></div></div>
+          <div class="quote" style="margin-top:12px">Система должна <mark class="hl critical">быстро проверять</mark> наличие получателя.</div></div>
+        <div class="diff"><div class="side">должен <del>быстро</del> проверять</div><div class="side">должен проверять <ins>за ≤ 2 с (p95)</ins></div></div>
+        <div class="stepper"><div class="step done"><span class="b">✓</span><span>Чтение</span><span class="small">1 с</span></div>
+          <div class="step run"><span class="b"></span><span>Проверка требований</span><span></span></div><div class="step"><span class="b">3</span><span>Отчёты</span><span></span></div></div>
+        <div class="bar-row"><span class="small">Проверяемость</span><div class="bar"><i style="width:62%"></i></div><b class="small">62</b></div>
+        <div class="skel" style="width:70%"></div><div class="skel" style="width:45%"></div>
+        <div class="row" style="gap:6px">{% for n in ["lens","file","list","layers","graph","flask","wand","chat","book","id","shield","alert","check","copy","search","upload","download","bank","globe","keyboard"] %}<span class="btn btn-ghost btn-icon" title="{{ n }}">{{ icon(n) }}</span>{% endfor %}</div>
+      </div>{% endfor %}
+    </div>
+  </section>
+  <footer class="footer">ReqLens Design System · сгенерировано командой <code class="mono">python -m req_review.ui.styleguide</code></footer>
+</main>
+</body>
+</html>

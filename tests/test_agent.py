@@ -59,7 +59,7 @@ def test_quote_verification():
 
 
 def _make_pdf(path: Path):
-    reportlab = pytest.importorskip("reportlab")
+    pytest.importorskip("reportlab")
     from reportlab.lib.pagesizes import A4
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont

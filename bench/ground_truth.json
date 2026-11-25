@@ -1,0 +1,153 @@
+{
+  "defects": [
+    {
+      "type": "vague",
+      "ids": [
+        "PAY-01"
+      ],
+      "criteria": [
+        "verifiable",
+        "unambiguous"
+      ],
+      "level": "requirement"
+    },
+    {
+      "type": "vague",
+      "ids": [
+        "NFR-01"
+      ],
+      "criteria": [
+        "verifiable",
+        "unambiguous"
+      ],
+      "level": "requirement"
+    },
+    {
+      "type": "missing_units",
+      "ids": [
+        "PAY-07"
+      ],
+      "criteria": [
+        "verifiable",
+        "unambiguous",
+        "complete"
+      ],
+      "level": "requirement"
+    },
+    {
+      "type": "open_list",
+      "ids": [
+        "PAY-08"
+      ],
+      "criteria": [
+        "complete"
+      ],
+      "level": "requirement"
+    },
+    {
+      "type": "tbd",
+      "ids": [
+        "NFR-05"
+      ],
+      "criteria": [
+        "complete"
+      ],
+      "level": "requirement"
+    },
+    {
+      "type": "and_or",
+      "ids": [
+        "PAY-09"
+      ],
+      "criteria": [
+        "unambiguous"
+      ],
+      "level": "requirement"
+    },
+    {
+      "type": "conditional",
+      "ids": [
+        "PAY-03"
+      ],
+      "criteria": [
+        "unambiguous",
+        "complete"
+      ],
+      "level": "requirement"
+    },
+    {
+      "type": "design",
+      "ids": [
+        "PAY-13"
+      ],
+      "criteria": [
+        "appropriate"
+      ],
+      "level": "requirement"
+    },
+    {
+      "type": "compound",
+      "ids": [
+        "PAY-12"
+      ],
+      "criteria": [
+        "singular"
+      ],
+      "level": "requirement"
+    },
+    {
+      "type": "subjective",
+      "ids": [
+        "NFR-06"
+      ],
+      "criteria": [
+        "verifiable",
+        "unambiguous"
+      ],
+      "level": "requirement"
+    },
+    {
+      "type": "absolute",
+      "ids": [
+        "NFR-02"
+      ],
+      "criteria": [
+        "feasible",
+        "verifiable"
+      ],
+      "level": "requirement"
+    },
+    {
+      "type": "contradiction",
+      "ids": [
+        "PAY-05",
+        "SEC-01"
+      ],
+      "criteria": [
+        "set_consistent"
+      ],
+      "level": "set"
+    },
+    {
+      "type": "duplicate",
+      "ids": [
+        "PAY-02",
+        "PAY-15"
+      ],
+      "criteria": [
+        "set_consistent",
+        "necessary"
+      ],
+      "level": "set"
+    }
+  ],
+  "clean_ids": [
+    "PAY-04",
+    "PAY-06",
+    "PAY-10",
+    "PAY-11",
+    "PAY-14",
+    "NFR-03",
+    "NFR-04"
+  ]
+}
