@@ -59,7 +59,7 @@ def main(argv: list[str] | None = None) -> int:
         html=not args.no_html, fixed=not args.no_fixed, xlsx=not args.no_xlsx, jira=not args.no_jira,
         json=not args.no_json, tests=not args.no_tests, critic=args.critic, rescore=args.rescore,
         domain=args.domain or os.getenv("REQLENS_DOMAIN", "fintech"), compare=args.compare,
-        batch_size=int(os.getenv("LLM_BATCH_SIZE", "8")),
+        batch_size=int(os.getenv("LLM_BATCH_SIZE", "20")),
     )
     con = Console(quiet=args.quiet)
     apply_profile_env(profile)

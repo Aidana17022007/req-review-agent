@@ -75,7 +75,19 @@ class BaseLLM:
             except RetryableError as e:
                 last_err = e
                 self.stats.retries += 1
+                if attempt >= self.max_retries:
+                    break
                 wait = e.retry_after if e.retry_after else min(60.0, 2.0 * (2 ** attempt))
+                max_wait = float(os.getenv("LLM_MAX_WAIT", "180"))
+                if wait > max_wait:
+                    # 429 с задержкой в часы = исчерпана дневная квота: ждать бессмысленно
+                    hours = wait / 3600
+                    msg = (f"Квота модели {self.model} исчерпана (API просит подождать ≈{hours:.1f} ч). "
+                           "Уже полученные ответы сохранены в кэше — повторный запуск продолжит с того же места. "
+                           "Варианты: дождаться сброса квоты, сменить модель (GEMINI_MODEL) или ключ, "
+                           "увеличить LLM_BATCH_SIZE, чтобы тратить меньше запросов.")
+                    self.stats.errors.append(msg)
+                    raise LLMFatalError(msg)
                 print(f"  [llm] {e} — повтор через {wait:.0f} с (попытка {attempt + 1}/{self.max_retries})", flush=True)
                 time.sleep(wait)
         msg = f"LLM не ответил после {self.max_retries} повторов: {last_err}"

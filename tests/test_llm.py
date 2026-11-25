@@ -43,3 +43,13 @@ def test_gemini_bad_key_is_fatal(monkeypatch):
     monkeypatch.setattr(llm_mod.requests, "post", lambda *a, **k: Resp(400, {"error": {"message": "API key not valid"}}))
     with pytest.raises(LLMFatalError):
         GeminiLLM(api_key="bad", model="m").generate_json("s", "p")
+
+
+def test_daily_quota_fails_fast(monkeypatch):
+    busy = {"error": {"code": 429, "details": [{"retryDelay": "47158s"}]}}
+    monkeypatch.setattr(llm_mod.requests, "post", lambda *a, **k: Resp(429, busy))
+    slept = []
+    monkeypatch.setattr(llm_mod.time, "sleep", lambda s: slept.append(s))
+    with pytest.raises(LLMFatalError, match="Квота"):
+        GeminiLLM(api_key="k", model="m").generate_json("s", "p")
+    assert not slept
