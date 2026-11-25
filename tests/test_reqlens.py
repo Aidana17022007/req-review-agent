@@ -192,3 +192,18 @@ def test_html_highlights_every_finding(rv):
 def test_tokens_css_has_both_themes():
     css = tokens_css()
     assert "--brand: #1F6B45" in css and '[data-theme="dark"]' in css and "--grad-hero:" in css
+
+
+def test_vague_goal_without_mechanism_is_unverifiable():
+    # R-017 / SEC-03: «обеспечивать защиту от мошенничества» — цель без механизма и критерия приёмки
+    from req_review.reader import read_document
+    from req_review.splitter import split_requirements
+
+    hits = check_requirement(_req("Система должна обеспечивать защиту от мошенничества."))
+    assert any(h.criterion == "verifiable" and h.severity == "critical" for h in hits)
+    s = split_requirements(read_document(FIX))
+    sec03 = next(r for r in s.requirements if r.doc_id == "SEC-03")
+    assert any(h.criterion == "verifiable" for h in check_requirement(sec03))
+    # конкретное требование с числами не должно ловиться этим правилом
+    ok = check_requirement(_req("После 5 неверных вводов кода операция должна блокироваться на 30 минут."))
+    assert not any(h.criterion == "verifiable" for h in ok)

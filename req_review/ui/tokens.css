@@ -57,6 +57,7 @@
   --ok: #136C3A;
   --ok-accent: #1F9D55;
   --ok-soft: #E7F6EE;
+  --neutral-bar: #D9DED9;
   --overlay: rgba(17,24,19,.32);
   color-scheme: light;
 }
@@ -87,6 +88,7 @@
   --ok: #136C3A;
   --ok-accent: #1F9D55;
   --ok-soft: #E7F6EE;
+  --neutral-bar: #D9DED9;
   --overlay: rgba(17,24,19,.32);
   color-scheme: light;
 }
@@ -117,6 +119,7 @@
   --ok: #6FD49A;
   --ok-accent: #1F9D55;
   --ok-soft: rgba(31,157,85,.16);
+  --neutral-bar: #3A4740;
   --overlay: rgba(0,0,0,.55);
   color-scheme: dark;
 }

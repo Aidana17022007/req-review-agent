@@ -171,6 +171,26 @@
         <div class="grow"><div class="small" style="font-weight:600">${esc(c.name)}</div><div class="small faint">${esc(c.ref)}</div></div>
         ${c.count ? chip(c.worst, `${c.count} замеч.`) : chip("ok", "нарушений нет")}</div>`).join("")}</div>`;
   }
+  // «Профиль качества»: горизонтальные полосы с полными названиями; серые — в порядке, цветные — по тяжести
+  function profileHTML() {
+    const rows = D.scores.radar_req.map((r) => {
+      const fs = Object.values(D.findings).filter((f) => f.kind === "req" && f.criterion === r.key);
+      const worst = fs.length ? fs.reduce((a, f) => (ORDER[f.severity] < ORDER[a] ? f.severity : a), "minor") : "ok";
+      const nreq = new Set(fs.map((f) => f.rid)).size;
+      const name = r.name.replace(/\s*\(.*\)/, "");
+      const col = worst === "ok" ? "var(--neutral-bar)" : SEV[worst].color;
+      const st = worst === "ok" ? "в порядке" : `${SEV[worst].label.toLowerCase()}: ${nreq} треб.`;
+      return `<div class="prof-row" title="${esc(r.name)} — ${r.v}% требований без нарушений · ${esc(st)}">
+        <span class="small${worst === "ok" ? " muted" : ""}" style="font-weight:${worst === "ok" ? 400 : 600}">${esc(name)}</span>
+        <div class="bar"><i style="width:${Math.max(3, r.v)}%;background:${col}"></i></div>
+        <span class="small" style="text-align:right">${worst === "ok" ? `<span class="muted">${r.v}%</span>` : `${ic(SEV[worst].icon, 12)} ${r.v}%`}</span></div>`;
+    }).join("");
+    return `<div class="card prof"><div class="card-title">${ic("spark")}<span class="h2 grow">Профиль качества</span>
+        <span class="small muted">доля требований без нарушений</span></div>
+      <div class="prof-rows">${rows}</div>
+      <div class="legend small muted"><span><i style="background:var(--neutral-bar)"></i>в порядке</span><span><i style="background:${SEV.minor.color}"></i>незначительные</span>
+        <span><i style="background:${SEV.major.color}"></i>существенные</span><span><i style="background:${SEV.critical.color}"></i>критичные</span></div></div>`;
+  }
   function renderOverview(el) {
     const s = D.scores, v = D.verdict;
     // статус прогона агента (не готовность документа): ЗАВЕРШЁН / ОШИБКА
@@ -187,8 +207,8 @@
         ${kpi("Критичных", crit, `${ic("alert", 14)}непроверяемые, противоречивые, неполные`, false, "reqs", crit ? "var(--critical)" : "var(--ok)")}
         ${kpi("Без замечаний", cleanReqs, `<b>${Math.round((100 * cleanReqs) / Math.max(1, D.reqs.length))}%</b>из ${D.reqs.length} требований`, false, "reqs", "var(--ok)")}
       </div>
-      <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(280px,360px);margin-top:16px;align-items:start" id="ov-grid">
-        <div class="stack" style="min-width:0">
+      <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(280px,360px);margin-top:16px;align-items:stretch" id="ov-grid">
+        <div class="col-fill" style="min-width:0">
           <article class="agent" aria-label="Агент проверки требований">
             <span class="status ${agentStatus[0]}">${ic(agentStatus[1], 12)}${agentStatus[2]}</span>
             <div class="vis">${sphere(320, 260, 520, 7)}</div>
@@ -215,21 +235,20 @@
                 <div class="h3">Приёмочные тесты</div><div class="small muted">${s.tests_ok} из ${s.tests_total} требований можно проверить тестом</div>
                 <button class="btn btn-sm btn-ghost" style="align-self:flex-start;margin-top:auto" data-go-view="trace">Открыть ${ic("arrow-right", 14)}</button></div></article>
           </div>
+          ${profileHTML()}
         </div>
-        <div class="stack">
+        <div class="col-fill">
           <div class="card"><div class="card-title">${ic("trace")}<span class="h2 grow">Трассировка агента</span><span class="chip chip-brand">${D.trace.filter((t) => t.status !== "skip").length}/${D.trace.length}</span></div>${traceHTML()}</div>
-          <div class="card"><div class="card-title">${ic("spark")}<span class="h2">Профиль качества</span></div>
-            <div class="bars" role="img" aria-label="Доля требований без нарушений по критериям">${radar.map((r, i) => `<div class="b" data-tip="${esc(r.name)}: ${r.v}%"><i class="${r.v < 70 ? "hatch" : ""}" style="height:${Math.max(10, r.v)}%;${r.v >= 70 ? `opacity:${0.55 + r.v / 220}` : ""}"></i><span>${esc(r.name.slice(0, 3))}</span></div>`).join("")}</div>
-            <p class="small faint" style="margin-top:10px">Сплошные — критерий в порядке (≥ 70 % требований без нарушений), штрихованные — проблемные.</p></div>
           ${D.changes.length ? `<div class="card" style="display:flex;gap:14px;align-items:center"><span class="logo-mark" style="border-radius:14px;flex:none">${ic("wand")}</span>
             <div class="grow"><div class="caption">Исправленный документ</div><div class="small muted">${D.changes.length} формулировок исправлено${D.rescore ? ` · балл ${D.rescore.before} → ${D.rescore.after}` : ""}</div></div>
             <button class="btn btn-round" data-dl="fixed" aria-label="Скачать исправленный документ">${ic("download", 16)}</button></div>` : ""}
+          ${setSummaryHTML()}
         </div>
       </div>
       <div class="section-title"><h2 class="h1">Требования</h2><div class="row"><span class="small muted hide-sm">${D.reqs.length} шт.</span>
         <button class="btn btn-sm btn-outline" data-go-view="reqs">Все фильтры ${ic("arrow-right", 14)}</button></div></div>
       ${reqTable(D.reqs, "ov")}
-      <div class="grid g-2" style="margin-top:16px;align-items:start">${setSummaryHTML()}${verdictHTML(true)}</div>`;
+      <div style="margin-top:16px">${verdictHTML(true)}</div>`;
     wireTable(el);
   }
 
@@ -238,9 +257,16 @@
     return `<div class="crit-dots" aria-label="Критерии">${D.criteria.map((c) => {
       const fs = r.findings.map((id) => D.findings[id]).filter((x) => x.criterion === c.key);
       const s = fs.length ? fs.reduce((a, x) => (ORDER[x.severity] < ORDER[a] ? x.severity : a), "minor") : "ok";
-      return `<i data-tip="${esc(c.name)}: ${s === "ok" ? "в порядке" : SEV[s].label.toLowerCase()}" style="background:${s === "ok" ? "var(--ok-soft)" : SEV[s].color}"></i>`;
+      const tip = `${D.criteria.indexOf(c) + 1}. ${c.name}: ${s === "ok" ? "в порядке" : SEV[s].label.toLowerCase()}`;
+      return `<i title="${esc(tip)}" style="background:${s === "ok" ? "var(--neutral-bar)" : SEV[s].color}"></i>`;
     }).join("")}</div>`;
   }
+  // нейтральный вид для «чистых» требований: серый круг 100 и бейдж без заливки
+  const statusChip = (s) => (s === "ok" ? `<span class="chip chip-neutral">${ic("check", 13)}Без замечаний</span>` : chip(s));
+  const ring = (v) => `<div class="mini-ring" style="--v:${v};--c:${v >= 100 ? "var(--neutral-bar)" : scoreColor(v)}"><span${v >= 100 ? ' style="color:var(--text-2);font-weight:600"' : ""}>${v}</span></div>`;
+  const critLegend = () => `<div class="crit-legend small muted" aria-label="Легенда колонки «Критерии»">
+    <span><b>Критерии</b> (слева направо): ${D.criteria.map((c, i) => `${i + 1}. ${esc(c.name.replace(/\s*\(.*\)/, ""))}`).join(" · ")}</span>
+    <span class="row" style="gap:12px"><span><i style="background:var(--neutral-bar)"></i>в порядке</span><span><i style="background:${SEV.minor.color}"></i>незначит.</span><span><i style="background:${SEV.major.color}"></i>существ.</span><span><i style="background:${SEV.critical.color}"></i>критичное</span><span>· наведите на квадратик</span></span></div>`;
   function gherkin(g) { return esc(g).replace(/^(\s*)(Дано|Когда|Тогда|И|Но|Given|When|Then|And|But)(:?)/gm, "$1<b>$2$3</b>"); }
   function expandHTML(r) {
     const t = r.test;
@@ -260,15 +286,15 @@
   }
   function reqTable(rows, key) {
     if (!rows.length) return empty("Ничего не найдено", "Измените фильтры или запрос.");
-    return `<div class="table-wrap"><table class="tbl" data-tbl="${key}"><thead><tr>
+    return `${critLegend()}<div class="table-wrap"><table class="tbl" data-tbl="${key}"><thead><tr>
       <th scope="col">ID в отчёте</th><th scope="col">ID в документе</th><th scope="col">Краткая формулировка</th>
-      <th scope="col">Критерии</th><th scope="col">Балл</th><th scope="col">Статус</th><th scope="col"><span class="sr-only">Действия</span></th></tr></thead>
+      <th scope="col" title="${esc(D.criteria.map((c, i) => `${i + 1}. ${c.name}`).join("\n"))}">Критерии ⓘ</th><th scope="col">Балл</th><th scope="col">Статус</th><th scope="col"><span class="sr-only">Действия</span></th></tr></thead>
       <tbody>${rows.map((r) => `<tr class="rrow" data-rid="${r.rid}" id="row-${key}-${r.rid}">
         <td><b>${esc(r.rid)}</b></td><td>${r.doc_id ? `<span class="chip chip-brand">${esc(r.doc_id)}</span>` : `<span class="small faint">присвоен агентом</span>`}</td>
         <td style="min-width:260px;max-width:460px">${esc(r.text.length > 120 ? r.text.slice(0, 117) + "…" : r.text)}</td>
         <td>${critDots(r)}</td>
-        <td><div class="mini-ring" style="--v:${r.score};--c:${scoreColor(r.score)}"><span>${r.score}</span></div></td>
-        <td>${chip(r.worst)}</td>
+        <td>${ring(r.score)}</td>
+        <td>${statusChip(r.worst)}</td>
         <td><button class="btn btn-sm btn-outline" data-exp="${r.rid}" aria-expanded="false" aria-controls="exp-${key}-${r.rid}">Подробнее ${ic("chevron", 14)}</button></td></tr>
         <tr class="exp" id="exp-${key}-${r.rid}" hidden><td colspan="7">${expandHTML(r)}</td></tr>`).join("")}</tbody></table></div>`;
   }
