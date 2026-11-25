@@ -31,7 +31,7 @@ def main():
     with sync_playwright() as p:
         b = p.chromium.launch()
         for theme in ("light", "dark"):
-            page = b.new_page(viewport={"width": 1440, "height": 900}, device_scale_factor=1)
+            page = b.new_page(viewport={"width": 1440, "height": 900}, device_scale_factor=1, reduced_motion="reduce")
             for name, hash_ in shots:
                 page.goto(html.resolve().as_uri() + hash_)
                 page.evaluate(f"document.documentElement.dataset.theme = '{theme}'")
