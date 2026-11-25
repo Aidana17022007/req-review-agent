@@ -65,14 +65,14 @@ python review.py docs/requirements.pdf reports/report.md --open      # откр�
 
 ## Как получить ключ LLM
 
-По умолчанию используется бесплатный **Gemini API (Google AI Studio)**, модель **`gemini-2.5-flash`**.
+По умолчанию используется бесплатный **Gemini API (Google AI Studio)**, модель **`gemini-3.8-flash`**.
 
 1. Откройте <https://aistudio.google.com/apikey> и войдите в Google-аккаунт.
 2. Нажмите **Create API key** и скопируйте ключ.
 3. Положите ключ в файл `.env` в корне репозитория (создаётся из `.env.example`):
    ```
    GEMINI_API_KEY=ваш_ключ
-   GEMINI_MODEL=gemini-2.5-flash
+   GEMINI_MODEL=gemini-3.8-flash
    ```
 
 Файл `.env` указан в `.gitignore` и в репозиторий не попадает. В репозитории лежит только `.env.example` без ключа.
@@ -109,7 +109,7 @@ python review.py <вход> <отчёт.md> [--profile fast|full|offline] [--dom
 |---|---|---|
 | `LLM_PROVIDER` | `gemini` | `gemini`, `openai` (любой OpenAI-совместимый API) или `mock` (офлайн-заглушка для тестов) |
 | `GEMINI_API_KEY` | — | ключ Google AI Studio |
-| `GEMINI_MODEL` | `gemini-2.5-flash` | модель Gemini |
+| `GEMINI_MODEL` | `gemini-3.8-flash` | модель Gemini |
 | `OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL` | — | OpenAI-совместимые API (OpenRouter, Groq, Ollama и др.) |
 | `LLM_BATCH_SIZE` | `8` | требований в одном запросе |
 | `LLM_MIN_INTERVAL` | `6` | пауза между запросами, с (≈10 запросов/мин) |

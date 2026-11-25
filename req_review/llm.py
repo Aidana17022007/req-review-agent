@@ -229,7 +229,7 @@ def build_llm_from_env() -> BaseLLM:
     if provider == "gemini":
         return GeminiLLM(
             api_key=_env_key("GEMINI_API_KEY"),
-            model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip(),
+            model=os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip(),
             base_url=os.getenv("GEMINI_BASE_URL") or None,
             temperature=temperature,
             **common,
