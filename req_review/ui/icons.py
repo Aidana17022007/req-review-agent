@@ -29,6 +29,16 @@ ICONS = {
     "arrow-right": '<path d="M5 12h14M13 6l6 6-6 6"/>',
     "keyboard": '<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>',
     "globe": '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+    "grid": '<rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/>'
+            '<rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>',
+    "play": '<path d="M7 4.5v15l12.5-7.5z"/>',
+    "pause": '<path d="M8 5v14M16 5v14"/>',
+    "clock": '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    "cpu": '<rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/>',
+    "menu": '<path d="M4 7h16M4 12h16M4 17h16"/>',
+    "chevron": '<path d="m6 9 6 6 6-6"/>',
+    "arrow-up-right": '<path d="M7 17 17 7M9 7h8v8"/>',
+    "trace": '<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="12" r="2"/><path d="M6 7v10M8 5c6 0 8 3 8 5M8 19c6 0 8-3 8-5"/>',
     "bank": '<path d="M3 10 12 4l9 6"/><path d="M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18"/>',
 }
 

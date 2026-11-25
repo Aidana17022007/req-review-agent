@@ -88,16 +88,16 @@ def write_results(res: dict, label: str, version: str) -> None:
 
 HTML = """<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ReqLens · Бенчмарк</title><style>{{ tokens_css()|safe }}{{ asset("base.css")|safe }}</style></head><body>
-<header class="topbar"><div class="container"><div class="logo"><span class="logo-mark">{{ icon("lens", 18) }}</span>ReqLens<small>Бенчмарк точности</small></div></div></header>
+<header class="pagebar"><div class="logo"><span class="logo-mark">{{ icon("lens", 18) }}</span><span>ReqLens<small>Бенчмарк точности</small></span></div></header>
 <main class="container" style="padding:40px 24px">
 <div class="caption">{{ label }} · {{ version }}</div><h1 class="display" style="margin:8px 0 24px">Насколько точен агент</h1>
 <div class="grid g-4" style="margin-bottom:32px">
- <div class="stat"><div class="caption">Recall</div><div class="v" style="color:var(--ok)">{{ pct(res.recall) }}</div></div>
+ <article class="kpi kpi-hero"><span class="lbl">Recall</span><div class="kpi-num">{{ pct(res.recall) }}</div><div class="sub">доля найденных внедрённых дефектов</div></article>
  <div class="stat"><div class="caption">Precision</div><div class="v">{{ pct(res.precision) }}</div></div>
  <div class="stat"><div class="caption">F1</div><div class="v">{{ pct(res.f1) }}</div></div>
  <div class="stat"><div class="caption">Найдено</div><div class="v">{{ res.tp }}<small>из {{ res.total }}</small></div></div></div>
 <div class="card">{% for r in res.rows %}<div class="bar-row"><span class="small">{{ types.get(r.type, r.type) }} <span class="faint">· {{ r.ids|join(", ") }}</span></span>
- <div class="bar"><i style="width:{{ 100 if r.found else 4 }}%;background:{{ 'var(--ok-accent)' if r.found else '#E5484D' }}"></i></div>
+ <div class="bar"><i style="width:{{ 100 if r.found else 4 }}%;background:{{ 'var(--ok-accent)' if r.found else 'var(--critical-accent)' }}"></i></div>
  <b class="small">{{ "✓" if r.found else "✗" }}</b></div>{% endfor %}</div>
 {% if "mock" in label %}<div class="banner-mock">Режим mock: работают только словарные правила. Итоговые цифры — с моделью.</div>{% endif %}
 </main></body></html>"""

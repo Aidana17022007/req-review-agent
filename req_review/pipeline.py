@@ -54,6 +54,8 @@ class Context:
     artifacts: dict = field(default_factory=dict)
     llm_stats: object = None
     model_label: str = ""
+    trace: list = field(default_factory=list)  # [{"i": шаг, "t": секунды от начала}] — таймлайн «Трассировка агента»
+    report_md: str = ""
 
 
 def agent_version() -> str:
@@ -154,9 +156,16 @@ def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda
     apply_profile_env(opts.profile)
     started = datetime.now().astimezone()
     t0 = time.monotonic()
+    timeline: list[dict] = []
+
+    def tstep(i, label=""):
+        timeline.append({"i": i, "t": round(time.monotonic() - t0, 2)})
+        step(i, label)
+
     llm = build_llm_from_env()
-    rv = review_document(input_path, llm, opts, log=log, step=step)
+    rv = review_document(input_path, llm, opts, log=log, step=tstep)
     ctx = build_context(rv, llm, opts, started, t0, input_path)
+    ctx.trace = timeline
 
     rescore = PROFILES[opts.profile]["rescore"] if opts.rescore is None else opts.rescore
     if rescore and ctx.changes:
@@ -186,14 +195,14 @@ def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda
         ctx.compare = compare(old, summarize_for_compare(to_json(ctx)))
         ctx.passport["calls"] = llm.stats.calls
 
-    step(6)
+    tstep(6)
     ctx.passport["duration_s"] = round(time.monotonic() - t0)
     out = Path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)
     stem = out.with_suffix("")
-    out.write_text(build_report(rv, model_label=llm.label, agent_version=ctx.passport["agent_version"], started=started,
-                                duration_s=time.monotonic() - t0, llm_stats=llm.stats, input_path=input_path, ctx=ctx),
-                   encoding="utf-8")
+    ctx.report_md = build_report(rv, model_label=llm.label, agent_version=ctx.passport["agent_version"], started=started,
+                                 duration_s=time.monotonic() - t0, llm_stats=llm.stats, input_path=input_path, ctx=ctx)
+    out.write_text(ctx.report_md, encoding="utf-8")
     ctx.artifacts["Отчёт (Markdown)"] = out
     if opts.fixed and ctx.changes:
         p = out.parent / f"{stem.name}_requirements_fixed.md"
@@ -215,6 +224,7 @@ def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda
         from .html_report import write_html
 
         p = stem.with_suffix(".html")
+        timeline.append({"i": 7, "t": round(time.monotonic() - t0, 2)})  # конец записи отчётов
         write_html(ctx, p)
         ctx.artifacts["Интерактивный отчёт (HTML)"] = p
     return ctx

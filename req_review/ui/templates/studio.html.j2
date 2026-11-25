@@ -4,139 +4,168 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ReqLens Studio</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%230B5FFF'/%3E%3Ccircle cx='14.5' cy='14.5' r='6.5' fill='none' stroke='white' stroke-width='2.4'/%3E%3Cpath d='M19.5 19.5 24 24' stroke='white' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='%23E7F4EC' stroke='%231F6B45' stroke-width='4'/%3E%3Ccircle cx='16' cy='16' r='4.5' fill='%231F6B45'/%3E%3C/svg%3E">
 <style>
 {{ tokens_css()|safe }}
 {{ asset("base.css")|safe }}
-.drop{display:block;position:relative;border:2px dashed color-mix(in srgb,var(--brand) 40%,var(--border));border-radius:var(--r-hero);padding:56px 24px;text-align:center;
-  background:radial-gradient(600px 200px at 50% 0%,var(--brand-soft),transparent 70%),var(--surface);cursor:pointer;
-  transition:border-color var(--motion-base),transform var(--motion-base) var(--motion-ease),box-shadow var(--motion-base)}
-.drop:hover,.drop.over{border-color:var(--brand);box-shadow:0 0 0 6px var(--brand-soft);transform:translateY(-1px)}
-.drop .big{width:64px;height:64px;border-radius:20px;display:grid;place-items:center;margin:0 auto 16px;color:#fff;
-  background:linear-gradient(135deg,#0B5FFF,#8FB2FF);box-shadow:0 12px 30px rgba(11,95,255,.35)}
+.drop{display:block;position:relative;border:2px dashed color-mix(in srgb,var(--brand) 45%,var(--border));border-radius:var(--r-card);padding:48px 24px;text-align:center;
+  background:var(--surface);cursor:pointer;transition:border-color var(--motion-base),background var(--motion-base)}
+.drop:hover,.drop.over{border-color:var(--brand);background:var(--brand-soft)}
+.drop .big{width:68px;height:68px;border-radius:50%;display:grid;place-items:center;margin:0 auto 16px;color:#fff;background:var(--grad-hero)}
 .drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
-.features{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:32px 0}
-@media (max-width:800px){.features{grid-template-columns:1fr 1fr}}
-.feat{padding:16px;border-radius:16px;background:var(--surface);border:1px solid var(--border)}
-.feat .ic{color:var(--brand)}
+.fmt{display:flex;gap:8px;justify-content:center;margin-top:14px}
 .screen{display:none}.screen.active{display:block;animation:fade var(--motion-base) var(--motion-ease)}
-#frame{width:100%;height:80vh;border:1px solid var(--border);border-radius:var(--r-card);background:var(--surface)}
-.log{font:400 12px/18px var(--font-mono);color:var(--text-3);max-height:180px;overflow:auto;margin-top:16px;white-space:pre-wrap}
-.hero-title{font:800 52px/58px var(--font-sans);letter-spacing:-.035em}
-.grad{background:linear-gradient(90deg,var(--brand),#8B5CF6);-webkit-background-clip:text;background-clip:text;color:transparent}
-@media (max-width:640px){.hero-title{font-size:34px;line-height:40px}}
+#frame{width:100%;height:82vh;border:0;border-radius:var(--r-card);background:var(--surface)}
+.log{font:400 12px/18px var(--font-mono);color:var(--text-2);max-height:160px;overflow:auto;white-space:pre-wrap;margin-top:12px}
+.feat .ic{color:var(--brand)}
 </style>
 <script>(function(){try{var t=localStorage.getItem("reqlens-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}})()</script>
 </head>
 <body>
-<header class="topbar"><div class="container">
-  <div class="logo"><span class="logo-mark">{{ icon("lens", 18) }}</span>ReqLens<small>Studio</small></div>
-  <div class="grow"></div>
-  <span class="chip chip-brand">{{ icon("shield", 13) }}ключ модели хранится только на сервере</span>
-  <button class="btn btn-ghost btn-icon" id="btn-theme" aria-label="Сменить тему">{{ icon("moon") }}</button>
-</div></header>
-
-<main class="container" style="padding-top:48px;padding-bottom:64px">
-  <!-- Экран 1: загрузка -->
-  <section class="screen active" id="s-upload">
-    <div style="text-align:center;max-width:760px;margin:0 auto 32px">
-      <span class="chip chip-brand" style="margin-bottom:16px">{{ icon("spark", 13) }}ISO/IEC/IEEE 29148 · IEEE 830</span>
-      <h1 class="hero-title">Найдите дефекты требований <span class="grad">до первой строчки кода</span></h1>
-      <p class="muted" style="font-size:17px;line-height:28px;margin-top:16px">Загрузите документ — ReqLens разберёт каждое требование, проверит набор целиком,
-        попробует написать к нему тесты и предложит исправленную версию.</p>
+<div class="app">
+  <aside class="sidebar" id="sidebar" aria-label="Навигация">
+    <div class="logo"><span class="logo-mark">{{ icon("lens", 18) }}</span><span>ReqLens<small>Studio</small></span></div>
+    <div class="nav-label">Меню</div>
+    <button class="nav-item" aria-current="page" type="button" id="nav-new">{{ icon("upload") }}<span>Новая проверка</span></button>
+    <button class="nav-item" type="button" id="nav-report" disabled style="opacity:.5">{{ icon("file") }}<span>Отчёт</span></button>
+    <div class="nav-label">Общее</div>
+    <button class="nav-item" id="btn-theme" type="button">{{ icon("moon") }}<span>Тёмная тема</span></button>
+    <div class="promo" style="margin-top:auto">
+      <div class="h3">Ключ в безопасности</div>
+      <p>Ключ модели хранится только в .env сервера и никогда не передаётся в браузер.</p>
     </div>
-    <form id="form" class="stack" style="max-width:760px;margin:0 auto">
-      <label class="drop" id="drop">
-        <input type="file" id="file" name="file" accept="{{ formats }}" required>
-        <div class="big">{{ icon("upload", 28) }}</div>
-        <div class="h3" id="drop-title">Перетащите документ сюда или нажмите, чтобы выбрать</div>
-        <div class="small faint" style="margin-top:6px">{{ formats }} · до 20 МБ</div>
-      </label>
-      <div class="row wrap between">
-        <div class="row wrap">
-          <span class="small muted">Профиль</span>
-          <div class="seg" role="group" aria-label="Профиль" id="seg-profile">
-            {% for p in profiles %}<button type="button" data-v="{{ p }}" aria-pressed="{{ 'true' if p == 'fast' else 'false' }}">{{ {'fast':'Быстрый','full':'Полный','offline':'Офлайн'}[p] }}</button>{% endfor %}
-          </div>
-          <span class="small muted" style="margin-left:8px">Домен</span>
-          <div class="seg" role="group" aria-label="Домен" id="seg-domain">
-            <button type="button" data-v="fintech" aria-pressed="true">Финтех</button><button type="button" data-v="none" aria-pressed="false">Без домена</button>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <button class="btn btn-round burger" id="burger" aria-label="Открыть меню">{{ icon("menu") }}</button>
+      <span class="small muted grow">ИИ-ревью требований по ISO/IEC/IEEE 29148 и IEEE 830</span>
+      <span class="chip chip-brand">{{ icon("shield", 13) }}локальный сервер</span>
+    </div>
+    <div class="content">
+      <!-- Экран 1: загрузка -->
+      <section class="screen active" id="s-upload">
+        <header class="pagehead"><div><div class="caption">Новая проверка</div><h1 class="display" style="margin-top:6px">Загрузите документ требований</h1>
+          <p class="muted" style="margin-top:6px">Агент выделит требования, проверит каждое и набор целиком, попробует написать тесты и предложит правки.</p></div></header>
+        <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(260px,340px);align-items:start" id="up-grid">
+          <form id="form" class="card stack">
+            <label class="drop" id="drop">
+              <input type="file" id="file" name="file" accept="{{ formats }}" required>
+              <div class="big">{{ icon("upload", 28) }}</div>
+              <div class="h2" id="drop-title">Перетащите файл сюда или нажмите, чтобы выбрать</div>
+              <div class="fmt"><span class="chip chip-outline">.md</span><span class="chip chip-outline">.pdf</span><span class="chip chip-outline">.docx</span><span class="chip chip-outline">.txt</span></div>
+              <div class="small faint" style="margin-top:10px">до 20 МБ</div>
+            </label>
+            <div class="row wrap between">
+              <div class="row wrap">
+                <span class="small muted">Профиль</span>
+                <div class="seg" role="group" aria-label="Профиль" id="seg-profile">
+                  {% for p in profiles %}<button type="button" data-v="{{ p }}" aria-pressed="{{ 'true' if p == 'fast' else 'false' }}">{{ {'fast':'Быстрый','full':'Полный','offline':'Офлайн'}[p] }}</button>{% endfor %}
+                </div>
+                <span class="small muted">Домен</span>
+                <div class="seg" role="group" aria-label="Домен" id="seg-domain">
+                  <button type="button" data-v="fintech" aria-pressed="true">Финтех</button><button type="button" data-v="none" aria-pressed="false">Без домена</button>
+                </div>
+              </div>
+              <button class="btn btn-primary" id="go" type="submit" disabled>{{ icon("play", 16) }}Запустить проверку</button>
+            </div>
+            <p class="small faint">Быстрый — минимум обращений к модели (бесплатный тариф). Полный — плюс критик-агент и повторная оценка исправленного документа. Офлайн — локальная модель через Ollama.</p>
+          </form>
+          <div class="stack">
+            <article class="kpi kpi-hero"><span class="lbl">Что получите</span><div class="kpi-num">6</div><div class="sub">артефактов: отчёт .md, HTML, JSON, Excel, CSV для Jira, исправленный документ</div></article>
+            <div class="card feat">{{ icon("flask") }}<div class="h3" style="margin-top:6px">Тест-проба</div><p class="small muted">Gherkin-тест к каждому требованию — или доказательство, что он невозможен.</p></div>
+            <div class="card feat">{{ icon("bank") }}<div class="h3" style="margin-top:6px">Финтех-полнота</div><p class="small muted">2FA, лимиты, идемпотентность, AML, персональные данные, SLA.</p></div>
           </div>
         </div>
-        <button class="btn btn-primary" id="go" type="submit" disabled>{{ icon("lens", 16) }}Проверить</button>
-      </div>
-      <p class="small faint" id="hint">Быстрый — минимум обращений к модели (бесплатный тариф Gemini). Полный — плюс критик-агент и повторная оценка исправленного документа. Офлайн — локальная модель через Ollama, документ не покидает контур.</p>
-    </form>
-    <div class="features">
-      <div class="feat">{{ icon("file") }}<div class="h3" style="margin-top:8px">Подсветка дефектов</div><p class="small muted">Как Grammarly — прямо в тексте документа.</p></div>
-      <div class="feat">{{ icon("flask") }}<div class="h3" style="margin-top:8px">Тест-проба</div><p class="small muted">Gherkin-тест к каждому требованию — или доказательство, что он невозможен.</p></div>
-      <div class="feat">{{ icon("wand") }}<div class="h3" style="margin-top:8px">Автоисправление</div><p class="small muted">Исправленный документ и «было → стало».</p></div>
-      <div class="feat">{{ icon("bank") }}<div class="h3" style="margin-top:8px">Финтех-экспертиза</div><p class="small muted">Чек-лист полноты для банковских продуктов.</p></div>
-    </div>
-  </section>
+      </section>
 
-  <!-- Экран 2: прогресс -->
-  <section class="screen" id="s-progress" style="max-width:640px;margin:0 auto">
-    <div class="card">
-      <div class="caption">Идёт проверка</div>
-      <div class="h2" id="p-name" style="margin:6px 0 20px">документ</div>
-      <div class="stepper" id="stepper">
-        {% for s in steps %}<div class="step" data-i="{{ loop.index0 }}"><span class="b">{{ loop.index }}</span><span>{{ s }}</span><span class="small faint" data-t></span></div>{% endfor %}
-      </div>
-      <div class="log" id="log" aria-live="polite"></div>
-    </div>
-  </section>
+      <!-- Экран 2: агент работает -->
+      <section class="screen" id="s-progress">
+        <header class="pagehead"><div><div class="caption">Проверка</div><h1 class="display" style="margin-top:6px" id="p-name">документ</h1></div></header>
+        <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(260px,360px);align-items:start" id="pr-grid">
+          <article class="agent">
+            <span class="status st-run" id="p-status">{{ icon("play", 11) }}ВЫПОЛНЯЕТСЯ</span>
+            <div class="vis" id="p-vis"></div>
+            <div class="info">
+              <div class="h2">Агент проверки требований</div>
+              <div class="metrics">
+                <div class="metric"><div class="kpi-num" id="p-step">0/7</div><div class="small muted">шагов выполнено</div></div>
+                <div class="metric"><div class="kpi-num" style="color:var(--text)" id="p-time">0<span class="h3 faint"> с</span></div><div class="small muted">время прогона</div></div>
+              </div>
+              <div class="bar" style="height:10px"><i id="p-bar" style="width:0%"></i></div>
+              <div class="log" id="log" aria-live="polite"></div>
+            </div>
+            <div class="foot"><span class="live"><i></i>LIVE</span><span class="small muted grow" id="p-cur">Подготовка…</span></div>
+          </article>
+          <div class="card"><div class="card-title">{{ icon("trace") }}<span class="h2">Трассировка агента</span></div>
+            <ol class="trace" id="trace">{% for s in steps %}<li class="skip" data-i="{{ loop.index0 }}"><time>—</time><span class="dot" aria-hidden="true"></span><div><div class="t">{{ s }}</div><div class="d">ожидает</div></div></li>{% endfor %}</ol></div>
+        </div>
+      </section>
 
-  <!-- Экран 3: результат -->
-  <section class="screen" id="s-result">
-    <div class="row wrap between" style="margin-bottom:16px">
-      <div><div class="caption">Готово</div><div class="h2" id="r-title">Отчёт</div></div>
-      <div class="row wrap" id="downloads"></div>
+      <!-- Экран 3: результат -->
+      <section class="screen" id="s-result">
+        <header class="pagehead" style="flex-direction:column;align-items:stretch"><div><div class="caption">Готово</div><h1 class="h1" style="margin-top:6px" id="r-title">Отчёт</h1></div>
+          <div class="row wrap" id="downloads"></div></header>
+        <iframe id="frame" title="Интерактивный отчёт"></iframe>
+      </section>
+      <div class="card" id="err" style="display:none;margin-top:16px;border-color:var(--critical-accent)"></div>
     </div>
-    <iframe id="frame" title="Интерактивный отчёт"></iframe>
-  </section>
-  <div class="card" id="err" style="display:none;max-width:640px;margin:24px auto;border-color:var(--critical)"></div>
-</main>
-<div class="toast" id="toast" role="status"></div>
+  </div>
+</div>
 <script>
 (function(){
   const $=s=>document.querySelector(s);
-  const t=$("#btn-theme");
-  const cur=()=>document.documentElement.dataset.theme||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
-  t.onclick=()=>{const n=cur()==="dark"?"light":"dark";document.documentElement.dataset.theme=n;try{localStorage.setItem("reqlens-theme",n)}catch(e){}};
+  const cur=()=>document.documentElement.dataset.theme||"light";
+  $("#btn-theme").onclick=()=>{const n=cur()==="dark"?"light":"dark";document.documentElement.dataset.theme=n;try{localStorage.setItem("reqlens-theme",n)}catch(e){}};
+  $("#burger").onclick=()=>$("#sidebar").classList.toggle("open");
+  $("#nav-new").onclick=()=>location.reload();
   const state={profile:"fast",domain:"fintech"};
   for(const id of ["seg-profile","seg-domain"]) $("#"+id).addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
     [...$("#"+id).children].forEach(x=>x.setAttribute("aria-pressed",x===b));state[id==="seg-profile"?"profile":"domain"]=b.dataset.v;});
   const file=$("#file"),drop=$("#drop");
-  const pick=()=>{const f=file.files[0];$("#go").disabled=!f;$("#drop-title").textContent=f?`${f.name} · ${(f.size/1024).toFixed(0)} КБ`:"Перетащите документ сюда или нажмите, чтобы выбрать";};
+  const pick=()=>{const f=file.files[0];$("#go").disabled=!f;$("#drop-title").textContent=f?`${f.name} · ${(f.size/1024).toFixed(0)} КБ`:"Перетащите файл сюда или нажмите, чтобы выбрать";};
   file.onchange=pick;
   ["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over")}));
   ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,()=>drop.classList.remove("over")));
   drop.addEventListener("drop",e=>{e.preventDefault();if(e.dataTransfer.files.length){file.files=e.dataTransfer.files;pick();}});
   const show=id=>document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("active",s.id===id));
-  const err=m=>{const e=$("#err");e.style.display="block";e.innerHTML=`<b style="color:var(--critical)">Ошибка:</b> ${m.replace(/[<>&]/g,"")}`;$("#go").classList.remove("loading");show("s-upload");};
+  const err=m=>{const e=$("#err");e.style.display="block";e.innerHTML=`<b style="color:var(--critical)">Ошибка:</b> ${m.replace(/[<>&]/g,"")}`;$("#go").classList.remove("loading");
+    $("#p-status").className="status st-fail";$("#p-status").textContent="ОШИБКА";};
+  // декоративная «сфера агента»
+  (function(){let s=7;const r=()=>((s=(s*9301+49297)%233280)/233280);const w=320,h=260,cx=170,cy=130,R=100,fx=cx-72,fy=cy+5;let l="",d="";const ga=Math.PI*(3-Math.sqrt(5));
+    for(let i=0;i<480;i++){const rr=R*Math.sqrt((i+.5)/480)*(.92+r()*.12),a=i*ga,x=cx+Math.cos(a)*rr*(.78+.22*Math.abs(Math.sin(a))),y=cy+Math.sin(a)*rr,e=rr/R;
+      d+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(.7+e*1.3).toFixed(2)}" fill="var(--brand)" opacity="${(.25+e*.7).toFixed(2)}"/>`;
+      if(i%4===0&&e>.45)l+=`<line x1="${fx}" y1="${fy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--brand)" stroke-width=".5" opacity="${(.12+e*.25).toFixed(2)}"/>`;}
+    $("#p-vis").innerHTML=`<svg viewBox="0 0 ${w} ${h}" aria-hidden="true"><g style="transform-origin:${cx}px ${cy}px;animation:spin 18s linear infinite">${l}${d}</g></svg>`;})();
+  const ICO={ok:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m5 12 4.5 4.5L19 7"/></svg>'};
   $("#form").onsubmit=async e=>{
     e.preventDefault();$("#err").style.display="none";$("#go").classList.add("loading");
     const fd=new FormData();fd.append("file",file.files[0]);fd.append("profile",state.profile);fd.append("domain",state.domain);
     let r;try{r=await fetch("/api/review",{method:"POST",body:fd});}catch(x){return err("сервер недоступен");}
     if(!r.ok){const j=await r.json().catch(()=>({detail:r.statusText}));return err(j.detail||"не удалось начать проверку");}
     const {job}=await r.json();$("#p-name").textContent=file.files[0].name;show("s-progress");
-    const t0=Date.now();let cur=-1;
-    const steps=[...document.querySelectorAll(".step")];
+    const t0=Date.now();let curI=-1;const items=[...document.querySelectorAll("#trace li")];
+    const tick=setInterval(()=>{$("#p-time").innerHTML=Math.round((Date.now()-t0)/1000)+'<span class="h3 faint"> с</span>';},500);
+    const clock=()=>new Date().toTimeString().slice(0,8);
     const es=new EventSource(`/api/jobs/${job}/events`);
     es.onmessage=m=>{const ev=JSON.parse(m.data);
-      if(ev.kind==="step"){steps.forEach((s,i)=>{s.classList.toggle("done",i<ev.i);s.classList.toggle("run",i===ev.i);});
-        if(cur>=0&&steps[cur])steps[cur].querySelector("[data-t]").textContent=((Date.now()-t0)/1000).toFixed(0)+" с";cur=ev.i;}
+      if(ev.kind==="step"){
+        if(curI>=0&&items[curI]){items[curI].className="ok";items[curI].querySelector(".dot").innerHTML=ICO.ok;items[curI].querySelector(".d").textContent="готово · "+((Date.now()-t0)/1000).toFixed(1)+" с";}
+        for(let k=curI+1;k<ev.i;k++){if(items[k]){items[k].className="skip";items[k].querySelector(".d").textContent="пропущен";}}
+        curI=ev.i;const it=items[ev.i];if(it){it.className="run";it.querySelector("time").textContent=clock();it.querySelector(".d").textContent="выполняется…";$("#p-cur").textContent=it.querySelector(".t").textContent+"…";}
+        $("#p-step").textContent=`${ev.i}/${items.length}`;$("#p-bar").style.width=(100*ev.i/items.length)+"%";}
       else if(ev.kind==="log"){const l=$("#log");l.textContent+=ev.msg+"\n";l.scrollTop=l.scrollHeight;}
-      else if(ev.kind==="error"){es.close();err(ev.msg);}
-      else if(ev.kind==="done"){es.close();steps.forEach(s=>{s.classList.remove("run");s.classList.add("done")});
+      else if(ev.kind==="error"){es.close();clearInterval(tick);if(items[curI]){items[curI].className="err";items[curI].querySelector(".d").textContent=ev.msg;}err(ev.msg);}
+      else if(ev.kind==="done"){es.close();clearInterval(tick);
+        items.forEach(it=>{if(it.className==="run"){it.className="ok";it.querySelector(".dot").innerHTML=ICO.ok;it.querySelector(".d").textContent="готово";}});
+        $("#p-status").className="status st-done";$("#p-status").textContent="ЗАВЕРШЁН";$("#p-step").textContent=`${items.length}/${items.length}`;$("#p-bar").style.width="100%";
         const a=ev.artifacts,html=Object.entries(a).find(([k,v])=>v.endsWith(".html"));
         $("#r-title").textContent=`${file.files[0].name} — балл ${ev.summary.score}/100, готовность ${ev.summary.readiness}%`;
-        $("#downloads").innerHTML=Object.entries(a).map(([k,v])=>`<a class="btn btn-secondary btn-sm" href="/jobs/${job}/${v}" ${v.endsWith(".html")?'target="_blank"':"download"}>${k}</a>`).join("");
+        $("#downloads").innerHTML=Object.entries(a).map(([k,v],i)=>`<a class="btn btn-sm ${v.endsWith(".md")&&i===0?"btn-primary":"btn-outline"}" href="/jobs/${job}/${v}" ${v.endsWith(".html")?'target="_blank"':"download"}>${k}</a>`).join("");
         if(html)$("#frame").src=`/jobs/${job}/${html[1]}`;
-        setTimeout(()=>show("s-result"),500);}
+        const nr=$("#nav-report");nr.disabled=false;nr.style.opacity=1;nr.onclick=()=>show("s-result");
+        setTimeout(()=>{show("s-result");$("#nav-new").removeAttribute("aria-current");nr.setAttribute("aria-current","page");},900);}
     };
-    es.onerror=()=>{};
   };
 })();
 </script>

@@ -156,7 +156,11 @@ def test_full_run_writes_all_artifacts(tmp_path, monkeypatch):
               "Методика оценки", "```mermaid", "Эффект исправлений"):
         assert s in md, s
     html = (tmp_path / "report.html").read_text(encoding="utf-8")
-    assert "<script" in html and "http://" not in html.split("<body>")[1].replace("http://www.w3.org", "")
+    # самодостаточный файл: нет внешних скриптов, стилей, шрифтов и картинок
+    import re as _re
+    assert "<script" in html
+    assert not _re.search(r'<(script|img|iframe)[^>]+src="https?://|<link[^>]+href="https?://|url\(\s*["\']?https?://|@import', html)
+    assert "D.report_md" in html and '"trace"' in html  # «Скачать отчёт» и таймлайн агента
     data = json.loads((tmp_path / "report.json").read_text(encoding="utf-8"))
     assert data["schema_version"] == "2.0" and data["scores"]["document"] >= 0
     assert (tmp_path / "report_traceability.xlsx").stat().st_size > 3000
@@ -187,4 +191,4 @@ def test_html_highlights_every_finding(rv):
 
 def test_tokens_css_has_both_themes():
     css = tokens_css()
-    assert "--brand:" in css and '[data-theme="dark"]' in css and "prefers-color-scheme" in css
+    assert "--brand: #1F6B45" in css and '[data-theme="dark"]' in css and "--grad-hero:" in css

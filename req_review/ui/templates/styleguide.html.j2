@@ -24,16 +24,16 @@
 </style>
 </head>
 <body>
-<header class="topbar"><div class="container">
-  <div class="logo"><span class="logo-mark">{{ icon("lens", 18) }}</span>ReqLens<small>Design System · v{{ tokens.version }}</small></div>
-  <div class="grow"></div><span class="small faint">Источник правды: design/tokens.json</span>
-</div></header>
+<header class="pagebar">
+  <div class="logo"><span class="logo-mark">{{ icon("lens", 18) }}</span><span>ReqLens<small>Design System · v{{ tokens.version }}</small></span></div>
+  <div class="grow"></div><span class="small muted">Источник правды: design/tokens.json</span>
+</header>
 <main class="container">
   <section class="sg-section">
     <div class="caption">ReqLens</div>
     <h1 class="display" style="margin:8px 0">Дизайн-система</h1>
     <p class="muted" style="max-width:720px">Единые токены и компоненты для HTML-отчёта, веб-студии, слайдов и README.
-      Сетка 8 pt, банковский минимализм, светлая и тёмная темы, контраст WCAG AA.</p>
+      Светлая зелёная тема, белые карточки со скруглением 20 px, pill-кнопки и бейджи, сетка 8 pt, контраст WCAG AA.</p>
   </section>
 
   <section class="sg-section"><div class="sg-h"><h2 class="h2">Цвет</h2><span class="faint small">light / dark</span></div>
@@ -66,6 +66,13 @@
           <button class="btn btn-ghost">Отмена</button><button class="btn btn-primary" disabled>Disabled</button><button class="btn btn-primary loading">Загрузка</button></div>
         <div class="row wrap"><span class="chip sev-critical"><span class="dot"></span>Критичный</span><span class="chip sev-major"><span class="dot"></span>Существенный</span>
           <span class="chip sev-minor"><span class="dot"></span>Незначительный</span><span class="chip sev-ok"><span class="dot"></span>Без замечаний</span><span class="chip chip-brand">FR-02</span><span class="kbd">J</span><span class="kbd">K</span></div>
+        <div class="grid g-2"><article class="kpi kpi-hero"><span class="lbl">Всего требований</span><div class="kpi-num">31</div><div class="sub"><b>ID</b>нарезка по ID документа</div></article>
+          <article class="kpi"><span class="lbl">Критичных</span><div class="kpi-num" style="color:var(--critical)">7</div><div class="sub">непроверяемые, неполные</div></article></div>
+        <div class="row wrap"><span class="status st-run">ВЫПОЛНЯЕТСЯ</span><span class="status st-done">ЗАВЕРШЁН</span><span class="status st-fail">ОШИБКА</span>
+          <span class="verdict-badge v-ok" style="font-size:15px;padding:8px 16px">Готово</span><span class="verdict-badge v-major" style="font-size:15px;padding:8px 16px">Нужны правки</span><span class="verdict-badge v-critical" style="font-size:15px;padding:8px 16px">Не готово</span></div>
+        <ol class="trace"><li class="ok"><time>13:05</time><span class="dot">✓</span><div><div class="t">Чтение документа</div><div class="d">48 строк · MD</div></div></li>
+          <li class="err"><time>13:06</time><span class="dot">✕</span><div><div class="t">Проверка требований</div><div class="d">модель не ответила по 2 треб.</div></div></li>
+          <li class="run"><time>13:10</time><span class="dot"></span><div><div class="t">Проверка набора</div><div class="d">выполняется…</div></div></li></ol>
         <div class="grid g-2"><div class="stat"><div class="caption">Требований</div><div class="v">31 <span class="delta up">▲ +4</span></div></div>
           <div class="stat"><div class="caption">Критичных</div><div class="v" style="color:var(--critical)">7 <span class="delta down">▼ −2</span></div></div></div>
         <div class="tabs" style="margin:0"><button class="tab" aria-selected="true">{{ icon("file", 16) }}Документ<span class="count">24</span></button><button class="tab" aria-selected="false">{{ icon("list", 16) }}Требования<span class="count">31</span></button><button class="tab" aria-selected="false">{{ icon("graph", 16) }}Граф</button></div>

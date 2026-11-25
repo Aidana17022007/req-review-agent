@@ -68,13 +68,51 @@ def _verdict(ctx) -> dict:
     major = sum(1 for rr in rv.req_results for f in rr.findings if f.severity == "major") + \
         sum(1 for f in rv.set_findings if f.severity == "major")
     if crit:
-        return {"level": "critical", "title": "Начинать разработку нельзя",
+        return {"level": "critical", "title": "Не готово", "headline": "Начинать разработку нельзя",
                 "text": f"{crit} критичных дефектов: по затронутым требованиям нельзя составить тесты и критерии приёмки."}
     if major:
-        return {"level": "major", "title": "Можно условно",
+        return {"level": "major", "title": "Нужны правки", "headline": "Можно начинать условно",
                 "text": "Критичных дефектов нет, но существенные замечания нужно закрыть до написания тест-кейсов."}
-    return {"level": "ok", "title": "Можно начинать",
+    return {"level": "ok", "title": "Готово", "headline": "Можно начинать разработку и тестирование",
             "text": "Критичных и существенных дефектов не найдено."}
+
+
+def build_trace(ctx) -> list[dict]:
+    """Шаги прогона для таймлайна «Трассировка агента»: время, длительность, статус и детали."""
+    from datetime import datetime, timedelta
+
+    rv, sc = ctx.rv, ctx.scores
+    try:
+        start = datetime.strptime(ctx.passport["started"][:19], "%Y-%m-%d %H:%M:%S")
+    except (KeyError, ValueError):
+        start = None
+    at = {e["i"]: e["t"] for e in ctx.trace}
+    nf = sum(len(r.findings) for r in rv.req_results)
+    failed = [r.req.rid for r in rv.req_results if not r.llm_checked]
+    method = {"ids": "по ID документа", "modal": "по модальным фразам", "llm": "моделью"}[rv.split.method]
+    steps = [
+        (0, "Чтение документа", f"{len(rv.doc.lines)} строк · {rv.doc.fmt.upper()}", "ok"),
+        (1, "Нарезка требований", f"{len(rv.req_results)} требований · {method}", "ok"),
+        (2, "Проверка требований",
+         (f"Модель не ответила по {len(failed)} треб.: {', '.join(failed[:4])}" if failed else
+          f"{nf} замечаний · тест-проба {sc.tests_ok}/{sc.tests_total}")
+         + (f" · отброшено цитат: {len(rv.dropped)}" if rv.dropped else ""), "err" if failed else "ok"),
+        (3, "Проверка набора", f"{len(rv.set_findings)} замечаний" if rv.set_llm_checked else
+         "Модель не ответила — только детерминированные проверки", "ok" if rv.set_llm_checked else "err"),
+        (4, "Домен и глоссарий", f"покрытие чек-листа {rv.domain.coverage_pct}%" if rv.domain else "домен отключён",
+         "ok" if rv.glossary is not None else "warn"),
+        (5, "Критик-агент", f"отклонено замечаний: {len(rv.rejected)}" if rv.critic_used else "пропущен (профиль fast)",
+         "ok" if rv.critic_used else "skip"),
+        (6, "Запись отчёта", "Markdown · HTML · JSON · Excel · CSV", "ok"),
+    ]
+    out = []
+    for i, title, detail, status in steps:
+        t = at.get(i)
+        nxt = next((at[j] for j in range(i + 1, 9) if j in at), None)
+        out.append({"title": title, "detail": detail, "status": status,
+                    "clock": (start + timedelta(seconds=t)).strftime("%H:%M:%S") if (start and t is not None) else "",
+                    "dur": round(nxt - t, 1) if (t is not None and nxt is not None) else None})
+    return out
 
 
 def build_data(ctx) -> dict:
@@ -179,6 +217,8 @@ def build_data(ctx) -> dict:
         "notes": rv.doc.warnings + rv.notes,
         "method": METHOD_MD,
         "split_method": rv.split.method,
+        "trace": build_trace(ctx),
+        "report_md": getattr(ctx, "report_md", ""),
     }
     return data
 

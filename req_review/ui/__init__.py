@@ -31,13 +31,13 @@ def tokens_css(tokens: dict | None = None) -> str:
     common += [f"  --r-{k}: {v};" for k, v in t["radius"].items()]
     common += [f"  --shadow-{k}: {v};" for k, v in t["shadow"].items()]
     common += [f"  --motion-{k}: {v};" for k, v in t["motion"].items()]
-    common += [f"  --max-width: {t['layout']['max-width']};"]
+    common += [f"  --max-width: {t['layout']['max-width']};", f"  --sidebar: {t['layout'].get('sidebar', '248px')};"]
     light, dark = block(t["color"]["light"]), block(t["color"]["dark"])
     # [data-theme] без :root — темы можно применять и к отдельным блокам (витрина styleguide)
     return (f":root {{\n{chr(10).join(common)}\n{light}\n  color-scheme: light;\n}}\n"
             f"[data-theme=\"light\"] {{\n{light}\n  color-scheme: light;\n}}\n"
-            f"[data-theme=\"dark\"] {{\n{dark}\n  color-scheme: dark;\n}}\n"
-            f"@media (prefers-color-scheme: dark) {{\n  :root:not([data-theme=\"light\"]) {{\n{dark}\n  color-scheme: dark;\n  }}\n}}\n")
+            f"[data-theme=\"dark\"] {{\n{dark}\n  color-scheme: dark;\n}}\n")
+    # Основная тема — светлая зелёная; тёмная включается только переключателем (не по настройке ОС)
 
 
 @lru_cache(maxsize=None)

@@ -27,20 +27,16 @@ def main():
         subprocess.run([sys.executable, str(ROOT / "review.py"), str(ROOT / "tests/fixtures/sample_requirements.md"),
                         str(ROOT / "reports/mock.md"), "--profile", "full", "--quiet"], check=True, env=env)
     OUT.mkdir(parents=True, exist_ok=True)
-    shots = [("hero", "", None), ("document", "#doc", "#tabs"), ("requirements", "#reqs", "#tabs"),
-             ("fixed", "#fixed", "#tabs"), ("graph", "#graph", "#tabs")]
+    shots = [("overview", ""), ("requirements", "#reqs"), ("set", "#set"), ("trace", "#trace"), ("export", "#export")]
     with sync_playwright() as p:
         b = p.chromium.launch()
         for theme in ("light", "dark"):
-            page = b.new_page(viewport={"width": 1440, "height": 900}, device_scale_factor=2, color_scheme=theme)
-            for name, hash_, anchor in shots:
+            page = b.new_page(viewport={"width": 1440, "height": 900}, device_scale_factor=1)
+            for name, hash_ in shots:
                 page.goto(html.resolve().as_uri() + hash_)
+                page.evaluate(f"document.documentElement.dataset.theme = '{theme}'")
                 page.wait_for_timeout(1300)
-                if anchor:
-                    page.locator(anchor).scroll_into_view_if_needed()
-                    page.evaluate("window.scrollBy(0, -70)")
-                    page.wait_for_timeout(400)
-                page.screenshot(path=str(OUT / f"screenshot-{name}-{theme}.png"))
+                page.screenshot(path=str(OUT / f"screenshot-{name}-{theme}.png"), full_page=(name == "overview"))
             page.close()
         b.close()
     print(f"Готово: {OUT}")

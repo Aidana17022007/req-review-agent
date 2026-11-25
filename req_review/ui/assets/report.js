@@ -1,4 +1,4 @@
-/* ReqLens — интерактивный отчёт. Ванильный JS, без внешних зависимостей. */
+/* ReqLens — интерактивный отчёт (структура «AI-агент», светлая зелёная тема). Ванильный JS, без зависимостей. */
 (function () {
   "use strict";
   const D = JSON.parse(document.getElementById("data").textContent);
@@ -7,358 +7,300 @@
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const ic = (n, s = 18) => `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ""}</svg>`;
   const SEV = {
-    critical: { label: "Критичный", short: "критичных", color: "#E5484D" },
-    major: { label: "Существенный", short: "существенных", color: "#F59E0B" },
-    minor: { label: "Незначительный", short: "незначительных", color: "#EAB308" },
-    ok: { label: "Без замечаний", short: "без замечаний", color: "#12B76A" },
+    critical: { label: "Критичный", icon: "alert", color: "#D64545" },
+    major: { label: "Существенный", icon: "alert", color: "#B7791F" },
+    minor: { label: "Незначительный", icon: "chat", color: "#B8A532" },
+    ok: { label: "Без замечаний", icon: "check", color: "#1F9D55" },
   };
   const ORDER = { critical: 0, major: 1, minor: 2, ok: 3 };
   const EARS = { ubiquitous: "постоянное", event: "по событию", state: "по состоянию", unwanted: "нежелательное поведение", optional: "опциональное", complex: "составное" };
-  const CONF = { high: ["Высокая", "sev-ok"], medium: ["Средняя", "chip-brand"], low: ["Низкая", ""] };
-  const chip = (s, txt) => `<span class="chip sev-${s}"><span class="dot"></span>${esc(txt || SEV[s].label)}</span>`;
+  const CONF = { high: ["высокая", "sev-ok"], medium: ["средняя", "chip-brand"], low: ["низкая", ""] };
+  const chip = (s, txt) => `<span class="chip sev-${s}">${ic(SEV[s].icon, 13)}${esc(txt || SEV[s].label)}</span>`;
+  const scoreColor = (v) => (v >= 80 ? "var(--ok-accent)" : v >= 50 ? "var(--major-accent)" : "var(--critical-accent)");
   const deltaChip = (d) => `<span class="delta ${d >= 0 ? "up" : "down"}">${d >= 0 ? "▲ +" : "▼ "}${d}</span>`;
-  const scoreColor = (v) => (v >= 80 ? "var(--ok-accent)" : v >= 50 ? "var(--major-accent)" : "#E5484D");
   const reqById = Object.fromEntries(D.reqs.map((r) => [r.rid, r]));
   const label = (r) => (r.doc_id ? `${r.rid} · ${r.doc_id}` : r.rid);
   const totalFindings = Object.keys(D.findings).length;
+  const reqFindings = Object.values(D.findings).filter((f) => f.kind === "req").length;
+  const cleanReqs = D.reqs.filter((r) => !r.findings.length).length;
+  const P = D.passport;
 
-  // ------------------------------------------------------------ тема
-  const themeBtn = $("#btn-theme");
-  function currentTheme() {
-    const t = document.documentElement.dataset.theme;
-    if (t) return t;
-    return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  }
-  function setThemeIcon() { themeBtn.innerHTML = ic(currentTheme() === "dark" ? "sun" : "moon"); }
+  // ------------------------------------------------------------ тема, печать, тосты
+  function currentTheme() { return document.documentElement.dataset.theme || "light"; }
+  function setThemeBtn() { const d = currentTheme() === "dark"; $("#btn-theme").innerHTML = ic(d ? "sun" : "moon") + `<span>${d ? "Светлая тема" : "Тёмная тема"}</span>`; }
   function toggleTheme() {
     const t = currentTheme() === "dark" ? "light" : "dark";
     document.documentElement.dataset.theme = t;
-    try { localStorage.setItem("reqlens-theme", t); } catch (e) { /* файл открыт без доступа к storage */ }
-    setThemeIcon();
+    try { localStorage.setItem("reqlens-theme", t); } catch (e) { /* storage недоступен */ }
+    setThemeBtn();
   }
-  themeBtn.onclick = toggleTheme;
-  setThemeIcon();
+  $("#btn-theme").onclick = toggleTheme; setThemeBtn();
   $("#btn-print").onclick = () => window.print();
-
-  // ------------------------------------------------------------ toast
+  $("#burger").onclick = () => $("#sidebar").classList.toggle("open");
   let toastT;
-  function toast(msg) {
-    const t = $("#toast");
-    t.innerHTML = ic("check", 16) + esc(msg);
-    t.classList.add("show");
-    clearTimeout(toastT);
-    toastT = setTimeout(() => t.classList.remove("show"), 2200);
-  }
+  function toast(msg) { const t = $("#toast"); t.innerHTML = ic("check", 16) + esc(msg); t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2200); }
   function copy(text, msg) {
     const done = () => toast(msg || "Скопировано");
-    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, fallback);
-    else fallback();
-    function fallback() {
-      const ta = document.createElement("textarea");
-      ta.value = text; document.body.appendChild(ta); ta.select();
-      try { document.execCommand("copy"); done(); } catch (e) { toast("Не удалось скопировать"); }
-      ta.remove();
-    }
+    const fallback = () => { const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); done(); } catch (e) { toast("Не удалось скопировать"); } ta.remove(); };
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, fallback); else fallback();
   }
+  function download(name, text, type) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([text], { type: (type || "text/plain") + ";charset=utf-8" }));
+    a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    toast("Файл сохранён: " + name);
+  }
+  const base = String(P.document || "report").replace(/[^\wа-яё\- ]+/gi, "").trim().slice(0, 40).replace(/\s+/g, "_") || "report";
+  const DL = {
+    md: () => download(`${base}_report.md`, D.report_md || "", "text/markdown"),
+    json: () => download(`${base}_data.json`, JSON.stringify(D, null, 2), "application/json"),
+    fixed: () => download(`${base}_requirements_fixed.md`, D.fixed_text || "", "text/markdown"),
+    feature: () => download(`${base}_acceptance.feature`, D.reqs.filter((r) => r.test.possible).map((r) => `# ${label(r)}\n${r.test.gherkin}`).join("\n\n"), "text/plain"),
+  };
   document.addEventListener("click", (e) => {
-    const b = e.target.closest("[data-copy]");
-    if (b) { e.stopPropagation(); copy(b.dataset.copy, b.dataset.msg); }
+    const c = e.target.closest("[data-copy]"); if (c) { e.stopPropagation(); copy(c.dataset.copy, c.dataset.msg); return; }
+    const d = e.target.closest("[data-dl]"); if (d) { e.preventDefault(); DL[d.dataset.dl](); return; }
+    const r = e.target.closest("[data-go-req]"); if (r) { e.preventDefault(); closeDrawer(); goReq(r.dataset.goReq); return; }
+    const l = e.target.closest("[data-go-line]"); if (l) { e.preventDefault(); closeDrawer(); goLine(+l.dataset.goLine); return; }
+    const v = e.target.closest("[data-go-view]"); if (v) { e.preventDefault(); show(v.dataset.goView); return; }
+    const f = e.target.closest("[data-open]"); if (f) { e.preventDefault(); openFinding(f.dataset.open, f); }
   });
 
-  // ------------------------------------------------------------ hero
-  function gauge(v) {
-    const r = 100, len = Math.PI * r, off = len * (1 - v / 100);
-    return `<div class="gauge" role="img" aria-label="Готовность к разработке ${v}%">
-      <svg viewBox="0 0 240 140"><defs><linearGradient id="gg" x1="0" x2="1">
-        <stop offset="0" stop-color="#E5484D"/><stop offset=".55" stop-color="#F59E0B"/><stop offset="1" stop-color="#12B76A"/></linearGradient></defs>
-        <path d="M20 120 A100 100 0 0 1 220 120" fill="none" stroke="var(--surface-2)" stroke-width="18" stroke-linecap="round"/>
-        <path class="arc" d="M20 120 A100 100 0 0 1 220 120" fill="none" stroke="url(#gg)" stroke-width="18" stroke-linecap="round"
-          stroke-dasharray="${len}" stroke-dashoffset="${len}" data-off="${off}"/>
-      </svg>
-      <div class="g-val"><div class="g-num" style="color:${scoreColor(v)}">${v}<span style="font-size:22px">%</span></div>
-      <div class="g-lbl">готовность к разработке</div></div></div>`;
-  }
-  function stat(lbl, v, extra, tone) {
-    return `<div class="stat"><div class="caption">${esc(lbl)}</div><div class="v"${tone ? ` style="color:${tone}"` : ""}>${v}${extra || ""}</div></div>`;
-  }
-  function renderHero() {
-    const s = D.scores, v = D.verdict, p = D.passport;
-    const vcls = { critical: "sev-critical", major: "sev-major", ok: "sev-ok" }[v.level];
-    const vic = { critical: "alert", major: "alert", ok: "check" }[v.level];
-    let delta = "";
-    if (D.rescore) delta = `<div class="row wrap" style="margin-top:16px"><span class="chip chip-brand">${ic("wand", 14)} после исправлений</span>
-      <span class="h3">${D.rescore.before} → <span style="color:${D.rescore.after >= D.rescore.before ? "var(--ok)" : "var(--critical)"}">${D.rescore.after}</span></span>
-      ${deltaChip(D.rescore.after - D.rescore.before)}</div>`;
-    if (D.compare) {
-      const d = D.compare.score_after - D.compare.score_before;
-      delta += `<div class="row wrap" style="margin-top:12px"><span class="chip">к прошлой версии</span>
-        <span class="delta ${d >= 0 ? "up" : "down"}">${d >= 0 ? "▲ +" : "▼ "}${d}</span>
-        <span class="small muted">исправлено ${D.compare.counts.fixed}, новых ${D.compare.counts.new}, хуже ${D.compare.counts.worse}</span></div>`;
+  // ------------------------------------------------------------ декоративная «сфера агента» (детерминированная)
+  function sphere(w, h, n, seed, opts = {}) {
+    let s = seed; const rnd = () => ((s = (s * 9301 + 49297) % 233280) / 233280);
+    const cx = w * (opts.cx || 0.52), cy = h * 0.5, R = Math.min(w, h) * (opts.r || 0.38);
+    const fx = cx - R * 0.72, fy = cy + R * 0.05;
+    const col = opts.color || "var(--brand)";
+    let lines = "", dots = "";
+    const ga = Math.PI * (3 - Math.sqrt(5));
+    for (let i = 0; i < n; i++) {
+      const rr = R * Math.sqrt((i + 0.5) / n) * (0.92 + rnd() * 0.12);
+      const a = i * ga + (opts.twist || 0);
+      const squash = opts.broken && rnd() < 0.35 ? 0.6 + rnd() * 0.3 : 1;
+      const x = cx + Math.cos(a) * rr * (0.78 + 0.22 * Math.abs(Math.sin(a))) * squash, y = cy + Math.sin(a) * rr * squash;
+      const edge = rr / R;
+      const op = (0.25 + edge * 0.7).toFixed(2);
+      dots += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(0.7 + edge * 1.3).toFixed(2)}" fill="${col}" opacity="${op}"/>`;
+      if (i % (opts.lineEvery || 4) === 0 && edge > 0.45) lines += `<line x1="${fx.toFixed(1)}" y1="${fy.toFixed(1)}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${col}" stroke-width=".5" opacity="${(0.12 + edge * 0.25).toFixed(2)}"/>`;
     }
-    const crit = D.counts.critical, ready = s.ready.length;
-    $("#hero").innerHTML = `<div class="hero-grid">
-      <div>${gauge(s.readiness)}</div>
-      <div>
-        <div class="caption">Итог проверки</div>
-        <h2 class="display" style="margin:8px 0 12px">${esc(v.title)}</h2>
-        <span class="verdict ${vcls}">${ic(vic, 16)}${esc(v.text)}</span>
-        ${delta}
-        <div class="grid g-4" style="margin-top:24px">
-          ${stat("Требований", D.reqs.length)}
-          ${stat("Нарушений", totalFindings)}
-          ${stat("Критичных", crit, "", crit ? "var(--critical)" : "var(--ok)")}
-          ${stat("Готово к работе", ready, `<small>из ${D.reqs.length}</small>`)}
-        </div>
-      </div>
-      <div class="passport-mini card" style="padding:16px 18px">
-        <div class="row between"><div class="caption">Паспорт прогона</div>
-          <span class="chip chip-brand">${esc(p.profile)}</span></div>
-        <dl class="kv" style="grid-template-columns:96px 1fr;margin-top:12px">
-          <dt>Балл документа</dt><dd><b style="font-size:18px">${s.doc}</b><span class="faint"> / 100</span></dd>
-          <dt>Модель</dt><dd>${esc(p.model)}</dd>
-          <dt>Агент</dt><dd>${esc(p.agent_version)}</dd>
-          <dt>Дата</dt><dd>${esc(p.started)}</dd>
-          <dt>Режим</dt><dd>${esc(p.mode)}</dd>
-          <dt>SHA-256</dt><dd class="mono" title="${esc(p.sha256)}">${esc(String(p.sha256).slice(0, 16))}…</dd>
-        </dl></div></div>`;
-    requestAnimationFrame(() => setTimeout(() => { const a = $(".gauge .arc"); if (a) a.style.strokeDashoffset = a.dataset.off; }, 60));
+    for (let i = 0; i < n / 8; i++) { const a = rnd() * 6.28, d = R * (1.05 + rnd() * 0.35); dots += `<circle cx="${(cx + Math.cos(a) * d).toFixed(1)}" cy="${(cy + Math.sin(a) * d).toFixed(1)}" r="${(0.6 + rnd()).toFixed(2)}" fill="${col}" opacity=".35"/>`; }
+    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${lines}${dots}<circle cx="${fx}" cy="${fy}" r="3.5" fill="${col}"/><circle cx="${fx}" cy="${fy}" r="10" fill="${col}" opacity=".15"/></svg>`;
   }
 
-  // ------------------------------------------------------------ обзор: радар, тест-проба, цена дефекта
-  function radar(items, size = 300) {
-    const n = items.length, c = size / 2, R = size / 2 - 64;
-    const pt = (i, v) => { const a = -Math.PI / 2 + (2 * Math.PI * i) / n; return [c + Math.cos(a) * R * v, c + Math.sin(a) * R * v]; };
-    let g = "";
-    [0.25, 0.5, 0.75, 1].forEach((k) => { g += `<polygon points="${items.map((_, i) => pt(i, k).join(",")).join(" ")}" fill="none" stroke="var(--border)"/>`; });
-    items.forEach((_, i) => { const [x, y] = pt(i, 1); g += `<line x1="${c}" y1="${c}" x2="${x}" y2="${y}" stroke="var(--border)"/>`; });
-    const poly = items.map((it, i) => pt(i, Math.max(0.02, it.v / 100)).join(",")).join(" ");
-    g += `<polygon points="${poly}" fill="color-mix(in srgb,var(--brand) 20%,transparent)" stroke="var(--brand)" stroke-width="2" stroke-linejoin="round"/>`;
-    items.forEach((it, i) => {
-      const [x, y] = pt(i, Math.max(0.02, it.v / 100));
-      g += `<circle cx="${x}" cy="${y}" r="3.5" fill="var(--brand)"><title>${esc(it.name)}: ${it.v}%</title></circle>`;
-      const [lx, ly] = pt(i, 1.2);
-      const anchor = Math.abs(lx - c) < 8 ? "middle" : lx > c ? "start" : "end";
-      const words = it.name.replace(/\s*\(.*\)/, "").split(" ");
-      const lines = words.length > 1 && it.name.length > 14 ? [words.slice(0, Math.ceil(words.length / 2)).join(" "), words.slice(Math.ceil(words.length / 2)).join(" ")] : [words.join(" ")];
-      g += `<text x="${lx}" y="${ly - (lines.length - 1) * 6}" text-anchor="${anchor}" dominant-baseline="middle">${lines.map((l, k) => `<tspan x="${lx}" dy="${k ? 12 : 0}">${esc(l)}</tspan>`).join("")}</text>`;
-    });
-    return `<svg class="radar" viewBox="-56 -6 ${size + 112} ${size + 12}" role="img" aria-label="Профиль качества по критериям">${g}</svg>`;
-  }
-  function renderOverview() {
-    const s = D.scores;
-    const tPct = s.tests_total ? Math.round((100 * s.tests_ok) / s.tests_total) : 0;
-    const maxCost = Math.max(1, ...s.cost.map((c) => c[1]));
-    const sevBars = ["critical", "major", "minor"].map((k) => {
-      const n = D.counts[k], pct = totalFindings ? (100 * n) / totalFindings : 0;
-      return `<div class="bar-row" style="grid-template-columns:120px 1fr 32px"><span>${chip(k)}</span><div class="bar"><i style="width:${pct}%;background:${SEV[k].color}"></i></div><b>${n}</b></div>`;
-    }).join("");
-    $("#overview").innerHTML = `
-      <div class="card"><div class="card-title">${ic("spark")}<span class="h3">Профиль качества</span></div>
-        ${radar(s.radar_req)}<p class="small faint">Доля требований без нарушений по каждому критерию ISO/IEC/IEEE 29148 §5.2.5.</p></div>
-      <div class="card"><div class="card-title">${ic("flask")}<span class="h3">Тест-проба</span></div>
-        <div class="row" style="align-items:baseline"><span class="display">${s.tests_ok}</span><span class="h3 faint">/ ${s.tests_total}</span>
-        <span class="chip ${tPct >= 80 ? "sev-ok" : tPct >= 50 ? "sev-major" : "sev-critical"}">${tPct}%</span></div>
-        <p class="small muted" style="margin:8px 0 16px">требований, для которых агент смог написать приёмочный тест Given/When/Then. Для остальных тест составить невозможно — это доказательство непроверяемости.</p>
-        <div class="bar" style="height:10px"><i style="width:${tPct}%;background:var(--ok-accent)"></i></div>
-        <div style="margin-top:24px">${sevBars}</div></div>
-      <div class="card"><div class="card-title">${ic("bank")}<span class="h3">Цена дефекта</span></div>
-        <p class="small muted" style="margin-bottom:12px">Сколько часов уйдёт на исправление найденных дефектов в зависимости от того, когда их обнаружат (ориентировочно).</p>
-        ${s.cost.map((c, i) => `<div class="bar-row" style="grid-template-columns:150px 1fr 64px"><span class="small">${esc(c[0])}</span>
-          <div class="bar"><i style="width:${Math.max(2, (100 * c[1]) / maxCost)}%;background:${i === 0 ? "var(--ok-accent)" : i === 3 ? "#E5484D" : "var(--major-accent)"}"></i></div>
-          <b class="small" style="text-align:right">${c[1]} ч</b></div>`).join("")}
-        <p class="small faint" style="margin-top:12px">Исправить сейчас в ~100 раз дешевле, чем после релиза.</p></div>`;
-  }
-
-  // ------------------------------------------------------------ вкладки
-  const TABS = [
-    { id: "doc", label: "Документ", icon: "file", count: totalFindings },
+  // ------------------------------------------------------------ навигация (сайдбар)
+  const VIEWS = [
+    { id: "overview", label: "Обзор", icon: "grid" },
     { id: "reqs", label: "Требования", icon: "list", count: D.reqs.length },
-    { id: "set", label: "Набор", icon: "layers", count: D.set.length },
-    { id: "graph", label: "Граф", icon: "graph", count: D.graph.edges.length },
-    { id: "tests", label: "Тесты", icon: "flask", count: `${D.scores.tests_ok}/${D.scores.tests_total}` },
-    { id: "fixed", label: "Исправленный документ", icon: "wand", count: D.changes.length },
-    { id: "questions", label: "Вопросы заказчику", icon: "chat", count: D.questions.length },
-    { id: "domain", label: "Домен и глоссарий", icon: "bank", count: D.domain ? D.domain.coverage + "%" : "" },
-    { id: "passport", label: "Паспорт", icon: "id", count: "" },
+    { id: "set", label: "Проверка набора", icon: "layers", count: D.set.length || "" },
+    { id: "trace", label: "Трассировка", icon: "trace" },
+    { id: "export", label: "Экспорт", icon: "download" },
   ];
   const rendered = {};
-  function renderTabs() {
-    $("#tabs").innerHTML = TABS.map((t) => `<button class="tab" role="tab" id="tab-${t.id}" aria-controls="panel-${t.id}" aria-selected="false" data-tab="${t.id}">
-      ${ic(t.icon, 16)}${esc(t.label)}${t.count !== "" ? `<span class="count">${esc(t.count)}</span>` : ""}</button>`).join("");
-    $("#panels").innerHTML = TABS.map((t) => `<section class="panel" role="tabpanel" id="panel-${t.id}" aria-labelledby="tab-${t.id}"></section>`).join("");
-    $("#tabs").addEventListener("click", (e) => { const b = e.target.closest(".tab"); if (b) { show(b.dataset.tab); history.replaceState(null, "", "#" + b.dataset.tab); } });
-    $("#tabs").addEventListener("keydown", (e) => {
-      if (!["ArrowRight", "ArrowLeft"].includes(e.key)) return;
-      const ids = TABS.map((t) => t.id), i = ids.indexOf(active);
-      const n = ids[(i + (e.key === "ArrowRight" ? 1 : ids.length - 1)) % ids.length];
-      show(n); $("#tab-" + n).focus();
-    });
-  }
   let active = null;
+  $("#nav").innerHTML = VIEWS.map((v) => `<button class="nav-item" type="button" data-view="${v.id}">${ic(v.icon)}<span>${v.label}</span>${v.count !== undefined && v.count !== "" ? `<span class="count">${v.count}</span>` : ""}</button>`).join("");
+  $("#views").innerHTML = VIEWS.map((v) => `<section class="view" id="view-${v.id}" aria-label="${v.label}"></section>`).join("");
+  $("#nav").addEventListener("click", (e) => { const b = e.target.closest("[data-view]"); if (b) { show(b.dataset.view); history.replaceState(null, "", "#" + b.dataset.view); $("#sidebar").classList.remove("open"); } });
   function show(id) {
-    if (!rendered[id]) { RENDER[id]($("#panel-" + id)); rendered[id] = true; }
+    if (!rendered[id]) { RENDER[id]($("#view-" + id)); rendered[id] = true; }
     active = id;
-    TABS.forEach((t) => {
-      $("#tab-" + t.id).setAttribute("aria-selected", t.id === id);
-      $("#tab-" + t.id).tabIndex = t.id === id ? 0 : -1;
-      $("#panel-" + t.id).classList.toggle("active", t.id === id);
-    });
-    if (id === "graph") drawGraph();
+    $$("#nav .nav-item").forEach((b) => (b.dataset.view === id ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current")));
+    $$(".view").forEach((v) => v.classList.toggle("active", v.id === "view-" + id));
+    if (id === "set" && subActive.set === "graph") drawGraph();
   }
 
-  // ------------------------------------------------------------ Документ
-  // разметка Markdown в исходном тексте показывается приглушённо (смещения меток не меняются)
-  const md_ = (s) => esc(s).replace(/(\*\*|__|^\s*[-*•]\s|\|)/g, '<span class="md">$1</span>');
-  function lineHTML(l) {
-    const ms = D.marks[l.n] || [];
-    const t = l.t;
-    if (!ms.length) return md_(t) || "&nbsp;";
-    let out = "", pos = 0;
-    ms.forEach(([s, e, fid, sev, kind]) => {
-      if (s < pos) return;
-      const f = D.findings[fid];
-      out += md_(t.slice(pos, s)) + `<mark class="hl ${sev} ${kind === "set" ? "set" : ""}" data-f="${fid}" tabindex="0" title="${esc(f.cname)}: ${esc(f.problem).slice(0, 140)}">${md_(t.slice(s, e))}</mark>`;
-      pos = e;
-    });
-    return out + md_(t.slice(pos));
-  }
-  const sevFilter = { critical: true, major: true, minor: true };
-  function renderDoc(el) {
-    el.innerHTML = `<div class="toolbar no-print">
-        ${["critical", "major", "minor"].map((k) => `<button class="pill" aria-pressed="true" data-sev="${k}"><span class="chip sev-${k}" style="height:18px;padding:0 6px">${D.counts[k]}</span>${SEV[k].label}</button>`).join("")}
-        <span class="grow"></span>
-        <span class="small faint">Нажмите на подчёркнутый фрагмент · <span class="kbd">J</span> <span class="kbd">K</span> — следующий / предыдущий дефект</span></div>
-      <div class="docview"><div class="doc" id="doc">${D.lines.map((l) => `<div class="ln ${l.h ? "h" : ""}" id="L${l.n}"><span class="n">${l.n}</span><span class="t">${lineHTML(l)}</span></div>`).join("")}</div>
-      <div class="minimap no-print" id="minimap" aria-hidden="true"></div></div>`;
-    const total = D.lines.length || 1;
-    $("#minimap", el).innerHTML = Object.entries(D.marks).map(([n, ms]) => {
-      const worst = ms.reduce((a, m) => (ORDER[m[3]] < ORDER[a] ? m[3] : a), "minor");
-      return `<i class="${worst}" style="top:${(100 * (n - 1)) / total}%" data-line="${n}" title="Строка ${n}"></i>`;
-    }).join("");
-    $("#minimap", el).onclick = (e) => { const i = e.target.closest("i"); if (i) goLine(+i.dataset.line); };
-    el.addEventListener("click", (e) => { const m = e.target.closest("mark.hl"); if (m) openFinding(m.dataset.f, m); });
-    el.addEventListener("keydown", (e) => { if (e.key === "Enter") { const m = e.target.closest("mark.hl"); if (m) openFinding(m.dataset.f, m); } });
-    $$(".pill[data-sev]", el).forEach((b) => b.onclick = () => {
-      const k = b.dataset.sev; sevFilter[k] = !sevFilter[k]; b.setAttribute("aria-pressed", sevFilter[k]);
-      $$("mark.hl." + k, el).forEach((m) => m.classList.toggle("off", !sevFilter[k]));
-      $$("#minimap i." + k, el).forEach((m) => (m.style.display = sevFilter[k] ? "" : "none"));
-    });
-  }
-  function goLine(n) {
-    show("doc");
-    const l = $("#L" + n);
-    if (!l) return;
-    l.scrollIntoView({ behavior: "smooth", block: "center" });
-    l.classList.remove("flash"); void l.offsetWidth; l.classList.add("flash");
-  }
-  let markIdx = -1;
-  function stepMark(dir) {
-    show("doc");
-    const ms = $$("#doc mark.hl:not(.off)");
-    if (!ms.length) return;
-    markIdx = (markIdx + dir + ms.length) % ms.length;
-    const m = ms[markIdx];
-    m.scrollIntoView({ behavior: "smooth", block: "center" });
-    openFinding(m.dataset.f, m);
+  // ------------------------------------------------------------ шапка страницы
+  function renderHead() {
+    const v = D.verdict;
+    $("#top-model").innerHTML = ic("cpu", 13) + esc(P.model);
+    $("#pagehead").innerHTML = `<div class="grow">
+        <div class="caption">Отчёт о проверке требований</div>
+        <h1 class="display" style="margin-top:6px">${esc(P.document)}</h1>
+        <div class="meta"><span>${ic("clock", 14)}${esc(P.started)}</span><span>${ic("cpu", 14)}${esc(P.model)}</span>
+          <span>${ic("id", 14)}${esc(P.agent_version)}</span><span>${ic("shield", 14)}${esc(P.mode)}</span></div></div>
+      <div class="row wrap no-print">
+        <button class="btn btn-primary" id="btn-run">${ic("play", 16)}Запустить проверку</button>
+        <button class="btn btn-outline" data-dl="md">${ic("download", 16)}Скачать отчёт</button></div>`;
+    $("#btn-run").onclick = () => {
+      $("#drawer-title").textContent = "Запустить проверку";
+      $("#drawer-body").innerHTML = `<p class="muted">Агент работает локально. Чтобы проверить документ заново или другой файл:</p>
+        <div><div class="caption" style="margin-bottom:8px">Из командной строки</div>
+        <pre class="code">python review.py ${esc(P.file)} reports/report.md --open</pre>
+        <button class="btn btn-sm btn-outline" style="margin-top:8px" data-copy="python review.py ${esc(P.file)} reports/report.md --open">${ic("copy", 14)}Скопировать команду</button></div>
+        <div><div class="caption" style="margin-bottom:8px">В браузере — ReqLens Studio</div>
+        <pre class="code">python -m req_review.web</pre>
+        <a class="btn btn-sm btn-primary" style="margin-top:8px" href="http://localhost:8000/" target="_blank" rel="noopener">${ic("arrow-up-right", 14)}Открыть Studio (localhost:8000)</a></div>`;
+      openDrawer($("#btn-run"));
+    };
   }
 
-  // ------------------------------------------------------------ Drawer
-  let lastFocus = null;
-  function openFinding(fid, from) {
-    const f = D.findings[fid];
-    if (!f) return;
-    lastFocus = from || document.activeElement;
-    $$("mark.hl.active").forEach((m) => m.classList.remove("active"));
-    $$(`mark.hl[data-f="${fid}"]`).forEach((m) => m.classList.add("active"));
-    const conf = CONF[f.confidence];
-    let where;
-    if (f.kind === "req") {
-      const r = reqById[f.rid];
-      where = `<a href="#${f.rid}" data-go-req="${f.rid}">${esc(label(r))}</a> · ${esc(f.location)}${f.line ? ` · <a href="#L${f.line}" data-go-line="${f.line}">строка ${f.line}</a>` : ""}`;
-    } else {
-      where = f.refs.map((x) => x.rid !== "DOC" ? `<a href="#${x.rid}" data-go-req="${x.rid}">${esc(x.label)}</a>` : "документ").join(", ");
-    }
-    $("#drawer-title").textContent = f.kind === "set" ? `${f.fid} · ${f.cname}` : f.cname;
-    $("#drawer-body").innerHTML = `
-      <div class="row wrap">${chip(f.severity)}<span class="chip">${esc(f.cref)}</span>
-        ${conf ? `<span class="chip ${conf[1]}">${ic("shield", 13)}уверенность: ${conf[0]}</span>` : ""}
-        <span class="chip">${esc(f.source)}</span></div>
-      <div class="small muted">${where}</div>
-      ${f.kind === "req" ? `<div><div class="caption" style="margin-bottom:6px">Цитата из документа</div><div class="quote">«${esc(f.quote)}»</div></div>`
-        : `<div><div class="caption" style="margin-bottom:6px">Цитаты</div>${f.refs.map((x) => `<div class="quote" style="margin-bottom:8px"><b>${esc(x.label)}:</b> «${esc(x.quote)}»</div>`).join("")}</div>`}
-      <div><div class="caption" style="margin-bottom:6px">Проблема</div><p>${esc(f.problem)}</p></div>
-      <div><div class="caption" style="margin-bottom:6px">Как исправить</div><p>${esc(f.fix)}</p></div>
-      ${f.rewrite ? `<div class="card" style="padding:14px;background:var(--ok-soft);border-color:transparent">
-        <div class="row between"><div class="caption" style="color:var(--ok)">Предлагаемая формулировка</div>
-        <button class="btn btn-sm btn-secondary" data-copy="${esc(f.rewrite)}" data-msg="Формулировка скопирована">${ic("copy", 14)}Скопировать</button></div>
-        <p style="margin-top:8px">${esc(f.rewrite)}</p></div>` : ""}
-      ${f.critic ? `<div class="small muted">${ic("shield", 14)} Критик: ${esc(f.critic)}</div>` : ""}`;
-    $("#drawer").classList.add("open"); $("#overlay").classList.add("open");
-    $("#drawer").setAttribute("aria-hidden", "false");
-    $("#drawer-close").focus({ preventScroll: true });
+  // ------------------------------------------------------------ Обзор
+  function kpi(lbl, num, sub, hero, go, tone) {
+    return `<article class="kpi ${hero ? "kpi-hero" : ""}">
+      <div class="row between"><span class="lbl">${esc(lbl)}</span>
+        <button class="arrow-btn" aria-label="${esc(lbl)}: подробнее" data-go-view="${go}">${ic("arrow-up-right", 16)}</button></div>
+      <div class="kpi-num"${tone ? ` style="color:${tone}"` : ""}>${num}</div>
+      <div class="sub">${sub}</div></article>`;
   }
-  function closeDrawer() {
-    $("#drawer").classList.remove("open"); $("#overlay").classList.remove("open");
-    $("#drawer").setAttribute("aria-hidden", "true");
-    if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
+  function traceHTML() {
+    const map = { ok: ["ok", "check", "готово"], warn: ["warn", "alert", "предупреждение"], err: ["err", "x", "ошибка"], skip: ["skip", "pause", "пропущен"] };
+    return `<ol class="trace">${D.trace.map((s) => { const m = map[s.status] || map.ok; return `<li class="${m[0]}">
+      <time>${esc(s.clock || "—")}</time><span class="dot" aria-hidden="true">${ic(m[1], 12)}</span>
+      <div><div class="t">${esc(s.title)}<span class="sr-only"> — ${m[2]}</span></div>
+      <div class="d">${esc(s.detail)}${s.dur != null ? ` · ${s.dur} с` : ""}</div></div></li>`; }).join("")}</ol>`;
   }
-  $("#drawer-close").onclick = closeDrawer;
-  $("#overlay").onclick = closeDrawer;
-  document.addEventListener("click", (e) => {
-    const r = e.target.closest("[data-go-req]");
-    if (r) { e.preventDefault(); closeDrawer(); goReq(r.dataset.goReq); return; }
-    const l = e.target.closest("[data-go-line]");
-    if (l) { e.preventDefault(); closeDrawer(); goLine(+l.dataset.goLine); return; }
-    const f = e.target.closest("[data-open]");
-    if (f) { e.preventDefault(); openFinding(f.dataset.open, f); }
-  });
-
-  // ------------------------------------------------------------ Требования
-  const qstate = { q: "", sev: "all", crit: "", section: "", sort: "order" };
-  function reqCard(r) {
-    const crits = D.criteria.map((c) => {
-      const f = r.findings.map((id) => D.findings[id]).filter((x) => x.criterion === c.key);
-      const s = f.length ? f.reduce((a, x) => (ORDER[x.severity] < ORDER[a] ? x.severity : a), "minor") : "ok";
-      return `<span data-tip="${esc(c.name)}" style="display:inline-block;width:14px;height:14px;border-radius:4px;background:${s === "ok" ? "var(--ok-soft)" : SEV[s].color}"></span>`;
-    }).join("");
-    const t = r.test;
-    let test = "";
-    if (t.possible === true) test = `<details class="more" style="margin-top:12px"><summary>${ic("flask", 14)} Тест-проба: приёмочный тест составлен</summary>
-      <pre class="code gherkin" style="margin-top:8px">${gherkin(t.gherkin)}</pre></details>`;
-    else if (t.possible === false) test = `<div class="small" style="margin-top:12px;color:var(--critical)">${ic("flask", 14)} <b>Тест составить невозможно:</b> ${esc(t.reason)} — мешает «${esc(t.blocker)}»</div>`;
-    return `<article class="card req" id="${r.rid}" data-rid="${r.rid}">
-      <div class="req-head">
-        <div class="score-ring" style="--v:${r.score};--c:${scoreColor(r.score)}" role="img" aria-label="Балл ${r.score}"><span>${r.score}</span></div>
-        <div class="grow">
-          <div class="row wrap"><span class="req-id">${esc(r.rid)}</span>${r.doc_id ? `<span class="chip chip-brand">${esc(r.doc_id)}</span>` : `<span class="chip">ID присвоен агентом</span>`}
-            ${chip(r.worst)}${r.ears ? `<span class="chip">EARS: ${esc(EARS[r.ears] || r.ears)}</span>` : ""}</div>
-          <div class="small faint" style="margin-top:4px"><a href="#L${r.line}" data-go-line="${r.line}">${esc(r.location)}</a></div>
-        </div>
-        <div class="row" style="gap:3px" aria-label="Профиль по критериям">${crits}</div>
+  function priorities(n) {
+    const items = [];
+    D.set.forEach((fid) => { const f = D.findings[fid]; if (f.severity !== "minor") items.push([ORDER[f.severity] * 2, f, `${fid} · ${f.cname}`]); });
+    D.reqs.forEach((r) => { const f = r.findings.map((id) => D.findings[id]).sort((a, b) => ORDER[a.severity] - ORDER[b.severity])[0]; if (f && f.severity !== "minor") items.push([ORDER[f.severity] * 2 + 1, f, `${label(r)} · ${f.cname}`]); });
+    return items.sort((a, b) => a[0] - b[0]).slice(0, n);
+  }
+  function verdictHTML(compact) {
+    const v = D.verdict, cls = { critical: "v-critical", major: "v-major", ok: "v-ok" }[v.level], icn = { critical: "x", major: "alert", ok: "check" }[v.level];
+    const pr = priorities(compact ? 4 : 8);
+    return `<div class="card" id="verdict"><div class="card-title">${ic("check")}<span class="h2">Итог: можно ли начинать разработку</span></div>
+      <div class="verdict-card"><span class="verdict-badge ${cls}">${ic(icn, 20)}${esc(v.title)}</span>
+        <div class="grow"><div class="h3">${esc(v.headline)}</div><p class="small muted" style="margin-top:4px">${esc(v.text)}</p></div></div>
+      ${pr.length ? `<div class="caption" style="margin:20px 0 8px">Исправить в первую очередь</div>
+        <ol style="margin:0;padding-left:20px" class="small">${pr.map(([, f, t]) => `<li style="margin:8px 0"><a href="#" data-open="${f.fid}"><b>${esc(t)}</b></a> — ${esc(f.fix)}</li>`).join("")}</ol>` : `<p class="small muted" style="margin-top:16px">Обязательных исправлений нет.</p>`}</div>`;
+  }
+  function setSummaryHTML() {
+    return `<div class="card"><div class="card-title">${ic("layers")}<span class="h2 grow">Проверка набора целиком</span>
+        <button class="btn btn-sm btn-ghost" data-go-view="set">Подробнее ${ic("arrow-right", 14)}</button></div>
+      ${D.set_criteria.map((c) => `<div class="row between" style="padding:9px 0;border-top:1px dashed var(--border)">
+        <div class="grow"><div class="small" style="font-weight:600">${esc(c.name)}</div><div class="small faint">${esc(c.ref)}</div></div>
+        ${c.count ? chip(c.worst, `${c.count} замеч.`) : chip("ok", "нарушений нет")}</div>`).join("")}</div>`;
+  }
+  function renderOverview(el) {
+    const s = D.scores, v = D.verdict;
+    // статус прогона агента (не готовность документа): ЗАВЕРШЁН / ОШИБКА
+    const failedSteps = D.trace.filter((t) => t.status === "err").length;
+    const agentStatus = failedSteps ? ["st-fail", "x", "ОШИБКА · часть шагов"] : ["st-done", "check", "ЗАВЕРШЁН"];
+    const setCrit = D.set.filter((f) => D.findings[f].severity === "critical").length;
+    const tPct = s.tests_total ? Math.round((100 * s.tests_ok) / s.tests_total) : 0;
+    const crit = D.counts.critical;
+    const radar = s.radar_req;
+    el.innerHTML = `
+      <div class="grid g-4">
+        ${kpi("Всего требований", D.reqs.length, `<b>${D.split_method === "ids" ? "ID" : "R"}</b>нарезка ${D.split_method === "ids" ? "по ID документа" : "с номерами агента"}`, true, "reqs")}
+        ${kpi("Нарушений", totalFindings, `<b>${reqFindings}</b>по требованиям · <b>${D.set.length}</b>по набору`, false, "reqs")}
+        ${kpi("Критичных", crit, `${ic("alert", 14)}непроверяемые, противоречивые, неполные`, false, "reqs", crit ? "var(--critical)" : "var(--ok)")}
+        ${kpi("Без замечаний", cleanReqs, `<b>${Math.round((100 * cleanReqs) / Math.max(1, D.reqs.length))}%</b>из ${D.reqs.length} требований`, false, "reqs", "var(--ok)")}
       </div>
-      <div class="quote" style="margin-top:14px">${esc(r.text)}</div>
-      ${r.note ? `<div class="small" style="margin-top:8px;color:var(--major)">${esc(r.note)}</div>` : ""}
-      ${r.findings.map((id) => { const f = D.findings[id]; return `<div class="finding" data-open="${id}" tabindex="0">
-        <span class="chip sev-${f.severity}"><span class="dot"></span></span>
-        <div><div class="f-title">${esc(f.cname)} <span class="faint small">· ${esc(f.cref)}</span></div>
-        <div class="small muted">«${esc(f.quote)}» — ${esc(f.problem)}</div></div></div>`; }).join("")}
-      ${r.rewrite && r.findings.length ? `<div class="row" style="margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--ok-soft)">
-        <div class="grow small"><b style="color:var(--ok)">Предлагаемая формулировка:</b> ${esc(r.rewrite)}</div>
-        <button class="btn btn-sm btn-secondary" data-copy="${esc(r.rewrite)}" data-msg="Формулировка скопирована">${ic("copy", 14)}</button></div>` : ""}
-      ${test}</article>`;
+      <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(280px,360px);margin-top:16px;align-items:start" id="ov-grid">
+        <div class="stack" style="min-width:0">
+          <article class="agent" aria-label="Агент проверки требований">
+            <span class="status ${agentStatus[0]}">${ic(agentStatus[1], 12)}${agentStatus[2]}</span>
+            <div class="vis">${sphere(320, 260, 520, 7)}</div>
+            <div class="info">
+              <div class="row between"><div><div class="h2">Агент проверки требований</div>
+                <div class="small muted">${esc(P.document)}</div></div><span class="chip chip-outline">${ic("cpu", 13)}${esc(P.calls)} обращений</span></div>
+              <div class="metrics">
+                <div class="metric"><div class="kpi-num">${s.readiness}%</div><div class="small muted">готовность документа ${D.rescore ? deltaChip(D.rescore.readiness_after - D.rescore.readiness_before) : ""}</div></div>
+                <div class="metric"><div class="kpi-num" style="color:var(--text)">${s.doc}<span class="h3 faint">/100</span></div><div class="small muted">балл качества</div></div>
+                <div class="metric"><div class="kpi-num" style="color:var(--text)">${esc(P.duration_s)}<span class="h3 faint"> с</span></div><div class="small muted">время прогона</div></div>
+              </div>
+              <p class="small muted">Статическое ревью по ISO/IEC/IEEE 29148 §5.2.5–5.2.6 и IEEE 830 §4.3: нарезка, проверка каждого требования, тест-проба, проверка набора${P.critic ? ", критик-агент" : ""}.</p>
+            </div>
+            <div class="foot"><span class="live"><i></i>${esc(P.profile.toUpperCase())}</span><span class="small muted grow">${esc(P.model)} · ${esc(P.agent_version)}</span>
+              <button class="btn btn-sm btn-ghost" data-go-view="export">${ic("download", 14)}Артефакты</button></div>
+          </article>
+          <div class="mini-agents">
+            <article class="mini"><div class="vis">${sphere(110, 150, 140, 3, { r: 0.34, lineEvery: 6, color: setCrit ? "var(--critical-accent)" : "var(--brand)", broken: !!setCrit })}</div>
+              <div class="body"><span class="status ${setCrit ? "st-fail" : D.set.length ? "st-warn" : "st-done"}" style="align-self:flex-start">${ic(setCrit ? "x" : D.set.length ? "alert" : "check", 11)}${setCrit ? "КОНФЛИКТЫ" : D.set.length ? "ЗАМЕЧАНИЯ" : "ЧИСТО"}</span>
+                <div class="h3">Проверка набора</div><div class="small muted">${D.set.length} замечаний · балл набора ${s.set}/100</div>
+                <button class="btn btn-sm btn-ghost" style="align-self:flex-start;margin-top:auto" data-go-view="set">Открыть ${ic("arrow-right", 14)}</button></div></article>
+            <article class="mini"><div class="vis">${sphere(110, 150, 140, 11, { r: 0.34, lineEvery: 6, color: "var(--brand-light)" })}</div>
+              <div class="body"><span class="status ${tPct >= 80 ? "st-done" : "st-warn"}" style="align-self:flex-start">${ic("flask", 11)}ТЕСТ-ПРОБА ${tPct}%</span>
+                <div class="h3">Приёмочные тесты</div><div class="small muted">${s.tests_ok} из ${s.tests_total} требований можно проверить тестом</div>
+                <button class="btn btn-sm btn-ghost" style="align-self:flex-start;margin-top:auto" data-go-view="trace">Открыть ${ic("arrow-right", 14)}</button></div></article>
+          </div>
+        </div>
+        <div class="stack">
+          <div class="card"><div class="card-title">${ic("trace")}<span class="h2 grow">Трассировка агента</span><span class="chip chip-brand">${D.trace.filter((t) => t.status !== "skip").length}/${D.trace.length}</span></div>${traceHTML()}</div>
+          <div class="card"><div class="card-title">${ic("spark")}<span class="h2">Профиль качества</span></div>
+            <div class="bars" role="img" aria-label="Доля требований без нарушений по критериям">${radar.map((r, i) => `<div class="b" data-tip="${esc(r.name)}: ${r.v}%"><i class="${r.v < 70 ? "hatch" : ""}" style="height:${Math.max(10, r.v)}%;${r.v >= 70 ? `opacity:${0.55 + r.v / 220}` : ""}"></i><span>${esc(r.name.slice(0, 3))}</span></div>`).join("")}</div>
+            <p class="small faint" style="margin-top:10px">Сплошные — критерий в порядке (≥ 70 % требований без нарушений), штрихованные — проблемные.</p></div>
+          ${D.changes.length ? `<div class="card" style="display:flex;gap:14px;align-items:center"><span class="logo-mark" style="border-radius:14px;flex:none">${ic("wand")}</span>
+            <div class="grow"><div class="caption">Исправленный документ</div><div class="small muted">${D.changes.length} формулировок исправлено${D.rescore ? ` · балл ${D.rescore.before} → ${D.rescore.after}` : ""}</div></div>
+            <button class="btn btn-round" data-dl="fixed" aria-label="Скачать исправленный документ">${ic("download", 16)}</button></div>` : ""}
+        </div>
+      </div>
+      <div class="section-title"><h2 class="h1">Требования</h2><div class="row"><span class="small muted hide-sm">${D.reqs.length} шт.</span>
+        <button class="btn btn-sm btn-outline" data-go-view="reqs">Все фильтры ${ic("arrow-right", 14)}</button></div></div>
+      ${reqTable(D.reqs, "ov")}
+      <div class="grid g-2" style="margin-top:16px;align-items:start">${setSummaryHTML()}${verdictHTML(true)}</div>`;
+    wireTable(el);
   }
-  function gherkin(g) {
-    return esc(g).replace(/^(\s*)(Дано|Когда|Тогда|И|Но|Given|When|Then|And|But)(:?)/gm, "$1<b>$2$3</b>");
+
+  // ------------------------------------------------------------ таблица требований (Health Status)
+  function critDots(r) {
+    return `<div class="crit-dots" aria-label="Критерии">${D.criteria.map((c) => {
+      const fs = r.findings.map((id) => D.findings[id]).filter((x) => x.criterion === c.key);
+      const s = fs.length ? fs.reduce((a, x) => (ORDER[x.severity] < ORDER[a] ? x.severity : a), "minor") : "ok";
+      return `<i data-tip="${esc(c.name)}: ${s === "ok" ? "в порядке" : SEV[s].label.toLowerCase()}" style="background:${s === "ok" ? "var(--ok-soft)" : SEV[s].color}"></i>`;
+    }).join("")}</div>`;
   }
+  function gherkin(g) { return esc(g).replace(/^(\s*)(Дано|Когда|Тогда|И|Но|Given|When|Then|And|But)(:?)/gm, "$1<b>$2$3</b>"); }
+  function expandHTML(r) {
+    const t = r.test;
+    return `<div class="inner stack">
+      <div><div class="caption" style="margin-bottom:6px">Цитата из документа · <a href="#L${r.line}" data-go-line="${r.line}">${esc(r.location)}</a></div><div class="quote">${esc(r.text)}</div></div>
+      ${r.note ? `<div class="small" style="color:var(--major)">${ic("alert", 14)} ${esc(r.note)}</div>` : ""}
+      ${r.findings.length ? `<div>${r.findings.map((id) => { const f = D.findings[id]; return `<div class="finding" data-open="${id}" tabindex="0">
+        ${chip(f.severity)}<div><div class="f-title">${esc(f.cname)} <span class="faint small">· ${esc(f.cref)}</span></div>
+        <div class="small muted" style="margin-top:2px">«${esc(f.quote)}» — ${esc(f.problem)}</div>
+        <div class="small" style="margin-top:4px"><b>Как исправить:</b> ${esc(f.fix)}</div></div></div>`; }).join("")}</div>` : `<div class="small" style="color:var(--ok)">${ic("check", 14)} Нарушений не найдено.</div>`}
+      ${r.rewrite && r.findings.length ? `<div class="row" style="padding:12px 16px;border-radius:14px;background:var(--ok-soft)">
+        <div class="grow small"><b style="color:var(--ok)">Предлагаемая правка:</b> ${esc(r.rewrite)}</div>
+        <button class="btn btn-sm btn-outline" data-copy="${esc(r.rewrite)}" data-msg="Формулировка скопирована">${ic("copy", 14)}Копировать</button></div>` : ""}
+      ${t.possible === true ? `<details class="more"><summary>${ic("flask", 14)} Тест-проба: приёмочный тест составлен</summary><pre class="code gherkin" style="margin-top:8px">${gherkin(t.gherkin)}</pre></details>`
+        : t.possible === false ? `<div class="small" style="color:var(--critical)">${ic("flask", 14)} <b>Тест составить невозможно:</b> ${esc(t.reason)} — мешает «${esc(t.blocker)}»</div>` : ""}
+    </div>`;
+  }
+  function reqTable(rows, key) {
+    if (!rows.length) return empty("Ничего не найдено", "Измените фильтры или запрос.");
+    return `<div class="table-wrap"><table class="tbl" data-tbl="${key}"><thead><tr>
+      <th scope="col">ID в отчёте</th><th scope="col">ID в документе</th><th scope="col">Краткая формулировка</th>
+      <th scope="col">Критерии</th><th scope="col">Балл</th><th scope="col">Статус</th><th scope="col"><span class="sr-only">Действия</span></th></tr></thead>
+      <tbody>${rows.map((r) => `<tr class="rrow" data-rid="${r.rid}" id="row-${key}-${r.rid}">
+        <td><b>${esc(r.rid)}</b></td><td>${r.doc_id ? `<span class="chip chip-brand">${esc(r.doc_id)}</span>` : `<span class="small faint">присвоен агентом</span>`}</td>
+        <td style="min-width:260px;max-width:460px">${esc(r.text.length > 120 ? r.text.slice(0, 117) + "…" : r.text)}</td>
+        <td>${critDots(r)}</td>
+        <td><div class="mini-ring" style="--v:${r.score};--c:${scoreColor(r.score)}"><span>${r.score}</span></div></td>
+        <td>${chip(r.worst)}</td>
+        <td><button class="btn btn-sm btn-outline" data-exp="${r.rid}" aria-expanded="false" aria-controls="exp-${key}-${r.rid}">Подробнее ${ic("chevron", 14)}</button></td></tr>
+        <tr class="exp" id="exp-${key}-${r.rid}" hidden><td colspan="7">${expandHTML(r)}</td></tr>`).join("")}</tbody></table></div>`;
+  }
+  function wireTable(el) {
+    el.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-exp]") || (e.target.closest("tr.rrow") && !e.target.closest("a,button") ? e.target.closest("tr.rrow").querySelector("[data-exp]") : null);
+      if (!b) return;
+      const tr = b.closest("tr"), exp = tr.nextElementSibling, open = exp.hidden;
+      exp.hidden = !open; tr.classList.toggle("open", open); b.setAttribute("aria-expanded", open);
+      b.innerHTML = (open ? "Свернуть " : "Подробнее ") + ic("chevron", 14);
+    });
+    el.addEventListener("keydown", (e) => { if (e.key === "Enter") { const f = e.target.closest("[data-open]"); if (f) openFinding(f.dataset.open, f); } });
+  }
+  function expandRow(rid, key) {
+    const b = $(`#row-${key}-${CSS.escape(rid)} [data-exp]`);
+    if (b && b.getAttribute("aria-expanded") !== "true") b.click();
+    return $(`#row-${key}-${CSS.escape(rid)}`);
+  }
+
+  // ------------------------------------------------------------ Требования: фильтры + таблица / документ
+  const qstate = { q: "", sev: "all", crit: "", section: "", sort: "order", mode: "table" };
   function renderReqs(el) {
     const sections = [...new Set(D.reqs.map((r) => r.section).filter(Boolean))];
-    el.innerHTML = `<div class="toolbar">
-      <label class="search"><span class="sr-only">Поиск</span>${ic("search", 16)}<input id="q" type="search" placeholder="Поиск по тексту, ID, цитате…  ( / )"></label>
-      <div class="seg" role="group" aria-label="Серьёзность">${["all", "critical", "major", "minor", "ok"].map((k) => `<button data-sev="${k}" aria-pressed="${k === "all"}">${k === "all" ? "Все" : SEV[k].label}</button>`).join("")}</div>
-      <select class="input" id="fcrit" style="width:auto" aria-label="Критерий"><option value="">Все критерии</option>${D.criteria.map((c) => `<option value="${c.key}">${esc(c.name)}</option>`).join("")}</select>
-      ${sections.length > 1 ? `<select class="input" id="fsec" style="width:auto;max-width:240px" aria-label="Раздел"><option value="">Все разделы</option>${sections.map((s) => `<option>${esc(s)}</option>`).join("")}</select>` : ""}
-      <div class="seg" role="group" aria-label="Сортировка"><button data-sort="order" aria-pressed="true">По порядку</button><button data-sort="score" aria-pressed="false">Сначала худшие</button></div>
-      </div><div id="req-count" class="small faint" style="margin-bottom:12px"></div><div class="stack" id="req-list"></div>`;
+    el.innerHTML = `<div class="section-title" style="margin-top:0"><h2 class="h1">Требования</h2>
+        <div class="seg" role="group" aria-label="Вид"><button data-mode="table" aria-pressed="true">${ic("list", 14)} Таблица</button><button data-mode="doc" aria-pressed="false">${ic("file", 14)} В документе</button></div></div>
+      <div class="toolbar" id="req-filters">
+        <div class="seg" role="group" aria-label="Серьёзность">${["all", "critical", "major", "minor", "ok"].map((k) => `<button data-sev="${k}" aria-pressed="${k === "all"}">${k === "all" ? "Все" : SEV[k].label}</button>`).join("")}</div>
+        <select class="input" id="fcrit" style="width:auto" aria-label="Критерий"><option value="">Все критерии</option>${D.criteria.map((c) => `<option value="${c.key}">${esc(c.name)}</option>`).join("")}</select>
+        ${sections.length > 1 ? `<select class="input" id="fsec" style="width:auto;max-width:240px" aria-label="Раздел"><option value="">Все разделы</option>${sections.map((s) => `<option>${esc(s)}</option>`).join("")}</select>` : ""}
+        <div class="seg" role="group" aria-label="Сортировка"><button data-sort="order" aria-pressed="true">По порядку</button><button data-sort="score" aria-pressed="false">Сначала худшие</button></div>
+        <span class="small faint" id="req-count"></span></div>
+      <div id="req-body"></div><div id="doc-body" hidden></div>`;
     const upd = () => {
       let rs = D.reqs.filter((r) => {
         if (qstate.sev !== "all" && r.worst !== qstate.sev) return false;
@@ -372,95 +314,197 @@
       });
       if (qstate.sort === "score") rs = rs.slice().sort((a, b) => a.score - b.score);
       $("#req-count").textContent = `Показано ${rs.length} из ${D.reqs.length}`;
-      $("#req-list").innerHTML = rs.length ? rs.map(reqCard).join("") : empty("Ничего не найдено", "Измените фильтры или запрос.");
+      $("#req-body").innerHTML = reqTable(rs, "rq");
     };
-    $("#q", el).oninput = (e) => { qstate.q = e.target.value; upd(); };
-    $$(".seg [data-sev]", el).forEach((b) => b.onclick = () => { qstate.sev = b.dataset.sev; $$(".seg [data-sev]", el).forEach((x) => x.setAttribute("aria-pressed", x === b)); upd(); });
-    $$(".seg [data-sort]", el).forEach((b) => b.onclick = () => { qstate.sort = b.dataset.sort; $$(".seg [data-sort]", el).forEach((x) => x.setAttribute("aria-pressed", x === b)); upd(); });
+    $$("[data-sev]", el).forEach((b) => b.onclick = () => { qstate.sev = b.dataset.sev; $$("[data-sev]", el).forEach((x) => x.setAttribute("aria-pressed", x === b)); upd(); });
+    $$("[data-sort]", el).forEach((b) => b.onclick = () => { qstate.sort = b.dataset.sort; $$("[data-sort]", el).forEach((x) => x.setAttribute("aria-pressed", x === b)); upd(); });
+    $$("[data-mode]", el).forEach((b) => b.onclick = () => setMode(b.dataset.mode));
     $("#fcrit", el).onchange = (e) => { qstate.crit = e.target.value; upd(); };
     if ($("#fsec", el)) $("#fsec", el).onchange = (e) => { qstate.section = e.target.value; upd(); };
-    el.addEventListener("keydown", (e) => { if (e.key === "Enter") { const f = e.target.closest("[data-open]"); if (f) openFinding(f.dataset.open, f); } });
+    wireTable($("#req-body", el));
+    renderDocInto($("#doc-body", el));
+    reqUpdate = upd;
     upd();
   }
+  let reqUpdate = () => {};
+  function setMode(m) {
+    show("reqs"); qstate.mode = m;
+    $$("#view-reqs [data-mode]").forEach((x) => x.setAttribute("aria-pressed", x.dataset.mode === m));
+    $("#req-body").hidden = m !== "table"; $("#req-filters").hidden = m !== "table"; $("#doc-body").hidden = m !== "doc";
+  }
   function goReq(rid) {
-    show("reqs");
-    let el = $("#" + CSS.escape(rid));
-    if (!el) { qstate.q = ""; qstate.sev = "all"; qstate.crit = ""; qstate.section = ""; rendered.reqs = false; show("reqs"); el = $("#" + CSS.escape(rid)); }
-    if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); el.animate([{ boxShadow: "0 0 0 4px var(--brand-soft)" }, { boxShadow: "var(--shadow-sm)" }], { duration: 1600 }); }
+    show("reqs"); setMode("table");
+    if (!$(`#row-rq-${CSS.escape(rid)}`)) { qstate.q = ""; qstate.sev = "all"; qstate.crit = ""; qstate.section = ""; $("#gsearch").value = ""; reqUpdate(); }
+    const tr = expandRow(rid, "rq");
+    if (tr) { tr.scrollIntoView({ behavior: "smooth", block: "center" }); }
   }
-  function empty(title, text) {
-    return `<div class="empty"><svg class="ill" viewBox="0 0 120 90" fill="none" stroke="currentColor" stroke-width="2"><rect x="18" y="10" width="64" height="76" rx="8"/><path d="M30 30h40M30 42h40M30 54h24"/><circle cx="82" cy="58" r="16" fill="var(--surface)"/><path d="m94 70 12 12"/></svg>
-      <div class="h3" style="color:var(--text)">${esc(title)}</div><p class="small" style="margin-top:6px">${esc(text)}</p></div>`;
-  }
+  $("#gsearch").addEventListener("input", (e) => { show("reqs"); setMode("table"); qstate.q = e.target.value; reqUpdate(); });
 
-  // ------------------------------------------------------------ Набор
-  function renderSet(el) {
-    const crit = D.set_criteria.map((c) => `<div class="card card-hover" style="padding:16px">
-      <div class="row between"><span class="caption">${esc(c.ref)}</span>${c.count ? chip(c.worst, `${c.count} замеч.`) : chip("ok", "нарушений нет")}</div>
-      <div class="h3" style="margin:8px 0 4px">${esc(c.name)}</div><p class="small muted">${esc(c.desc)}</p></div>`).join("");
-    const list = D.set.map((fid) => {
+  // ------------------------------------------------------------ документ с подсветкой (Grammarly)
+  const md_ = (s) => esc(s).replace(/(\*\*|__|^\s*[-*•]\s|\|)/g, '<span class="md">$1</span>');
+  function lineHTML(l) {
+    const ms = D.marks[l.n] || [], t = l.t;
+    if (!ms.length) return md_(t) || "&nbsp;";
+    let out = "", pos = 0;
+    ms.forEach(([s, e, fid, sev, kind]) => {
+      if (s < pos) return;
       const f = D.findings[fid];
-      const kinds = { contradiction: "Противоречие", duplicate: "Дублирование", terminology: "Терминология", gap: "Пропуск", dependency: "Зависимость", structure: "Структура", other: "Прочее" };
-      return `<article class="card" style="padding:18px">
-        <div class="row wrap"><b>${fid}</b><span class="chip">${esc(kinds[f.set_kind] || f.set_kind)}</span>${chip(f.severity)}<span class="chip">${esc(f.cname)}</span>
-          <span class="grow"></span><button class="btn btn-sm btn-ghost" data-open="${fid}">Подробнее ${ic("arrow-right", 14)}</button></div>
-        <p style="margin:10px 0">${esc(f.problem)}</p>
-        ${f.refs.map((x) => `<div class="quote small" style="margin-top:6px">${x.rid !== "DOC" ? `<a href="#${x.rid}" data-go-req="${x.rid}"><b>${esc(x.label)}</b></a>` : "<b>документ</b>"}: «${esc(x.quote)}»</div>`).join("")}
-        <p class="small muted" style="margin-top:10px"><b>Как исправить:</b> ${esc(f.fix)}</p></article>`;
-    }).join("");
-    el.innerHTML = `<div class="grid g-2" style="margin-bottom:24px;align-items:start">
-        <div class="card"><div class="card-title">${ic("layers")}<span class="h3">Профиль набора</span></div>${radar(D.scores.radar_set, 320)}
-          <p class="small faint">Оценка по критериям ISO/IEC/IEEE 29148 §5.2.6 и IEEE 830 §4.3. Балл набора: <b>${D.scores.set}</b>/100.</p></div>
-        <div class="grid g-2" style="align-content:start">${crit}</div></div>
-      <div class="h2" style="margin-bottom:16px">Замечания к набору <span class="faint">(${D.set.length})</span></div>
-      <div class="stack">${list || empty("Нарушений на уровне набора нет", "Противоречий, дублей и пропусков не найдено.")}</div>`;
+      out += md_(t.slice(pos, s)) + `<mark class="hl ${sev} ${kind === "set" ? "set" : ""}" data-f="${fid}" tabindex="0" title="${esc(SEV[sev].label)} · ${esc(f.cname)}: ${esc(f.problem).slice(0, 140)}">${md_(t.slice(s, e))}</mark>`;
+      pos = e;
+    });
+    return out + md_(t.slice(pos));
+  }
+  const sevFilter = { critical: true, major: true, minor: true };
+  function renderDocInto(el) {
+    el.innerHTML = `<div class="toolbar no-print">${["critical", "major", "minor"].map((k) => `<button class="pill" aria-pressed="true" data-sevf="${k}">${ic(SEV[k].icon, 13)}${SEV[k].label} · ${D.counts[k]}</button>`).join("")}
+        <span class="grow"></span><span class="small faint">Нажмите на подчёркнутый фрагмент · <span class="kbd">J</span> <span class="kbd">K</span> — следующий / предыдущий</span></div>
+      <div class="docview"><div class="doc" id="doc">${D.lines.map((l) => `<div class="ln ${l.h ? "h" : ""}" id="L${l.n}"><span class="n">${l.n}</span><span class="t">${lineHTML(l)}</span></div>`).join("")}</div>
+      <div class="minimap no-print" id="minimap" aria-hidden="true"></div></div>`;
+    const total = D.lines.length || 1;
+    $("#minimap", el).innerHTML = Object.entries(D.marks).map(([n, ms]) => { const w = ms.reduce((a, m) => (ORDER[m[3]] < ORDER[a] ? m[3] : a), "minor"); return `<i class="${w}" style="top:${(100 * (n - 1)) / total}%" data-line="${n}"></i>`; }).join("");
+    $("#minimap", el).onclick = (e) => { const i = e.target.closest("i"); if (i) goLine(+i.dataset.line); };
+    el.addEventListener("click", (e) => { const m = e.target.closest("mark.hl:not(.off)"); if (m) openFinding(m.dataset.f, m); });
+    el.addEventListener("keydown", (e) => { if (e.key === "Enter") { const m = e.target.closest("mark.hl"); if (m) openFinding(m.dataset.f, m); } });
+    $$("[data-sevf]", el).forEach((b) => b.onclick = () => {
+      const k = b.dataset.sevf; sevFilter[k] = !sevFilter[k]; b.setAttribute("aria-pressed", sevFilter[k]);
+      $$("mark.hl." + k, el).forEach((m) => m.classList.toggle("off", !sevFilter[k]));
+      $$("#minimap i." + k, el).forEach((m) => (m.style.display = sevFilter[k] ? "" : "none"));
+    });
+  }
+  function goLine(n) {
+    setMode("doc");
+    const l = $("#L" + n); if (!l) return;
+    l.scrollIntoView({ behavior: "smooth", block: "center" });
+    l.classList.remove("flash"); void l.offsetWidth; l.classList.add("flash");
+  }
+  let markIdx = -1;
+  function stepMark(dir) {
+    setMode("doc");
+    const ms = $$("#doc mark.hl:not(.off)"); if (!ms.length) return;
+    markIdx = (markIdx + dir + ms.length) % ms.length;
+    ms[markIdx].scrollIntoView({ behavior: "smooth", block: "center" }); openFinding(ms[markIdx].dataset.f, ms[markIdx]);
   }
 
-  // ------------------------------------------------------------ Граф (force-directed, без библиотек)
-  let graphDrawn = false;
-  function renderGraph(el) {
-    el.innerHTML = `<p class="small muted" style="margin-bottom:12px">Узлы — требования (цвет — худшее замечание, размер — число связей). Колёсико — масштаб, перетаскивание — сдвиг, клик по узлу — к требованию.</p>
-      <div class="graph-wrap" id="gw"><svg id="gsvg" role="img" aria-label="Граф связей требований"></svg>
-      <div class="graph-legend"><span><i style="border-color:#E5484D"></i>противоречие</span><span><i style="border-color:#8B5CF6;border-top-style:dashed"></i>дубль</span>
-      <span><i style="border-color:var(--text-3)"></i>ссылка</span><span><i style="border-color:#0B5FFF;border-top-width:1px"></i>общий термин</span></div></div>`;
+  // ------------------------------------------------------------ Drawer
+  let lastFocus = null;
+  function openDrawer(from) {
+    lastFocus = from || document.activeElement;
+    $("#drawer").classList.add("open"); $("#overlay").classList.add("open"); $("#drawer").setAttribute("aria-hidden", "false");
+    $("#drawer-close").focus({ preventScroll: true });
   }
+  function closeDrawer() {
+    $("#drawer").classList.remove("open"); $("#overlay").classList.remove("open"); $("#drawer").setAttribute("aria-hidden", "true");
+    if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
+  }
+  $("#drawer-close").onclick = closeDrawer; $("#overlay").onclick = closeDrawer;
+  function openFinding(fid, from) {
+    const f = D.findings[fid]; if (!f) return;
+    $$("mark.hl.active").forEach((m) => m.classList.remove("active")); $$(`mark.hl[data-f="${fid}"]`).forEach((m) => m.classList.add("active"));
+    const conf = CONF[f.confidence];
+    const where = f.kind === "req"
+      ? `<a href="#" data-go-req="${f.rid}">${esc(label(reqById[f.rid]))}</a> · ${esc(f.location)}${f.line ? ` · <a href="#" data-go-line="${f.line}">строка ${f.line}</a>` : ""}`
+      : f.refs.map((x) => (x.rid !== "DOC" ? `<a href="#" data-go-req="${x.rid}">${esc(x.label)}</a>` : "документ")).join(", ");
+    $("#drawer-title").textContent = f.kind === "set" ? `${f.fid} · ${f.cname}` : f.cname;
+    $("#drawer-body").innerHTML = `<div class="row wrap">${chip(f.severity)}<span class="chip chip-outline">${esc(f.cref)}</span>
+        ${conf ? `<span class="chip ${conf[1]}">${ic("shield", 13)}уверенность: ${conf[0]}</span>` : ""}<span class="chip">${esc(f.source)}</span></div>
+      <div class="small muted">${where}</div>
+      ${f.kind === "req" ? `<div><div class="caption" style="margin-bottom:6px">Цитата из документа</div><div class="quote">«${esc(f.quote)}»</div></div>`
+        : `<div><div class="caption" style="margin-bottom:6px">Цитаты</div>${f.refs.map((x) => `<div class="quote" style="margin-bottom:8px"><b>${esc(x.label)}:</b> «${esc(x.quote)}»</div>`).join("")}</div>`}
+      <div><div class="caption" style="margin-bottom:6px">Нарушенный критерий</div><p><b>${esc(f.cname)}</b> — ${esc(f.cref)}</p></div>
+      <div><div class="caption" style="margin-bottom:6px">Объяснение</div><p>${esc(f.problem)}</p></div>
+      <div><div class="caption" style="margin-bottom:6px">Как исправить</div><p>${esc(f.fix)}</p></div>
+      ${f.rewrite ? `<div class="card" style="padding:16px;background:var(--ok-soft);border-color:transparent"><div class="row between"><div class="caption" style="color:var(--ok)">Предложенная правка</div>
+        <button class="btn btn-sm btn-outline" data-copy="${esc(f.rewrite)}" data-msg="Формулировка скопирована">${ic("copy", 14)}Копировать</button></div><p style="margin-top:8px">${esc(f.rewrite)}</p></div>` : ""}
+      ${f.critic ? `<div class="small muted">${ic("shield", 14)} Критик: ${esc(f.critic)}</div>` : ""}`;
+    openDrawer(from);
+  }
+
+  // ------------------------------------------------------------ Проверка набора
+  const subActive = { set: "findings", trace: "tests" };
+  function subTabs(view, tabs) {
+    return `<div class="tabs" role="tablist">${tabs.map((t) => `<button class="tab" role="tab" data-sub="${view}:${t[0]}" aria-selected="${subActive[view] === t[0]}">${ic(t[2], 15)}${t[1]}${t[3] !== undefined ? `<span class="count">${t[3]}</span>` : ""}</button>`).join("")}</div>`;
+  }
+  function wireSub(el, view) {
+    el.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-sub]"); if (!b) return;
+      const [, id] = b.dataset.sub.split(":"); subActive[view] = id;
+      $$("[data-sub]", el).forEach((x) => x.setAttribute("aria-selected", x === b));
+      $$(".panel", el).forEach((p) => p.classList.toggle("active", p.dataset.panel === id));
+      if (id === "graph") drawGraph();
+    });
+  }
+  function radarSVG(items, size = 300) {
+    const n = items.length, c = size / 2, R = size / 2 - 64;
+    const pt = (i, v) => { const a = -Math.PI / 2 + (2 * Math.PI * i) / n; return [c + Math.cos(a) * R * v, c + Math.sin(a) * R * v]; };
+    let g = "";
+    [0.25, 0.5, 0.75, 1].forEach((k) => { g += `<polygon points="${items.map((_, i) => pt(i, k).join(",")).join(" ")}" fill="none" stroke="var(--border)"/>`; });
+    items.forEach((_, i) => { const [x, y] = pt(i, 1); g += `<line x1="${c}" y1="${c}" x2="${x}" y2="${y}" stroke="var(--border)"/>`; });
+    g += `<polygon points="${items.map((it, i) => pt(i, Math.max(0.02, it.v / 100)).join(",")).join(" ")}" fill="color-mix(in srgb,var(--brand) 18%,transparent)" stroke="var(--brand)" stroke-width="2" stroke-linejoin="round"/>`;
+    items.forEach((it, i) => {
+      const [x, y] = pt(i, Math.max(0.02, it.v / 100)); g += `<circle cx="${x}" cy="${y}" r="3.5" fill="var(--brand)"><title>${esc(it.name)}: ${it.v}%</title></circle>`;
+      const [lx, ly] = pt(i, 1.2), anchor = Math.abs(lx - c) < 8 ? "middle" : lx > c ? "start" : "end";
+      const w = it.name.replace(/\s*\(.*\)/, "").split(" "), ls = w.length > 1 && it.name.length > 14 ? [w.slice(0, Math.ceil(w.length / 2)).join(" "), w.slice(Math.ceil(w.length / 2)).join(" ")] : [w.join(" ")];
+      g += `<text x="${lx}" y="${ly - (ls.length - 1) * 6}" text-anchor="${anchor}" dominant-baseline="middle">${ls.map((l, k) => `<tspan x="${lx}" dy="${k ? 12 : 0}">${esc(l)}</tspan>`).join("")}</text>`;
+    });
+    return `<svg class="radar" viewBox="-56 -6 ${size + 112} ${size + 12}" role="img" aria-label="Профиль по критериям">${g}</svg>`;
+  }
+  function renderSet(el) {
+    const kinds = { contradiction: "Противоречие", duplicate: "Дублирование", terminology: "Терминология", gap: "Пропуск", dependency: "Зависимость", structure: "Структура", other: "Прочее" };
+    const list = D.set.map((fid) => { const f = D.findings[fid]; return `<article class="card" style="padding:20px">
+      <div class="row wrap"><b>${fid}</b><span class="chip chip-outline">${esc(kinds[f.set_kind] || f.set_kind)}</span>${chip(f.severity)}<span class="chip">${esc(f.cname)}</span>
+        <span class="grow"></span><button class="btn btn-sm btn-ghost" data-open="${fid}">Подробнее ${ic("arrow-right", 14)}</button></div>
+      <p style="margin:10px 0">${esc(f.problem)}</p>
+      ${f.refs.map((x) => `<div class="quote small" style="margin-top:6px">${x.rid !== "DOC" ? `<a href="#" data-go-req="${x.rid}"><b>${esc(x.label)}</b></a>` : "<b>документ</b>"}: «${esc(x.quote)}»</div>`).join("")}
+      <p class="small muted" style="margin-top:10px"><b>Как исправить:</b> ${esc(f.fix)}</p></article>`; }).join("");
+    const d = D.domain, g = D.glossary;
+    const st = { covered: ["ok", "покрыта"], partial: ["major", "частично"], missing: ["critical", "не покрыта"] };
+    el.innerHTML = `<div class="section-title" style="margin-top:0"><h2 class="h1">Проверка набора целиком</h2><span class="chip chip-brand">балл набора ${D.scores.set}/100</span></div>
+      <div class="grid" style="grid-template-columns:minmax(0,360px) minmax(0,1fr);align-items:start;margin-bottom:16px" id="set-top">
+        <div class="card"><div class="card-title">${ic("spark")}<span class="h2">Профиль набора</span></div>${radarSVG(D.scores.radar_set, 300)}
+          <p class="small faint">ISO/IEC/IEEE 29148 §5.2.6 и IEEE 830 §4.3.</p></div>
+        <div class="grid g-2" style="align-content:start">${D.set_criteria.map((c) => `<div class="card" style="padding:16px">
+          <div class="row between"><span class="caption">${esc(c.ref)}</span>${c.count ? chip(c.worst, `${c.count}`) : chip("ok", "ок")}</div>
+          <div class="h3" style="margin:6px 0 2px">${esc(c.name)}</div><p class="small muted">${esc(c.desc)}</p></div>`).join("")}</div></div>
+      ${subTabs("set", [["findings", "Замечания", "alert", D.set.length], ["graph", "Граф связей", "graph", D.graph.edges.length], ["domain", "Финтех-полнота", "bank", d ? d.coverage + "%" : undefined], ["glossary", "Глоссарий", "book", g ? g.terms.length : undefined]])}
+      <div class="panel ${subActive.set === "findings" ? "active" : ""}" data-panel="findings"><div class="stack">${list || empty("Нарушений на уровне набора нет", "Противоречий, дублей и пропусков не найдено.")}</div></div>
+      <div class="panel" data-panel="graph"><p class="small muted" style="margin-bottom:12px">Узлы — требования (цвет — худшее замечание). Колёсико — масштаб, перетаскивание — сдвиг, клик — к требованию.</p>
+        <div class="graph-wrap"><svg id="gsvg" role="img" aria-label="Граф связей требований"></svg>
+        <div class="graph-legend"><span><i style="border-color:#D64545"></i>противоречие</span><span><i style="border-color:#3FA06B;border-top-style:dashed"></i>дубль</span><span><i style="border-color:var(--text-3)"></i>ссылка</span><span><i style="border-color:#1F6B45;border-top-width:1px"></i>термин</span></div></div></div>
+      <div class="panel" data-panel="domain">${d ? `<div class="card" style="margin-bottom:16px"><div class="row wrap" style="gap:24px"><div><div class="caption">${esc(d.name)}</div><div class="kpi-num">${d.coverage}%</div><div class="small muted">покрытие чек-листа</div></div>
+          <div class="grow small muted">${esc(d.disclaimer)}</div></div></div>
+        <div class="grid g-3">${d.areas.map((a) => `<div class="card" style="padding:16px"><div class="row between"><b class="small">${esc(a.title)}</b>${chip(st[a.status][0], st[a.status][1])}</div>
+          ${a.quotes.length ? a.quotes.map((q) => `<div class="quote small" style="margin-top:8px">«${esc(q)}»</div>`).join("") : `<p class="small muted" style="margin-top:8px">${ic("chat", 14)} ${esc(a.question)}</p>`}</div>`).join("")}</div>` : empty("Домен отключён", "Запустите с --domain fintech.")}</div>
+      <div class="panel" data-panel="glossary">${g ? `${g.synonyms.map((s) => `<div class="card" style="padding:14px 18px;background:var(--major-soft);border-color:transparent;margin-bottom:10px">${ic("alert", 14)} <b>Разнобой терминов:</b> ${s.terms.map((t) => `<span class="chip chip-outline">${esc(t)}</span>`).join(" ")} → «${esc(s.preferred)}». <span class="small muted">${esc(s.problem)}</span></div>`).join("")}
+        <div class="table-wrap"><table class="tbl"><thead><tr><th>Термин</th><th>Определение</th><th>Упоминаний</th><th>Требования</th></tr></thead><tbody>
+        ${g.terms.map((t) => `<tr><td><b>${esc(t.term)}</b></td><td>${t.defined ? esc(t.definition) : chip("major", "не определён")}</td><td>${t.count}</td><td class="small">${t.reqs.slice(0, 8).map((r) => `<a href="#" data-go-req="${r}">${esc(reqById[r] ? reqById[r].doc_id || r : r)}</a>`).join(", ")}</td></tr>`).join("")}</tbody></table></div>` : empty("Нет данных", "Глоссарий не построен.")}</div>`;
+    wireSub(el, "set");
+  }
+
+  // ------------------------------------------------------------ граф (force-directed, без библиотек)
+  let graphDrawn = false;
   function drawGraph() {
-    if (graphDrawn) return;
-    const svg = $("#gsvg");
-    if (!svg) return;
-    graphDrawn = true;
-    const W = svg.clientWidth || 1000, H = svg.clientHeight || 620;
+    const svg = $("#gsvg"); if (!svg || graphDrawn || !svg.clientWidth) return; graphDrawn = true;
+    const W = svg.clientWidth, H = svg.clientHeight || 560;
     const nodes = D.graph.nodes.map((n, i) => ({ ...n, x: W / 2 + Math.cos(i) * (100 + i * 6), y: H / 2 + Math.sin(i) * (100 + i * 6), vx: 0, vy: 0 }));
     const idx = Object.fromEntries(nodes.map((n, i) => [n.id, i]));
     const edges = D.graph.edges.filter((e) => e.source in idx && e.target in idx);
     for (let it = 0; it < 420; it++) {
-      const alpha = 1 - it / 420;
+      const al = 1 - it / 420;
       for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
-        const a = nodes[i], b = nodes[j]; let dx = a.x - b.x, dy = a.y - b.y; let d2 = dx * dx + dy * dy || 1;
-        const f = (2600 / d2) * alpha; const d = Math.sqrt(d2); dx /= d; dy /= d;
+        const a = nodes[i], b = nodes[j]; let dx = a.x - b.x, dy = a.y - b.y; const d2 = dx * dx + dy * dy || 1, f = (2600 / d2) * al, d = Math.sqrt(d2); dx /= d; dy /= d;
         a.vx += dx * f; a.vy += dy * f; b.vx -= dx * f; b.vy -= dy * f;
       }
-      edges.forEach((e) => {
-        const a = nodes[idx[e.source]], b = nodes[idx[e.target]]; const dx = b.x - a.x, dy = b.y - a.y; const d = Math.sqrt(dx * dx + dy * dy) || 1;
-        const f = (d - 110) * 0.02 * alpha; a.vx += (dx / d) * f; a.vy += (dy / d) * f; b.vx -= (dx / d) * f; b.vy -= (dy / d) * f;
-      });
-      nodes.forEach((n) => { n.vx += (W / 2 - n.x) * 0.004 * alpha; n.vy += (H / 2 - n.y) * 0.006 * alpha; n.x += n.vx; n.y += n.vy; n.vx *= 0.6; n.vy *= 0.6; });
+      edges.forEach((e) => { const a = nodes[idx[e.source]], b = nodes[idx[e.target]], dx = b.x - a.x, dy = b.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 1, f = (d - 110) * 0.02 * al; a.vx += (dx / d) * f; a.vy += (dy / d) * f; b.vx -= (dx / d) * f; b.vy -= (dy / d) * f; });
+      nodes.forEach((n) => { n.vx += (W / 2 - n.x) * 0.004 * al; n.vy += (H / 2 - n.y) * 0.006 * al; n.x += n.vx; n.y += n.vy; n.vx *= 0.6; n.vy *= 0.6; });
     }
-    const col = { critical: "#E5484D", major: "#F59E0B", minor: "#EAB308", ok: "#12B76A" };
-    const est = { contradiction: 'stroke="#E5484D" stroke-width="2.5"', duplicate: 'stroke="#8B5CF6" stroke-width="2" stroke-dasharray="6 5"', dependency: 'stroke="var(--text-3)" stroke-width="1.5"', term: 'stroke="#0B5FFF" stroke-width="1" opacity=".6"' };
+    const col = { critical: "#D64545", major: "#B7791F", minor: "#B8A532", ok: "#1F9D55" };
+    const est = { contradiction: 'stroke="#D64545" stroke-width="2.5"', duplicate: 'stroke="#3FA06B" stroke-width="2" stroke-dasharray="6 5"', dependency: 'stroke="var(--text-3)" stroke-width="1.5"', term: 'stroke="#1F6B45" stroke-width="1" opacity=".6"' };
     let g = `<g id="gview">`;
     edges.forEach((e) => { const a = nodes[idx[e.source]], b = nodes[idx[e.target]]; g += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" ${est[e.kind]}><title>${esc(e.title)}</title></line>`; });
-    nodes.forEach((n) => {
-      const r = 14 + Math.min(10, n.degree * 3);
-      g += `<g class="node" data-rid="${n.id}" transform="translate(${n.x},${n.y})" tabindex="0" role="button" aria-label="${esc(n.label)}">
-        <circle r="${r}" fill="${col[n.severity]}" opacity="${n.degree ? 1 : 0.55}"><title>${esc(n.label)}: ${esc(n.text)}</title></circle>
-        <text y="${r + 14}" text-anchor="middle">${esc(n.label)}</text></g>`;
-    });
+    nodes.forEach((n) => { const r = 14 + Math.min(10, n.degree * 3); g += `<g class="node" data-rid="${n.id}" transform="translate(${n.x},${n.y})" tabindex="0" role="button" aria-label="${esc(n.label)}"><circle r="${r}" fill="${col[n.severity]}" opacity="${n.degree ? 1 : 0.55}"><title>${esc(n.label)}: ${esc(n.text)}</title></circle><text y="${r + 14}" text-anchor="middle">${esc(n.label)}</text></g>`; });
     svg.innerHTML = g + "</g>";
-    // зум и панорамирование
-    let k = 1, tx = 0, ty = 0, drag = null;
-    const view = $("#gview"), apply = () => view.setAttribute("transform", `translate(${tx},${ty}) scale(${k})`);
-    svg.addEventListener("wheel", (e) => { e.preventDefault(); const nk = Math.min(4, Math.max(0.3, k * (e.deltaY < 0 ? 1.12 : 0.89))); const r = svg.getBoundingClientRect(); const mx = e.clientX - r.left, my = e.clientY - r.top; tx = mx - ((mx - tx) * nk) / k; ty = my - ((my - ty) * nk) / k; k = nk; apply(); }, { passive: false });
+    let k = 1, tx = 0, ty = 0, drag = null; const view = $("#gview"), apply = () => view.setAttribute("transform", `translate(${tx},${ty}) scale(${k})`);
+    svg.addEventListener("wheel", (e) => { e.preventDefault(); const nk = Math.min(4, Math.max(0.3, k * (e.deltaY < 0 ? 1.12 : 0.89))), r = svg.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top; tx = mx - ((mx - tx) * nk) / k; ty = my - ((my - ty) * nk) / k; k = nk; apply(); }, { passive: false });
     svg.addEventListener("pointerdown", (e) => { if (e.target.closest(".node")) return; drag = [e.clientX - tx, e.clientY - ty]; svg.setPointerCapture(e.pointerId); });
     svg.addEventListener("pointermove", (e) => { if (drag) { tx = e.clientX - drag[0]; ty = e.clientY - drag[1]; apply(); } });
     svg.addEventListener("pointerup", () => (drag = null));
@@ -468,138 +512,93 @@
     svg.addEventListener("keydown", (e) => { if (e.key === "Enter") { const n = e.target.closest(".node"); if (n) goReq(n.dataset.rid); } });
   }
 
-  // ------------------------------------------------------------ Тесты
-  function renderTests(el) {
-    const ok = D.reqs.filter((r) => r.test.possible === true), bad = D.reqs.filter((r) => r.test.possible === false);
-    const s = D.scores, pct = s.tests_total ? Math.round((100 * s.tests_ok) / s.tests_total) : 0;
-    el.innerHTML = `<div class="card" style="margin-bottom:20px"><div class="row wrap" style="gap:24px">
-        <div><div class="caption">Покрыто тест-пробой</div><div class="display">${s.tests_ok}<span class="h2 faint"> / ${s.tests_total}</span></div></div>
-        <div class="grow"><div class="bar" style="height:12px"><i style="width:${pct}%;background:var(--ok-accent)"></i></div>
-        <p class="small muted" style="margin-top:10px">Для каждого требования агент пытается написать приёмочный тест в формате Gherkin. Если тест составить нельзя, это объективное доказательство непроверяемости (ISO/IEC/IEEE 29148 §5.2.5 g).</p></div></div></div>
-      ${bad.length ? `<div class="h2" style="margin:8px 0 14px">Тест составить невозможно <span class="faint">(${bad.length})</span></div>
-        <div class="grid g-2">${bad.map((r) => `<div class="card" style="border-color:color-mix(in srgb,#E5484D 35%,var(--border))">
-          <div class="row"><a href="#${r.rid}" data-go-req="${r.rid}"><b>${esc(label(r))}</b></a>${chip("critical", "непроверяемо")}</div>
-          <p class="small muted" style="margin:8px 0">${esc(r.text)}</p>
-          <div class="small"><b>Почему:</b> ${esc(r.test.reason)}</div>
-          <div class="quote small" style="margin-top:8px">Мешает: «${esc(r.test.blocker)}»</div></div>`).join("")}</div>` : ""}
-      ${ok.length ? `<div class="h2" style="margin:28px 0 14px">Сгенерированные приёмочные тесты <span class="faint">(${ok.length})</span></div>
-        <div class="toolbar"><button class="btn btn-secondary btn-sm" data-copy="${esc(ok.map((r) => `# ${label(r)}\n${r.test.gherkin}`).join("\n\n"))}" data-msg="Все тесты скопированы">${ic("copy", 14)}Скопировать все (.feature)</button></div>
-        <div class="grid g-2">${ok.map((r) => `<div class="card"><div class="row"><a href="#${r.rid}" data-go-req="${r.rid}"><b>${esc(label(r))}</b></a>${chip("ok", "тест есть")}</div>
-          <pre class="code gherkin" style="margin-top:10px">${gherkin(r.test.gherkin)}</pre></div>`).join("")}</div>` : ""}
-      ${!ok.length && !bad.length ? empty("Тест-проба не выполнялась", "Запустите прогон без флага --no-tests.") : ""}`;
+  // ------------------------------------------------------------ Трассировка: тесты, матрица, вопросы
+  function renderTrace(el) {
+    const ok = D.reqs.filter((r) => r.test.possible === true), bad = D.reqs.filter((r) => r.test.possible === false), s = D.scores;
+    const pct = s.tests_total ? Math.round((100 * s.tests_ok) / s.tests_total) : 0;
+    const groups = {}; D.questions.forEach((q) => (groups[q.section] = groups[q.section] || []).push(q));
+    const allQ = D.questions.map((q, i) => `${i + 1}. [${q.ref}] ${q.text}`).join("\n");
+    const cell = (r, c) => { const fs = r.findings.map((id) => D.findings[id]).filter((x) => x.criterion === c.key); if (!fs.length) return `<td style="text-align:center"><span class="sr-only">в порядке</span><span style="color:var(--ok)">${ic("check", 14)}</span></td>`; const w = fs.reduce((a, x) => (ORDER[x.severity] < ORDER[a] ? x.severity : a), "minor"); return `<td style="text-align:center"><button class="chip sev-${w}" style="cursor:pointer;border:0" data-open="${fs[0].fid}" title="${esc(SEV[w].label)}">${ic(SEV[w].icon, 12)}${fs.length}</button></td>`; };
+    el.innerHTML = `<div class="section-title" style="margin-top:0"><h2 class="h1">Трассировка</h2></div>
+      <div class="grid g-3" style="margin-bottom:16px">
+        <article class="kpi kpi-hero"><span class="lbl">Тест-проба</span><div class="kpi-num">${pct}%</div><div class="sub">${s.tests_ok} из ${s.tests_total} требований можно проверить тестом</div></article>
+        <article class="kpi"><span class="lbl">Тест составить невозможно</span><div class="kpi-num" style="color:${bad.length ? "var(--critical)" : "var(--ok)"}">${bad.length}</div><div class="sub">${ic("flask", 14)}доказательство непроверяемости</div></article>
+        <article class="kpi"><span class="lbl">Вопросы заказчику</span><div class="kpi-num">${D.questions.length}</div><div class="sub">${ic("chat", 14)}закрыть до начала разработки</div></article></div>
+      ${subTabs("trace", [["tests", "Тест-кейсы", "flask", `${s.tests_ok}/${s.tests_total}`], ["matrix", "Матрица трассировки", "grid"], ["questions", "Вопросы заказчику", "chat", D.questions.length]])}
+      <div class="panel active" data-panel="tests">
+        ${bad.length ? `<div class="grid g-2" style="margin-bottom:16px">${bad.map((r) => `<div class="card"><div class="row"><a href="#" data-go-req="${r.rid}"><b>${esc(label(r))}</b></a>${chip("critical", "непроверяемо")}</div>
+          <p class="small muted" style="margin:8px 0">${esc(r.text)}</p><div class="small"><b>Почему:</b> ${esc(r.test.reason)}</div><div class="quote small" style="margin-top:8px">Мешает: «${esc(r.test.blocker)}»</div></div>`).join("")}</div>` : ""}
+        ${ok.length ? `<div class="toolbar"><button class="btn btn-sm btn-outline" data-dl="feature">${ic("download", 14)}Скачать .feature</button></div>
+          <div class="grid g-2">${ok.map((r) => `<div class="card"><div class="row"><a href="#" data-go-req="${r.rid}"><b>${esc(label(r))}</b></a>${chip("ok", "тест есть")}</div><pre class="code gherkin" style="margin-top:10px">${gherkin(r.test.gherkin)}</pre></div>`).join("")}</div>` : ""}
+        ${!ok.length && !bad.length ? empty("Тест-проба не выполнялась", "Запустите прогон без флага --no-tests.") : ""}</div>
+      <div class="panel" data-panel="matrix"><div class="table-wrap"><table class="tbl"><thead><tr><th>Требование</th>${D.criteria.map((c) => `<th style="text-align:center" title="${esc(c.ref)}">${esc(c.name.replace(/\s*\(.*\)/, ""))}</th>`).join("")}</tr></thead>
+        <tbody>${D.reqs.map((r) => `<tr><td style="white-space:nowrap"><a href="#" data-go-req="${r.rid}"><b>${esc(label(r))}</b></a></td>${D.criteria.map((c) => cell(r, c)).join("")}</tr>`).join("")}</tbody></table></div></div>
+      <div class="panel" data-panel="questions"><div class="toolbar"><span class="grow small muted">Сформированы из замечаний — отправьте до начала разработки.</span>
+        <button class="btn btn-primary btn-sm" data-copy="${esc(allQ)}" data-msg="Вопросы скопированы">${ic("copy", 14)}Скопировать все</button></div>
+        ${Object.entries(groups).map(([sec, qs]) => `<div class="card" style="margin-bottom:12px"><div class="caption" style="margin-bottom:8px">${esc(sec)}</div>${qs.map((q) => `<div class="row" style="align-items:flex-start;padding:10px 0;border-top:1px dashed var(--border)">${chip(q.severity)}<div class="grow"><b class="small">${esc(q.ref)}</b><p class="small" style="margin-top:2px">${esc(q.text)}</p></div><button class="btn btn-sm btn-ghost btn-icon" aria-label="Скопировать вопрос" data-copy="${esc(q.text)}">${ic("copy", 14)}</button></div>`).join("")}</div>`).join("") || empty("Вопросов нет", "Существенных неопределённостей не найдено.")}</div>`;
+    wireSub(el, "trace");
   }
 
-  // ------------------------------------------------------------ Исправленный документ
-  function renderFixed(el) {
-    const blob = URL.createObjectURL(new Blob([D.fixed_text], { type: "text/markdown;charset=utf-8" }));
-    const rs = D.rescore;
-    el.innerHTML = `<div class="card" style="margin-bottom:20px;display:flex;gap:20px;align-items:center;flex-wrap:wrap">
-        <div class="grow"><div class="h2">Исправленная версия документа</div>
-        <p class="small muted" style="margin-top:6px">Агент заменил ${D.changes.length} проблемных формулировок предложенными; структура документа сохранена, у каждого исправления есть сноска. Это предложения для согласования с заказчиком.</p></div>
-        ${rs ? `<div style="text-align:center"><div class="caption">Балл документа</div><div class="h1">${rs.before} <span class="faint">→</span> <span style="color:var(--ok)">${rs.after}</span></div>${deltaChip(rs.after - rs.before)}</div>` : `<div class="small faint" style="max-width:220px">Запустите с <span class="kbd">--rescore</span>, чтобы увидеть «было → стало» по повторной проверке.</div>`}
-        <a class="btn btn-primary" href="${blob}" download="requirements_fixed.md">${ic("download", 16)}Скачать .md</a></div>
-      <div class="stack">${D.changes.map((c) => `<article class="card">
-        <div class="row wrap"><a href="#${c.rid}" data-go-req="${c.rid}"><b>${esc(c.rid)}${c.doc_id ? " · " + esc(c.doc_id) : ""}</b></a>${c.criteria.map((x) => `<span class="chip">${esc(x)}</span>`).join("")}
-          <span class="grow"></span><button class="btn btn-sm btn-ghost" data-copy="${esc(c.after)}">${ic("copy", 14)}Копировать</button></div>
-        <div class="diff" style="margin-top:12px"><div class="side"><div class="caption" style="margin-bottom:6px">Было</div>${c.diff.filter((d) => d[0] !== "ins").map((d) => (d[0] === "del" ? `<del>${esc(d[1])}</del>` : esc(d[1]))).join(" ")}</div>
-        <div class="side"><div class="caption" style="margin-bottom:6px">Стало</div>${c.diff.filter((d) => d[0] !== "del").map((d) => (d[0] === "ins" ? `<ins>${esc(d[1])}</ins>` : esc(d[1]))).join(" ")}</div></div></article>`).join("") || empty("Исправлений нет", "Модель не предложила новых формулировок.")}</div>`;
-  }
-
-  // ------------------------------------------------------------ Вопросы заказчику
-  function renderQuestions(el) {
-    const groups = {};
-    D.questions.forEach((q) => (groups[q.section] = groups[q.section] || []).push(q));
-    const all = D.questions.map((q, i) => `${i + 1}. [${q.ref}] ${q.text}`).join("\n");
-    el.innerHTML = `<div class="toolbar"><div class="grow"><div class="h2">Вопросы заказчику и аналитику</div>
-        <p class="small muted">Сформированы из замечаний: отправьте их до начала разработки, чтобы закрыть неопределённости.</p></div>
-        <button class="btn btn-primary" data-copy="${esc(all)}" data-msg="Вопросы скопированы">${ic("copy", 16)}Скопировать все</button></div>
-      ${Object.entries(groups).map(([sec, qs]) => `<div class="card" style="margin-bottom:16px"><div class="caption" style="margin-bottom:10px">${esc(sec)}</div>
-        ${qs.map((q) => `<div class="row" style="align-items:flex-start;padding:10px 0;border-top:1px dashed var(--border)">${chip(q.severity, " ")}<div class="grow"><b class="small">${esc(q.ref)}</b><p class="small" style="margin-top:2px">${esc(q.text)}</p></div>
-          <button class="btn btn-sm btn-ghost btn-icon" aria-label="Скопировать вопрос" data-copy="${esc(q.text)}">${ic("copy", 14)}</button></div>`).join("")}</div>`).join("") || empty("Вопросов нет", "Существенных неопределённостей не найдено.")}`;
-  }
-
-  // ------------------------------------------------------------ Домен и глоссарий
-  function renderDomain(el) {
-    const d = D.domain, g = D.glossary;
-    const st = { covered: ["ok", "покрыта"], partial: ["major", "частично"], missing: ["critical", "не покрыта"] };
-    el.innerHTML = (d ? `<div class="card" style="margin-bottom:20px"><div class="row wrap" style="gap:24px">
-        <div><div class="caption">${esc(d.name)}</div><div class="display">${d.coverage}%</div><div class="small faint">покрытие доменного чек-листа</div></div>
-        <div class="grow small muted">${esc(d.disclaimer)}</div></div></div>
-      <div class="grid g-3" style="margin-bottom:32px">${d.areas.map((a) => `<div class="card card-hover" style="padding:16px">
-        <div class="row between"><b class="small">${esc(a.title)}</b>${chip(st[a.status][0], st[a.status][1])}</div>
-        ${a.quotes.length ? a.quotes.map((q) => `<div class="quote small" style="margin-top:8px">«${esc(q)}»</div>`).join("") : `<p class="small muted" style="margin-top:8px">${ic("chat", 14)} ${esc(a.question)}</p>`}</div>`).join("")}</div>` : "")
-      + (g ? `<div class="h2" style="margin-bottom:14px">Глоссарий</div>
-      ${g.synonyms.length ? `<div class="stack" style="margin-bottom:16px">${g.synonyms.map((s) => `<div class="card" style="padding:14px;background:var(--major-soft);border-color:transparent">
-        <b>Разнобой терминов:</b> ${s.terms.map((t) => `<span class="chip" style="margin:0 2px">${esc(t)}</span>`).join("")} → используйте «${esc(s.preferred)}». <span class="small muted">${esc(s.problem)}</span></div>`).join("")}</div>` : ""}
-      <div class="table-wrap"><table class="tbl"><thead><tr><th>Термин</th><th>Определение</th><th>Упоминаний</th><th>Требования</th></tr></thead><tbody>
-      ${g.terms.map((t) => `<tr><td><b>${esc(t.term)}</b></td><td>${t.defined ? esc(t.definition) : `<span class="chip sev-major">не определён</span>`}</td><td>${t.count}</td><td class="small">${t.reqs.slice(0, 8).map((r) => `<a href="#${r}" data-go-req="${r}">${esc(reqById[r] ? reqById[r].doc_id || r : r)}</a>`).join(", ")}</td></tr>`).join("")}
-      </tbody></table></div>` : "") || empty("Нет данных", "Доменная проверка отключена (--domain none).");
-    sortable(el);
-  }
-  function sortable(el) {
-    $$("table.tbl", el).forEach((t) => $$("th", t).forEach((th, i) => th.onclick = () => {
-      const rows = $$("tbody tr", t), dir = th.dataset.dir === "asc" ? -1 : 1; th.dataset.dir = dir === 1 ? "asc" : "desc";
-      rows.sort((a, b) => { const x = a.children[i].textContent, y = b.children[i].textContent; return (isNaN(x) || isNaN(y) ? x.localeCompare(y, "ru") : x - y) * dir; });
-      rows.forEach((r) => t.tBodies[0].appendChild(r));
-    }));
-  }
-
-  // ------------------------------------------------------------ Паспорт
+  // ------------------------------------------------------------ Экспорт и паспорт
   function md(s) { return esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").split(/\n\n+/).map((p) => `<p class="small" style="margin-bottom:10px">${p}</p>`).join(""); }
-  function renderPassport(el) {
-    const p = D.passport;
-    const rows = [["Документ", p.document], ["Файл", `${p.file} (${p.format}${p.pages ? ", " + p.pages + " стр." : ""})`], ["SHA-256", p.sha256], ["Дата и время", p.started],
-      ["Модель", p.model], ["Версия агента", p.agent_version], ["Профиль", p.profile], ["Режим", p.mode], ["Обращений к модели", `${p.calls} (повторов: ${p.retries})`],
-      ["Токены (вход / выход)", p.tokens_in ? `${p.tokens_in} / ${p.tokens_out}` : "—"], ["Длительность", p.duration_s + " с"],
-      ["Способ нарезки", { ids: "по идентификаторам документа", modal: "по модальным формулировкам", llm: "моделью" }[p.split_method]],
-      ["Критик-агент", p.critic ? "включён" : "выключен"], ["Отброшено неподтверждённых цитат", p.dropped], ["Отклонено критиком", p.rejected],
-      ["Критерии", "ISO/IEC/IEEE 29148:2018 п. 5.2.5, 5.2.6; IEEE Std 830-1998 п. 4.3"]];
-    const tbl = (title, items, cols) => items.length ? `<div class="h3" style="margin:28px 0 10px">${title} <span class="faint">(${items.length})</span></div>
-      <div class="table-wrap"><table class="tbl"><thead><tr>${cols.map((c) => `<th>${c[0]}</th>`).join("")}</tr></thead><tbody>${items.map((d) => `<tr>${cols.map((c) => `<td class="small">${esc(d[c[1]])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` : "";
-    el.innerHTML = `<div class="grid g-2" style="align-items:start"><div class="card"><div class="card-title">${ic("id")}<span class="h3">Паспорт прогона</span></div>
-        <dl class="kv">${rows.map((r) => `<dt>${r[0]}</dt><dd ${r[0] === "SHA-256" ? 'class="mono" style="word-break:break-all"' : ""}>${esc(r[1])}</dd>`).join("")}</dl></div>
-      <div class="card"><div class="card-title">${ic("book")}<span class="h3">Методика оценки</span></div>${md(D.method)}
-        ${D.notes.length ? `<div class="h3" style="margin:16px 0 8px">Примечания</div>${D.notes.map((n) => `<p class="small" style="color:var(--major)">⚠️ ${esc(n)}</p>`).join("")}` : ""}</div></div>
-      ${tbl("Отброшенные замечания модели (цитата не найдена в документе)", D.dropped, [["Где", "where"], ["Цитата модели", "quote"], ["Суть", "problem"]])}
-      ${tbl("Замечания, отклонённые критиком", D.rejected, [["Где", "where"], ["Цитата", "quote"], ["Суть", "problem"], ["Причина", "reason"]])}`;
+  function renderExport(el) {
+    const files = [["md", "Отчёт (Markdown)", "Основной отчёт на русском по ТЗ", "file"], ["json", "Данные (JSON)", "Все результаты для интеграций", "layers"],
+      ["fixed", "Исправленный документ", `${D.changes.length} исправленных формулировок`, "wand"], ["feature", "Приёмочные тесты", `${D.scores.tests_ok} сценариев Gherkin`, "flask"]];
+    const rows = [["Документ", P.document], ["Файл", `${P.file} (${P.format}${P.pages ? ", " + P.pages + " стр." : ""})`], ["SHA-256", P.sha256], ["Дата и время", P.started], ["Модель", P.model],
+      ["Версия агента", P.agent_version], ["Профиль / режим", `${P.profile} · ${P.mode}`], ["Обращений к модели", `${P.calls} (повторов: ${P.retries})`], ["Токены (вход / выход)", P.tokens_in ? `${P.tokens_in} / ${P.tokens_out}` : "—"],
+      ["Длительность", P.duration_s + " с"], ["Способ нарезки", { ids: "по идентификаторам документа", modal: "по модальным формулировкам", llm: "моделью" }[P.split_method]],
+      ["Критик-агент", P.critic ? "включён" : "выключен"], ["Отброшено неподтверждённых цитат", P.dropped], ["Отклонено критиком", P.rejected], ["Критерии", "ISO/IEC/IEEE 29148:2018 п. 5.2.5, 5.2.6; IEEE Std 830-1998 п. 4.3"]];
+    const tbl = (title, items, cols) => items.length ? `<div class="section-title"><h3 class="h2">${title} <span class="faint">(${items.length})</span></h3></div><div class="table-wrap"><table class="tbl"><thead><tr>${cols.map((c) => `<th>${c[0]}</th>`).join("")}</tr></thead><tbody>${items.map((d) => `<tr>${cols.map((c) => `<td class="small">${esc(d[c[1]])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` : "";
+    el.innerHTML = `<div class="section-title" style="margin-top:0"><h2 class="h1">Экспорт</h2></div>
+      <div class="grid g-4">${files.map((f, i) => `<article class="kpi ${i === 0 ? "kpi-hero" : ""}"><div class="row between"><span class="lbl">${f[1]}</span>${ic(f[3], 20)}</div>
+        <div class="sub" style="margin:12px 0">${esc(f[2])}</div><button class="btn btn-sm ${i === 0 ? "btn-outline" : "btn-primary"}" style="align-self:flex-start" data-dl="${f[0]}">${ic("download", 14)}Скачать</button></article>`).join("")}</div>
+      ${D.changes.length ? `<div class="section-title"><h3 class="h2">Было → стало ${D.rescore ? `<span class="chip chip-brand">балл ${D.rescore.before} → ${D.rescore.after}</span>` : ""}</h3></div>
+        <div class="stack">${D.changes.map((c) => `<article class="card"><div class="row wrap"><a href="#" data-go-req="${c.rid}"><b>${esc(c.rid)}${c.doc_id ? " · " + esc(c.doc_id) : ""}</b></a>${c.criteria.map((x) => `<span class="chip chip-outline">${esc(x)}</span>`).join("")}
+          <span class="grow"></span><button class="btn btn-sm btn-ghost" data-copy="${esc(c.after)}">${ic("copy", 14)}Копировать</button></div>
+          <div class="diff" style="margin-top:12px"><div class="side"><div class="caption" style="margin-bottom:6px">Было</div>${c.diff.filter((d) => d[0] !== "ins").map((d) => (d[0] === "del" ? `<del>${esc(d[1])}</del>` : esc(d[1]))).join(" ")}</div>
+          <div class="side"><div class="caption" style="margin-bottom:6px">Стало</div>${c.diff.filter((d) => d[0] !== "del").map((d) => (d[0] === "ins" ? `<ins>${esc(d[1])}</ins>` : esc(d[1]))).join(" ")}</div></div></article>`).join("")}</div>` : ""}
+      <div class="grid g-2" style="margin-top:24px;align-items:start">
+        <div class="card"><div class="card-title">${ic("id")}<span class="h2">Паспорт прогона</span></div><dl class="kv">${rows.map((r) => `<dt>${r[0]}</dt><dd ${r[0] === "SHA-256" ? 'class="mono"' : ""}>${esc(r[1])}</dd>`).join("")}</dl></div>
+        <div class="card"><div class="card-title">${ic("book")}<span class="h2">Методика оценки</span></div>${md(D.method)}
+          ${D.notes.length ? `<div class="h3" style="margin:16px 0 8px">Примечания</div>${D.notes.map((n) => `<p class="small" style="color:var(--major)">${ic("alert", 14)} ${esc(n)}</p>`).join("")}` : ""}</div></div>
+      ${tbl("Отброшенные замечания модели (цитата не найдена)", D.dropped, [["Где", "where"], ["Цитата модели", "quote"], ["Суть", "problem"]])}
+      ${tbl("Отклонены критиком", D.rejected, [["Где", "where"], ["Цитата", "quote"], ["Суть", "problem"], ["Причина", "reason"]])}`;
   }
 
-  const RENDER = { doc: renderDoc, reqs: renderReqs, set: renderSet, graph: renderGraph, tests: renderTests, fixed: renderFixed, questions: renderQuestions, domain: renderDomain, passport: renderPassport };
+  function empty(title, text) {
+    return `<div class="empty"><svg class="ill" viewBox="0 0 120 90" fill="none" stroke="currentColor" stroke-width="2"><rect x="18" y="10" width="64" height="76" rx="10"/><path d="M30 30h40M30 42h40M30 54h24"/><circle cx="82" cy="58" r="16" fill="var(--surface)"/><path d="m94 70 12 12"/></svg>
+      <div class="h3" style="color:var(--text)">${esc(title)}</div><p class="small" style="margin-top:6px">${esc(text)}</p></div>`;
+  }
+
+  const RENDER = { overview: renderOverview, reqs: renderReqs, set: renderSet, trace: renderTrace, export: renderExport };
 
   // ------------------------------------------------------------ горячие клавиши
-  const KEYS = [["/", "поиск по требованиям"], ["J / K", "следующий / предыдущий дефект"], ["T", "сменить тему"], ["Esc", "закрыть панель"], ["1–9", "вкладки"]];
+  const KEYS = [["/", "поиск по требованиям"], ["J / K", "следующий / предыдущий дефект в документе"], ["T", "сменить тему"], ["Esc", "закрыть панель"], ["1–5", "разделы меню"]];
   $("#btn-keys").onclick = () => {
     $("#drawer-title").textContent = "Горячие клавиши";
-    $("#drawer-body").innerHTML = KEYS.map((k) => `<div class="row between" style="padding:8px 0;border-bottom:1px solid var(--border)"><span>${esc(k[1])}</span><span class="kbd">${esc(k[0])}</span></div>`).join("");
-    lastFocus = $("#btn-keys");
-    $("#drawer").classList.add("open"); $("#overlay").classList.add("open"); $("#drawer").setAttribute("aria-hidden", "false");
+    $("#drawer-body").innerHTML = KEYS.map((k) => `<div class="row between" style="padding:10px 0;border-bottom:1px solid var(--border)"><span>${esc(k[1])}</span><span class="kbd">${esc(k[0])}</span></div>`).join("");
+    openDrawer($("#btn-keys"));
   };
   document.addEventListener("keydown", (e) => {
     if (e.target.matches("input,select,textarea")) { if (e.key === "Escape") e.target.blur(); return; }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-    if (e.key === "Escape") closeDrawer();
-    else if (e.key === "/") { e.preventDefault(); show("reqs"); $("#q").focus(); }
+    if (e.key === "Escape") { closeDrawer(); $("#sidebar").classList.remove("open"); }
+    else if (e.key === "/") { e.preventDefault(); $("#gsearch").focus(); }
     else if (e.key === "j" || e.key === "о") stepMark(1);
     else if (e.key === "k" || e.key === "л") stepMark(-1);
     else if (e.key === "t" || e.key === "е") toggleTheme();
     else if (e.key === "?") $("#btn-keys").click();
-    else if (/^[1-9]$/.test(e.key) && TABS[+e.key - 1]) show(TABS[+e.key - 1].id);
+    else if (/^[1-5]$/.test(e.key)) show(VIEWS[+e.key - 1].id);
   });
-
-  // ------------------------------------------------------------ печать: отрисовать все вкладки
-  window.addEventListener("beforeprint", () => TABS.forEach((t) => { if (!rendered[t.id]) { RENDER[t.id]($("#panel-" + t.id)); rendered[t.id] = true; } }));
+  window.addEventListener("beforeprint", () => VIEWS.forEach((v) => { if (!rendered[v.id]) { RENDER[v.id]($("#view-" + v.id)); rendered[v.id] = true; } }));
 
   // ------------------------------------------------------------ старт
-  renderHero();
-  renderOverview();
-  renderTabs();
-  $("#footer").innerHTML = `Сформировано агентом ReqLens · ${esc(D.passport.agent_version)} · ${esc(D.passport.started)} · Критерии ISO/IEC/IEEE 29148:2018 и IEEE Std 830-1998`;
-  window.addEventListener("hashchange", () => {
-    const x = decodeURIComponent(location.hash.slice(1));
-    if (reqById[x]) goReq(x); else if (/^L\d+$/.test(x)) goLine(+x.slice(1)); else if (TABS.some((t) => t.id === x)) show(x);
-  });
-  const h = decodeURIComponent(location.hash.slice(1));
-  if (h && reqById[h]) { show("reqs"); setTimeout(() => goReq(h), 50); }
-  else if (/^L\d+$/.test(h)) goLine(+h.slice(1));
-  else show(TABS.some((t) => t.id === h) ? h : "doc");
+  renderHead();
+  $("#footer").innerHTML = `Сформировано агентом ReqLens · ${esc(P.agent_version)} · ${esc(P.started)} · ISO/IEC/IEEE 29148:2018 · IEEE Std 830-1998`;
+  const route = () => {
+    const h = decodeURIComponent(location.hash.slice(1));
+    if (reqById[h]) goReq(h); else if (/^L\d+$/.test(h)) goLine(+h.slice(1)); else show(VIEWS.some((v) => v.id === h) ? h : "overview");
+  };
+  window.addEventListener("hashchange", route);
+  route();
 })();
