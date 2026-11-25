@@ -209,6 +209,15 @@ class OpenAICompatLLM(BaseLLM):
         return data["choices"][0]["message"]["content"]
 
 
+def _env_key(name: str) -> str:
+    """Ключ из .env: проверяем, что это не заглушка вида «ваш_ключ» (HTTP-заголовки допускают только ASCII)."""
+    v = os.getenv(name, "").strip().strip('"').strip("'")
+    if v and not v.isascii():
+        raise LLMError(f"{name} в .env содержит не-латинские символы — похоже, там осталась заглушка вместо ключа. "
+                       f"Вставьте настоящий ключ (например, GEMINI_API_KEY=AIza...).")
+    return v
+
+
 def build_llm_from_env() -> BaseLLM:
     provider = os.getenv("LLM_PROVIDER", "gemini").strip().lower()
     common = dict(
@@ -219,7 +228,7 @@ def build_llm_from_env() -> BaseLLM:
     temperature = float(os.getenv("LLM_TEMPERATURE", "0"))
     if provider == "gemini":
         return GeminiLLM(
-            api_key=os.getenv("GEMINI_API_KEY", "").strip(),
+            api_key=_env_key("GEMINI_API_KEY"),
             model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip(),
             base_url=os.getenv("GEMINI_BASE_URL") or None,
             temperature=temperature,
@@ -227,7 +236,7 @@ def build_llm_from_env() -> BaseLLM:
         )
     if provider in ("openai", "openai-compatible"):
         return OpenAICompatLLM(
-            api_key=os.getenv("OPENAI_API_KEY", "").strip(),
+            api_key=_env_key("OPENAI_API_KEY"),
             model=os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip(),
             base_url=os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").strip(),
             temperature=temperature,
