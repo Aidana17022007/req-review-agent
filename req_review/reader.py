@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import hashlib
+from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -54,17 +55,75 @@ def _read_text(path: Path) -> list[tuple[str, int | None]]:
 
 
 def _read_pdf(path: Path) -> tuple[list[tuple[str, int | None]], int]:
+    """Текст PDF по страницам. Таблицы (pdfplumber.find_tables) выдаются строками «| a | b |», как в Markdown и DOCX,
+    чтобы проверки таблиц (параметры API, критерии приёмки, чек-листы) работали и на PDF. Заголовки распознаются по
+    размеру шрифта (крупнее основного текста) и размечаются «#», «##»… — от них зависят разделы требований.
+    Порядок сверху вниз сохраняется."""
     import pdfplumber
 
-    out: list[tuple[str, int | None]] = []
+    raw: list[tuple[str, int, float | None]] = []  # (текст, страница, размер шрифта строки или None)
     with pdfplumber.open(str(path)) as pdf:
         n = len(pdf.pages)
         for i, page in enumerate(pdf.pages, start=1):
-            text = page.extract_text(x_tolerance=1.5, y_tolerance=3) or ""
-            for t in text.splitlines():
-                out.append((t, i))
-            out.append(("", i))  # граница страницы
+            try:
+                tables = sorted(page.find_tables(), key=lambda t: t.bbox[1])
+            except Exception:  # повреждённая разметка страницы — читаем как простой текст
+                tables = []
+            y = 0.0
+            for t in tables:
+                x0, top, x1, bottom = t.bbox
+                if top > y:
+                    raw.extend((ln, i, sz) for ln, sz in _pdf_text(page, y, top))
+                for row in t.extract() or []:
+                    cells = [" ".join((c or "").split()) for c in row]
+                    if any(cells):
+                        raw.append(("| " + " | ".join(cells) + " |", i, None))
+                raw.append(("", i, None))
+                y = max(y, bottom)
+            raw.extend((ln, i, sz) for ln, sz in _pdf_text(page, y, page.height))
+            raw.append(("", i, None))  # граница страницы
+    sizes = [round(sz, 1) for t, _, sz in raw if sz and t.strip()]
+    body = Counter(sizes).most_common(1)[0][0] if sizes else 0
+    big = sorted({sz for sz in sizes if sz >= body * 1.15}, reverse=True)[:6]
+    # перенос строки внутри абзаца: продолжение со строчной буквы склеивается с предыдущей строкой той же страницы
+    joined: list[tuple[str, int, float | None]] = []
+    for t, i, sz in raw:
+        prev = joined[-1] if joined else None
+        if (prev and t[:1].islower() and prev[0].strip() and prev[1] == i and not prev[0].lstrip().startswith("|")
+                and not prev[0].rstrip().endswith((".", ":", ";", "!", "?")) and (sz is None or round(sz, 1) not in big)):
+            joined[-1] = (prev[0].rstrip() + " " + t.strip(), i, prev[2])
+        else:
+            joined.append((t, i, sz))
+    out: list[tuple[str, int | None]] = []
+    for t, i, sz in joined:
+        if sz and round(sz, 1) in big and t.strip() and len(t) <= 120 and not t.strip().startswith("|"):
+            if out and out[-1][0].strip():
+                out.append(("", i))
+            out.append(("#" * (big.index(round(sz, 1)) + 1) + " " + t.strip(), i))
+            out.append(("", i))
+        else:
+            out.append((t, i))
     return out, n
+
+
+def _pdf_text(page, top: float, bottom: float) -> list[tuple[str, float | None]]:
+    """Строки текста в полосе страницы и размер шрифта каждой строки (для распознавания заголовков)."""
+    if bottom - top < 1:
+        return []
+    try:
+        region = page.crop((0, max(0, top), page.width, min(page.height, bottom)))
+    except ValueError:
+        return []
+    try:
+        lines = region.extract_text_lines(layout=False, strip=True, return_chars=True)
+    except Exception:
+        return [(t, None) for t in (region.extract_text(x_tolerance=1.5, y_tolerance=3) or "").splitlines()]
+    out = []
+    for ln in lines:
+        chars = [c for c in ln.get("chars", []) if c.get("text", "").strip()]
+        size = Counter(round(c["size"], 1) for c in chars).most_common(1)[0][0] if chars else None
+        out.append((ln["text"], size))
+    return out
 
 
 def _read_docx(path: Path) -> list[tuple[str, int | None]]:

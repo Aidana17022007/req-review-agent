@@ -402,8 +402,10 @@ def deterministic_set_checks(split: SplitResult, doc: Document) -> list[SetFindi
     # модальные утверждения без идентификаторов
     if split.method == "ids":
         for ln, text in split.unnumbered[:15]:
+            m = MODAL_RE.search(text) or MODAL_RE.search(ln.text)
+            word = m.group(0) if m else "должен"
             out.append(SetFinding("structure", "set_traceable", [SetRef("DOC", text[:120])],
-                                  f"Утверждение со словом «{MODAL_RE.search(text).group(0)}» (строка {ln.lineno}) похоже на требование, "
+                                  f"Утверждение со словом «{word}» (строка {ln.lineno}) похоже на требование, "
                                   "но не имеет идентификатора — оно выпадает из трассировки и проверки.",
                                   "minor", "Присвоить идентификатор и оформить как требование, либо переформулировать как пояснение.",
                                   "правило"))
@@ -679,7 +681,8 @@ def api_consistency(reqs: list[Requirement], doc: Document) -> list[SetFinding]:
         if t.startswith("```"):
             in_fence = not in_fence
             continue
-        if in_fence and code.startswith("2") and re.search(r'"result"\s*:\s*"(?:ERROR|FAIL\w*)"|"error"\s*:', t, re.I):
+        # пример тела — в блоке кода (Markdown) или отдельной строкой-JSON (DOCX, PDF: блоков кода там нет)
+        if (in_fence or t.startswith("{")) and code.startswith("2") and re.search(r'"result"\s*:\s*"(?:ERROR|FAIL\w*)"|"error"\s*:', t, re.I):
             bad = next((r for r in reqs if re.match(r"^400\.", r.text)), None)
             refs = [SetRef("DOC", t)] + ([SetRef(bad.rid, bad.text[:60])] if bad else [])
             out.append(SetFinding(

@@ -306,7 +306,7 @@ def acceptance_preconditions(reqs: list[Requirement], doc: Document) -> list[Set
         "за месяц 48 500 ₸, push в этом месяце не отправлялся».", "правило")]
 
 
-_DECLARED = re.compile(r"^\s*(?:\*\*|#+\s*)([1-5]\d{2})\b[.*\s]")
+_DECLARED = re.compile(r"^\s*(?:\*\*|#+\s*)?([1-5]\d{2})(?:\.\**\s|\b\**\s*$|\.\s*$)")  # «**200.**», «#### 200. …», «200. …» (PDF)
 _CODE_CTX = re.compile(r"(?:результат|код\w*|ответ\w*|статус\w*|status|response)[^.\n]{0,40}?\b([1-5]\d{2})\b(?:[^.\n]{0,20}?(?:или|,|и)\s*([1-5]\d{2})\b)?",
                        re.I)
 
@@ -357,15 +357,18 @@ _UNITS = [("тиын", "тенге"), ("копе", "рубл"), ("цент", "д
 def unit_mix(reqs: list[Requirement], doc: Document) -> list[SetFinding]:
     """Сравниваемые величины хранятся в разных единицах (сумма в тиынах, порог в тенге)."""
     by_line = {r.line_start: r for r in reqs}
-    for ln in doc.lines:
-        low = ln.text.lower()
+    # требования — со склеенными строками (в PDF фраза переносится), затем отдельные строки документа
+    items = [(r, r.text) for r in reqs] + [(ln, ln.text) for ln in doc.lines]
+    for src, text in items:
+        low = text.lower()
         for small, big in _UNITS:
             ms, mb = re.search(rf"\w*\s*в {small}\w*", low), re.search(rf"\w*\s*в {big}\w*", low)
             if ms and mb:
-                qs = ln.text[ms.start():ms.end()]
+                qs = text[ms.start():ms.end()]
+                ref = SetRef(src.rid, _ctx(src.text, qs)) if isinstance(src, Requirement) else _ref(by_line, src, qs)
                 return [SetFinding(
-                    "terminology", "set_consistent", [_ref(by_line, ln, qs)],
-                    f"Сравниваемые величины хранятся в разных единицах: «{qs.strip()}» и «{ln.text[mb.start():mb.end()].strip()}». "
+                    "terminology", "set_consistent", [ref],
+                    f"Сравниваемые величины хранятся в разных единицах: «{qs.strip()}» и «{text[mb.start():mb.end()].strip()}». "
                     f"Порог сравнивается с суммой расходов — без явного правила пересчёта ({small} × 100 = {big}) возможна "
                     "ошибка в 100 раз.", "major",
                     f"Хранить обе величины в одной единице (например, в {small}ах как целое) и записать правило пересчёта "

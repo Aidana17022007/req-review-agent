@@ -205,6 +205,8 @@ def write_docx(md: str, path: Path) -> None:
 
     for line in md.splitlines():
         s = line.strip()
+        if s.startswith("```"):  # границы блока кода — не текст документа
+            continue
         if s.startswith("|"):
             if not re.match(r"^\|?\s*:?-{3,}", s):
                 rows.append([c.strip() for c in s.strip("|").split("|")])

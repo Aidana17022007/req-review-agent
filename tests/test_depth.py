@@ -615,3 +615,48 @@ def test_ref_with_requirement_id_only_gets_verbatim_quote(tmp_path):
     n = llm_set_pass(s, doc, Fake(), dropped, found, log=lambda *a: None, system="x", task="focus_bounds", label="t", source="LLM")
     assert n == 1 and found[0].refs[0].req_id == r.rid and quote_in(found[0].refs[0].quote, r.text)
     assert len(dropped) == 1
+
+
+@pytest.mark.parametrize("fmt", ["docx", "pdf"])
+def test_organizers_document_in_docx_and_pdf(tmp_path, monkeypatch, fmt):
+    """Документ организаторов в DOCX и PDF (таблицы Word / таблицы PDF, заголовки по размеру шрифта, переносы строк)
+    без модели находит столько же ожидаемых дефектов, сколько Markdown; цитаты дословные, у PDF есть страницы."""
+    import sys
+
+    from req_review.cli import main
+
+    sys.path.insert(0, str(ROOT / "bench" / "real"))
+    sys.path.insert(0, str(ROOT / "bench"))
+    import formats
+    import real_eval
+
+    if fmt == "pdf":
+        pytest.importorskip("reportlab")
+        if not any(f.exists() for f in formats.FONTS):
+            pytest.skip("нет шрифта с кириллицей")
+    src = (formats.to_docx if fmt == "docx" else formats.to_pdf)(tmp_path / f"n.{fmt}")
+    monkeypatch.setenv("LLM_PROVIDER", "rules")
+    monkeypatch.setenv("RAG", "off")
+    out = tmp_path / "r.md"
+    assert main([str(src), str(out), "--env", str(tmp_path / "x.env"), "--quiet", "--no-xlsx", "--no-jira", "--no-html"]) == 0
+    rep = json.loads(out.with_suffix(".json").read_text(encoding="utf-8"))
+    res = real_eval.evaluate(rep)
+    assert res["found"] >= 25 and res["critical_found"] >= 6, [r["id"] for r in res["rows"] if not r["found"]]
+    doc = read_document(src)
+    by = {r["rid"]: r["text"] for r in rep["requirements"]}
+    assert all(quote_in(f["quote"], by[r["rid"]]) for r in rep["requirements"] for f in r["findings"])
+    assert all(quote_in(x["quote"], by.get(x.get("id") or x.get("req_id"), doc.text)) for f in rep["set_findings"] for x in f["refs"])
+    if fmt == "pdf":
+        assert doc.pages >= 2 and all(r["page"] for r in rep["requirements"])
+
+
+def test_no_key_gives_clear_error_and_rules_hint(tmp_path, monkeypatch, capsys):
+    """Без ключа — понятная ошибка (код 2) и готовая команда для режима без модели."""
+    from req_review.cli import main
+
+    for v in ("GEMINI_API_KEY", "LLM_PROVIDER", "ANTHROPIC_API_KEY", "CLAUDE_API_KEY", "OPENROUTER_API_KEY", "OPENAI_API_KEY"):
+        monkeypatch.delenv(v, raising=False)
+    rc = main([str(REAL), str(tmp_path / "r.md"), "--env", str(tmp_path / "нет.env"), "--quiet"])
+    err = capsys.readouterr()
+    text = err.err + err.out
+    assert rc == 2 and "GEMINI_API_KEY" in text and "LLM_PROVIDER=rules python review.py" in text
