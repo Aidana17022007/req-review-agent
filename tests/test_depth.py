@@ -954,3 +954,19 @@ def test_calibration_folds_llm_twin_of_rule_and_caps_unconfirmed_critical(tmp_pa
     assert twin not in rv.set_findings and rule.source == "правило+LLM" and st["folded"] == 1
     assert gap.severity == "major" and contra.severity == "critical"
     assert any(r.get("duplicate_of") == "S-01" for r in rv.rejected)
+
+
+def test_site_build_uses_project_design_and_readme_features(tmp_path):
+    """Сайт для Cloudflare: дизайн-система проекта (токены, base.css, логотип), функции из README, отчёт и слайды."""
+    import subprocess
+    import sys
+
+    out = tmp_path / "public"
+    r = subprocess.run([sys.executable, str(ROOT / "scripts" / "build_site.py"), "--out", str(out), "--studio", "https://studio.example"],
+                       capture_output=True, text=True, cwd=ROOT)
+    assert r.returncode == 0, r.stderr
+    home = (out / "index.html").read_text(encoding="utf-8")
+    assert "--brand" in home and "logo-mark" in home and "kpi-hero" in home and "https://studio.example" in home
+    assert home.count('class="card feat"') >= 10 and "Тест-проба" in home
+    assert (out / "report" / "index.html").exists() and (out / "slides" / "index.html").exists()
+    assert "<script>alert" not in (out / "report" / "index.html").read_text(encoding="utf-8")

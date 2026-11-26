@@ -20,7 +20,7 @@ Render пересобирает Studio, Cloudflare пересобирает са
 | Поле | Значение |
 |---|---|
 | Production branch | `main` |
-| Build command | `python3 -m pip install markdown && python3 scripts/build_site.py --out public` |
+| Build command | `python3 -m pip install -r requirements.txt markdown && python3 scripts/build_site.py --out public` |
 | Build output directory | `public` |
 | Environment variable | `STUDIO_URL` = адрес Studio с Render |
 
