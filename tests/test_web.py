@@ -136,3 +136,113 @@ def test_error_classification():
 def test_studio_rejects_bad_format():
     r = TestClient(app).post("/api/review", files={"file": ("x.exe", b"MZ", "application/octet-stream")})
     assert r.status_code == 400
+
+
+# ---------------------------------------------------------------- v6: поля схемы 2.2 в отчёте, ассистент с источниками, режим «Демо»
+
+FIX22 = Path(__file__).parent / "fixtures" / "report_v22.json"
+
+
+def test_report_renders_v22_fields_from_fixture():
+    from req_review.html_report import build_data, render_html
+    from req_review.ui.preview import build_ctx
+
+    ctx = build_ctx(fixture=FIX22)
+    d = build_data(ctx)
+    basis = [b for f in d["findings"].values() for b in f["basis"]]
+    assert basis and all(b["quote"] and b["source"] for b in basis)
+    assert any(b["kind"] == "law" and b["url"].startswith("https://adilet.zan.kz") for b in basis)
+    assert all(b["file"].startswith("kb/") for b in basis)  # происхождение: дословный фрагмент файла базы знаний
+    assert d["coverage"]["steps"] and any(not s["rids"] and s["question"] for s in d["coverage"]["steps"])
+    assert all(r["category"] for r in d["reqs"]) and any(r["rewrite_pattern"] for r in d["reqs"])
+    assert d["passport"]["context"]["mode"] and d["passport"]["rag"]["kb_chunks"] > 0
+    html = render_html(ctx)
+    assert any(r["rewrite_pattern"]["title"] and r["rewrite_pattern"]["text"] for r in d["reqs"] if r["rewrite_pattern"])
+    for marker in ("renderKB", "renderCoverage", "basisHTML", "patternHTML", 'id="btn-lang"', "reqlens-lang", "ensureLine", "CTX_RAG"):
+        assert marker in html, marker
+
+
+def test_report_without_v22_fields_hides_new_blocks():
+    from req_review.html_report import build_data
+    from req_review.ui.preview import build_ctx
+
+    # backend 2.2 заполняет категории и карту покрытия всегда (RAG или нет) — эмулируем отчёт без этих полей
+    ctx = build_ctx(fixture=None)
+    ctx.rv.coverage = []
+    for rr in ctx.rv.req_results:
+        rr.category, rr.rewrite_pattern = "", None
+        for f in rr.findings:
+            f.basis = []
+    for f in ctx.rv.set_findings:
+        f.basis = []
+    d = build_data(ctx)
+    assert d["coverage"] is None
+    assert all(f["basis"] == [] for f in d["findings"].values())
+    assert all(r["category"] == "" and r["rewrite_pattern"] is None for r in d["reqs"])
+
+
+def test_basis_backend_format_is_mapped():
+    from types import SimpleNamespace
+
+    from req_review.html_report import _basis
+
+    out = _basis(SimpleNamespace(basis=[{"source": "Нормы РК", "section": "Закон РК «О персональных данных»", "quote": "Пересказ нормы.",
+                                         "url": "https://adilet.zan.kz", "kind": "law_kz", "license": "собственный пересказ", "file": "kb/law_kz/x.md"}]))
+    assert out == [{"kind": "law", "source": "Нормы РК", "clause": "Закон РК «О персональных данных»", "quote": "Пересказ нормы.",
+                    "url": "https://adilet.zan.kz", "file": "kb/law_kz/x.md", "paraphrase": True}]
+
+
+def test_basis_without_quote_or_https_is_not_shown():
+    from types import SimpleNamespace
+
+    from req_review.html_report import _basis
+
+    f = SimpleNamespace(basis=[{"kind": "law", "source": "Закон", "clause": "ст. 1", "quote": "", "url": "https://x"},
+                               {"kind": "weird", "source": "Стандарт", "quote": "текст", "url": "http://insecure"}])
+    out = _basis(f)
+    assert len(out) == 1 and out[0]["kind"] == "standard" and out[0]["url"] == ""
+
+
+def test_assistant_cites_kb_and_document_lines():
+    a = Assistant(json.loads(FIX22.read_text(encoding="utf-8")))
+    r = a.answer("На какую норму опирается замечание к R-006?")
+    types = {s["type"] for s in r["sources"]}
+    assert {"req", "line", "kb"} <= types and "29148" in r["answer"]
+    law = a.answer("Какие требования нарушают закон о персональных данных?")
+    assert "R-013" in law["refs"] and any(s["type"] == "kb" and s["url"].startswith("https://") for s in law["sources"])
+    assert any("норму" in q for q in r["suggest"])
+
+
+def test_demo_mode_replays_saved_run(tmp_path, monkeypatch):
+    from req_review.cli import main as cli_main
+    from req_review.web import app as webapp
+    from req_review.web import demo
+
+    monkeypatch.setenv("LLM_PROVIDER", "mock")
+    monkeypatch.setattr(demo, "TARGET_S", 0.2)
+    monkeypatch.setattr(demo, "MIN_STEP", 0.01)
+    out = tmp_path / "report.md"
+    assert cli_main([str(FIX), str(out), "--env", str(tmp_path / "none.env"), "--quiet", "--no-xlsx", "--no-jira"]) == 0
+    c = TestClient(app)
+    try:
+        assert c.get("/api/demo").json() == {"available": False}
+        webapp.set_demo(tmp_path / "report.json")
+        info = c.get("/api/demo").json()
+        assert info["available"] and info["reqs"] == 17 and not info["has_after"]
+        job = c.post("/api/demo/start").json()["job"]
+        _wait(job)
+        ev = _events(c, job)
+        kinds = [e["kind"] for e in ev]
+        assert kinds[-1] == "done" and "split" in kinds and kinds.count("batch_start") >= 4
+        s = ev[-1]["summary"]
+        assert s["demo"] and len(s["rows"]) == 17
+        html = next(v for v in JOBS[job].artifacts.values() if v.endswith(".html"))
+        assert c.get(f"/jobs/{job}/{html}").status_code == 200
+        assert c.post(f"/api/jobs/{job}/ask", json={"q": "Что исправить первым?"}).status_code == 200
+        assert c.post(f"/api/jobs/{job}/compare", data={"use_fixed": "true"}).status_code == 400  # без --demo-after
+        webapp.set_demo(tmp_path / "report.json", after=tmp_path / "report.json")
+        new = c.post(f"/api/jobs/{job}/compare", data={"use_fixed": "true"}).json()["job"]
+        _wait(new)
+        assert "compare" in _events(c, new)[-1]["summary"]
+    finally:
+        webapp.set_demo(None)

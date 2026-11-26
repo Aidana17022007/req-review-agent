@@ -17,6 +17,72 @@ from .verify import locate as _locate  # общая логика позиций 
 ORDER = {"critical": 0, "major": 1, "minor": 2}
 
 
+# ---------------------------------------------------------------- поля схемы 2.2 (RAG): только чтение, всё необязательно
+
+BASIS_KINDS = {"standard", "law", "template"}
+# backend (docs/SCHEMA.md 2.2) пишет вид по папке kb/: standards / law_kz / patterns
+KIND_ALIASES = {"standards": "standard", "law_kz": "law", "patterns": "template", "pattern": "template"}
+
+
+def _basis(f) -> list[dict]:
+    """Основания замечания из kb/: {source, section, quote, url, kind, license, file} → вид для UI.
+
+    quote — дословный фрагмент файла kb/ (проверен backend-ом); paraphrase — если источник помечен как пересказ.
+    """
+    out = []
+    for b in getattr(f, "basis", None) or []:
+        b = b if isinstance(b, dict) else getattr(b, "__dict__", {})
+        quote = str(b.get("quote", "") or "").strip()
+        source = str(b.get("source", "") or "").strip()
+        if not (quote and source):
+            continue  # основание без цитаты или источника не показываем
+        kind = KIND_ALIASES.get(b.get("kind"), b.get("kind"))
+        url = str(b.get("url", "") or "").strip()
+        lic = str(b.get("license", "") or "")
+        out.append({"kind": kind if kind in BASIS_KINDS else "standard", "source": source,
+                    "clause": str(b.get("section") or b.get("clause") or "").strip(), "quote": quote,
+                    "url": url if url.startswith("https://") else "", "file": str(b.get("file", "") or ""),
+                    "paraphrase": bool(b.get("paraphrase")) or "пересказ" in lic.lower()})
+    return out
+
+
+def _pattern(p, rewrite: str = "") -> dict | None:
+    """Шаблон хорошего требования из kb/patterns ({id, title, template, file}) + формулировка агента по нему."""
+    if not p:
+        return None
+    p = p if isinstance(p, dict) else getattr(p, "__dict__", {})
+    template = str(p.get("template", "") or "").strip()
+    text = str(p.get("text", "") or rewrite or "").strip()
+    if not (template or text):
+        return None
+    return {"title": str(p.get("title", "") or ""), "ears": str(p.get("ears", "") or ""), "template": template, "text": text,
+            "file": str(p.get("file", "") or "")}
+
+
+def _category(key: str) -> str:
+    """Ключ категории backend (functional, security…) → подпись на русском."""
+    if not key:
+        return ""
+    try:
+        from .categories import CATEGORIES
+    except ImportError:  # pragma: no cover — старый backend без категорий
+        return key
+    label = CATEGORIES.get(key, key)
+    return label[:1].upper() + label[1:]
+
+
+def _coverage(c, process: str = "") -> dict | None:
+    """Карта покрытия процесса: backend отдаёт список шагов [{id, title, reqs, covered, question}]."""
+    if not c:
+        return None
+    if isinstance(c, dict):  # формат фикстуры UI: {process, steps: [{…, rids}]}
+        process, c = c.get("process", process), c.get("steps", [])
+    steps = [{"id": str(x.get("id", i)), "title": str(x.get("title", "")),
+              "rids": [str(r) for r in (x.get("reqs") if x.get("reqs") is not None else x.get("rids")) or []],
+              "question": str(x.get("question", "") or "")} for i, x in enumerate(c or []) if x.get("title")]
+    return {"process": process, "steps": steps} if steps else None
+
+
 def _verdict(ctx) -> dict:
     rv = ctx.rv
     crit = sum(1 for rr in rv.req_results for f in rr.findings if f.severity == "critical") + \
@@ -91,7 +157,7 @@ def build_data(ctx) -> dict:
                              "cname": criterion_name(f.criterion), "cref": criterion_ref(f.criterion), "quote": f.quote,
                              "problem": f.problem, "severity": f.severity, "fix": f.fix, "source": f.source,
                              "confidence": f.confidence, "critic": f.critic_note, "rewrite": rr.rewrite,
-                             "location": r.location}
+                             "location": r.location, "basis": _basis(f)}
             loc = _locate(f.quote, lines, r.line_start, r.line_end, r.text)
             if loc:
                 findings[fid]["line"] = loc[0]
@@ -102,7 +168,10 @@ def build_data(ctx) -> dict:
                      "llm_checked": rr.llm_checked, "note": rr.note, "worst": worst, "findings": fids,
                      "crit": sorted({f.criterion for f in rr.findings}),
                      "test": {"possible": rr.test_possible, "gherkin": rr.test_gherkin, "blocker": rr.test_blocker,
-                              "reason": rr.test_reason}})
+                              "reason": rr.test_reason},
+                     # 2.2 (RAG, человек 1): категория и шаблон EARS «плохо → хорошо»; нет данных — поля пустые
+                     "category": _category(str(getattr(rr, "category", "") or "")),
+                     "rewrite_pattern": _pattern(getattr(rr, "rewrite_pattern", None), rr.rewrite)})
     by_rid = {r.rid: r for r in rv.split.requirements}
     set_list = []
     for i, f in enumerate(rv.set_findings, 1):
@@ -118,7 +187,7 @@ def build_data(ctx) -> dict:
         findings[fid] = {"fid": fid, "kind": "set", "set_kind": f.kind, "criterion": f.criterion,
                          "cname": criterion_name(f.criterion), "cref": criterion_ref(f.criterion), "problem": f.problem,
                          "severity": f.severity, "fix": f.fix, "source": f.source, "confidence": f.confidence,
-                         "critic": f.critic_note, "refs": refs, "quote": " / ".join(x["quote"] for x in refs),
+                         "critic": f.critic_note, "refs": refs, "quote": " / ".join(x["quote"] for x in refs), "basis": _basis(f),
                          "values": [{**v, "label": (by_rid[v["rid"]].doc_id or v["rid"]) if v["rid"] in by_rid else v["rid"]}
                                     for v in getattr(f, "values", []) or []]}
         set_list.append(fid)
@@ -168,6 +237,8 @@ def build_data(ctx) -> dict:
         "changes": [{**asdict(c), "diff": word_diff(c.before, c.after)} for c in ctx.changes],
         "fixed_text": ctx.fixed_text,
         "graph": ctx.graph,
+        "coverage": _coverage(getattr(ctx, "coverage", None) or getattr(rv, "coverage", None),
+                              f"Типовой процесс: {rv.domain.name}" if getattr(rv, "domain", None) else "Типовой процесс"),
         "compare": ctx.compare,
         "rescore": ctx.rescore,
         "dropped": rv.dropped,

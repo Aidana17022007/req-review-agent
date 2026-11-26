@@ -58,6 +58,25 @@ class Job:
 
 
 JOBS: dict[str, Job] = {}
+DEMO = None  # DemoRun — режим «Демо» (python -m req_review.web --demo reports/report.json)
+
+
+def set_demo(json_path: str | Path | None, after: str | Path | None = None):
+    """Включить режим «Демо»: проигрывание сохранённого прогона без сети и без модели."""
+    global DEMO
+    from .demo import DemoRun
+
+    if not json_path:
+        DEMO = None
+        return None
+    p = Path(json_path)
+    if not p.exists():
+        raise FileNotFoundError(f"Нет файла отчёта для режима «Демо»: {p}")
+    a = Path(after) if after else None
+    if a and not a.exists():
+        raise FileNotFoundError(f"Нет файла отчёта исправленной версии: {a}")
+    DEMO = DemoRun(p, a)
+    return DEMO
 
 
 @asynccontextmanager
@@ -85,6 +104,25 @@ def index():
 def health():
     """Состояние модели для экрана загрузки: провайдер и признак «ключ задан» (без самого ключа)."""
     return provider_status()
+
+
+@app.get("/api/demo")
+def demo_info():
+    """Есть ли сохранённый прогон для режима «Демо» (кнопка на стартовом экране)."""
+    return DEMO.describe() if DEMO else {"available": False}
+
+
+@app.post("/api/demo/start")
+def demo_start():
+    if not DEMO:
+        raise HTTPException(404, "Режим «Демо» не включён: запустите python -m req_review.web --demo reports/report.json")
+    from .demo import replay
+
+    d = DEMO.describe()
+    job = Job(uuid.uuid4().hex[:12], d["document"] or "Сохранённый прогон")
+    JOBS[job.id] = job
+    replay(job, DEMO)
+    return {"job": job.id, "demo": d}
 
 
 @app.get("/api/sample", response_class=PlainTextResponse)
@@ -187,6 +225,16 @@ async def compare_version(job_id: str, file: UploadFile | None = File(None), use
     if not parent or not parent.done or parent.error or not parent.json_path.exists():
         raise HTTPException(404, "Исходный отчёт не найден")
     job = Job(uuid.uuid4().hex[:12], "", kind="compare", parent=job_id, profile=parent.profile, domain=parent.domain)
+    if parent.summary.get("demo"):
+        # в «Демо» сравнение тоже офлайн: проигрываем сохранённый отчёт исправленной версии (--demo-after)
+        if not (DEMO and DEMO.after):
+            raise HTTPException(400, "В режиме «Демо» «До / После» доступно, если Studio запущена с --demo-after <report.json исправленной версии>")
+        from .demo import replay
+
+        job.name = "Исправленная версия (сохранённый прогон)"
+        JOBS[job.id] = job
+        replay(job, DEMO, source=DEMO.after, compare_with=parent.json_path)
+        return {"job": job.id}
     if use_fixed:
         fixed = next((parent.dir / v for v in parent.artifacts.values() if v.endswith("_requirements_fixed.md")), None)
         if not fixed or not fixed.exists():
@@ -245,11 +293,20 @@ def artifact(job_id: str, name: str):
     return FileResponse(job.dir / name, filename=name if not name.endswith(".html") else None)
 
 
-def main():
+def main(argv: list[str] | None = None):
+    import argparse
+
     import uvicorn
     from dotenv import load_dotenv
 
+    ap = argparse.ArgumentParser(prog="python -m req_review.web", description="ReqLens Studio")
+    ap.add_argument("--demo", metavar="REPORT_JSON", help="режим «Демо»: проиграть сохранённый прогон без сети и модели")
+    ap.add_argument("--demo-after", metavar="REPORT_JSON", help="отчёт исправленной версии для «До / После» в режиме «Демо»")
+    args = ap.parse_args(argv)
     load_dotenv(ROOT / ".env")
+    if args.demo:
+        d = set_demo(args.demo, args.demo_after).describe()
+        print(f"Режим «Демо»: {d['document']} · {d['model']} · {d['started']} — модель не вызывается")
     host = os.getenv("STUDIO_HOST", "127.0.0.1")
     port = int(os.getenv("STUDIO_PORT", "8000"))
     print(f"ReqLens Studio: http://{'localhost' if host in ('127.0.0.1', '0.0.0.0') else host}:{port}")

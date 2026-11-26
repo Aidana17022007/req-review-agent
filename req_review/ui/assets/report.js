@@ -30,6 +30,12 @@
   const P = D.passport;
   const short = (s, n) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
   const num = (v, suffix = "") => `<span data-count="${v}">${v}</span>${suffix}`;
+  // ---- схема 2.2 (RAG): основания, категории, шаблоны, покрытие процесса — всё необязательно
+  const BASIS_FINDINGS = Object.values(D.findings).filter((f) => (f.basis || []).length);
+  const HAS_BASIS = BASIS_FINDINGS.length > 0;
+  const COV_OK = D.coverage ? D.coverage.steps.filter((s) => s.rids.length).length : 0;
+  const CATS = [...new Set(D.reqs.map((r) => r.category).filter(Boolean))];
+  const BIG_DOC = D.lines.length > 1200, BIG_TABLE = D.reqs.length > 300;
 
   // ------------------------------------------------------------ тема, печать, тосты
   function currentTheme() { return document.documentElement.dataset.theme || "light"; }
@@ -176,6 +182,8 @@
     { id: "set", label: "Проверка набора", icon: "layers", count: D.set.length || "" },
     { id: "tests", label: "Тесты", icon: "flask", count: D.scores.tests_total ? `${D.scores.tests_ok}/${D.scores.tests_total}` : "" },
     { id: "fixes", label: "Исправления", icon: "wand", count: D.changes.length || "" },
+    ...(HAS_BASIS ? [{ id: "kb", label: "База знаний", icon: "book", count: BASIS_FINDINGS.length }] : []),
+    ...(D.coverage ? [{ id: "coverage", label: "Покрытие процесса", icon: "layers", count: `${COV_OK}/${D.coverage.steps.length}` }] : []),
     { id: "trace", label: "Трассировка", icon: "trace" },
     { id: "export", label: "Экспорт", icon: "download" },
   ];
@@ -238,6 +246,23 @@
         <a class="btn btn-sm btn-primary" style="margin-top:8px" href="http://localhost:8000/" target="_blank" rel="noopener">${ic("arrow-up-right", 14)}Открыть Studio</a></div>`;
     openDrawer($("#btn-ai"));
   };
+  const BKIND = { standard: ["Стандарт", "book"], law: ["Закон РК", "shield"], template: ["Шаблон", "file"] };
+  function basisHTML(f, compact) {
+    const bs = f.basis || []; if (!bs.length) return "";
+    return `<div class="basis"><div class="caption">${ic("book", 13)} Основание</div>${bs.map((b) => `<div class="basis-item">
+        <span class="chip basis-${b.kind}">${ic(BKIND[b.kind][1], 13)}${BKIND[b.kind][0]}</span>
+        <div class="grow"><div class="small"><b>${esc(b.source)}</b>${b.clause ? ` · ${b.kind === "template" ? "" : "п. "}${esc(b.clause)}` : ""}</div>
+          <div class="small muted" style="margin-top:2px">«${esc(compact ? short(b.quote, 170) : b.quote)}»${b.paraphrase ? ` <span class="faint">— пересказ своими словами</span>` : ""}</div>
+          <div class="small faint">${b.file ? `${ic("file", 12)} ${esc(b.file)}` : ""}${b.url ? `${b.file ? " · " : ""}<a href="${esc(b.url)}" target="_blank" rel="noopener noreferrer">${ic("arrow-up-right", 12)} официальный текст</a>` : ""}</div></div></div>`).join("")}</div>`;
+  }
+  // компактная строка основания для таблицы: источник и пункт, полный текст — в карточке
+  const basisLine = (f) => ((f.basis || []).length ? `<div class="small faint" style="margin-top:4px">${ic("book", 12)} Основание: ${f.basis.map((b) => esc(b.source + (b.clause ? " · " + b.clause : ""))).join("; ")}</div>` : "");
+  // контекст модели: весь документ в каждом запросе или RAG — только релевантные фрагменты (длинные документы)
+  const CTX = P.context || (P.context_mode ? { mode: P.context_mode === "rag" ? "RAG-выборка" : "полный текст", avg_prompt_tokens: P.tokens_per_call } : null);
+  const CTX_RAG = !!(CTX && /rag/i.test(CTX.mode || ""));
+  const RAG = P.rag && P.rag.enabled !== false && P.rag.kb_chunks ? P.rag : null;
+  const ctxChip = () => (CTX ? `<span class="chip ${CTX_RAG ? "chip-brand" : "chip-outline"}" title="${CTX_RAG ? "в запрос попадают только релевантные фрагменты длинного документа" : "весь документ передаётся в каждом запросе"}">${ic("layers", 13)}контекст: ${CTX_RAG ? "RAG-выборка" : "полный текст"}</span>`
+    + (RAG ? `<span class="chip chip-outline" title="База знаний kb/: ${esc(RAG.search || "")}">${ic("book", 13)}база знаний: ${RAG.kb_chunks} фрагм.</span>` : "") : "");
   function worstReq() { return D.reqs.slice().sort((a, b) => ORDER[a.worst] - ORDER[b.worst] || a.score - b.score)[0]; }
 
   // ------------------------------------------------------------ Обзор
@@ -333,6 +358,8 @@
                 <div class="metric"><div class="kpi-num" style="color:var(--text)">${num(s.doc)}<span class="h3 faint">/100</span></div><div class="small muted">балл качества</div></div>
                 <div class="metric"><div class="kpi-num" style="color:var(--text)">${esc(P.duration_s)}<span class="h3 faint"> с</span></div><div class="small muted">время прогона</div></div>
               </div>
+              <div class="row wrap" style="gap:8px">${ctxChip()}${CTX && CTX.avg_prompt_tokens ? `<span class="chip chip-outline">${ic("cpu", 13)}~${Number(CTX.avg_prompt_tokens).toLocaleString("ru-RU")} токенов на запрос</span>` : ""}
+              </div>
               <p class="small muted">Статическое ревью по ISO/IEC/IEEE 29148 §5.2.5–5.2.6 и IEEE 830 §4.3: нарезка, проверка каждого требования, тест-проба, проверка набора${P.critic ? ", критик-агент" : ""}.</p>
             </div>
             <div class="foot"><span class="live"><i></i>${esc(P.profile.toUpperCase())}</span><span class="small muted grow">${esc(P.model)} · ${esc(P.agent_version)}</span>
@@ -360,7 +387,7 @@
       </div>
       <div class="section-title"><h2 class="h1">Требования</h2><div class="row"><span class="small muted hide-sm">${D.reqs.length} шт.</span>
         <button class="btn btn-sm btn-outline" data-go-view="reqs">Все фильтры ${ic("arrow-right", 14)}</button></div></div>
-      ${reqTable(D.reqs, "ov")}
+      ${D.reqs.length > 50 ? `<p class="small muted" style="margin-bottom:8px">Показаны 20 требований с наименьшим баллом из ${D.reqs.length} — полный список в разделе «Требования».</p>${reqTable(D.reqs.slice().sort((a, b) => a.score - b.score).slice(0, 20), "ov")}` : reqTable(D.reqs, "ov")}
       <div style="margin-top:16px">${verdictHTML(true)}</div>`;
     wireTable(el);
   }
@@ -388,7 +415,7 @@
       ${r.findings.length ? `<div>${r.findings.map((id) => { const f = D.findings[id]; return `<div class="finding" data-open="${id}" tabindex="0">
         ${chip(f.severity)}<div><div class="f-title">${esc(f.cname)} <span class="faint small">· ${esc(f.cref)}</span></div>
         <div class="small muted" style="margin-top:2px">«${esc(f.quote)}» — ${esc(f.problem)}</div>
-        <div class="small" style="margin-top:4px"><b>Как исправить:</b> ${esc(f.fix)}</div></div></div>`; }).join("")}</div>` : `<div class="small" style="color:var(--ok)">${ic("check", 14)} Нарушений не найдено.</div>`}
+        <div class="small" style="margin-top:4px"><b>Как исправить:</b> ${esc(f.fix)}</div>${basisLine(f)}</div></div>`; }).join("")}</div>` : `<div class="small" style="color:var(--ok)">${ic("check", 14)} Нарушений не найдено.</div>`}
       ${r.rewrite && r.findings.length ? `<div class="row" style="padding:12px 16px;border-radius:14px;background:var(--ok-soft)">
         <div class="grow small"><b style="color:var(--ok)">Предлагаемая правка:</b> ${esc(r.rewrite)}</div>
         <button class="btn btn-sm btn-outline" data-copy="${esc(r.rewrite)}" data-msg="Формулировка скопирована">${ic("copy", 14)}Копировать</button></div>` : ""}
@@ -401,15 +428,33 @@
     return `${critLegend()}<div class="table-wrap"><table class="tbl" data-tbl="${key}"><thead><tr>
       <th scope="col">ID в отчёте</th><th scope="col">ID в документе</th><th scope="col">Краткая формулировка</th>
       <th scope="col" title="${esc(D.criteria.map((c, i) => `${i + 1}. ${c.name}`).join("\n"))}">Критерии ⓘ</th><th scope="col">Балл</th><th scope="col">Статус</th><th scope="col"><span class="sr-only">Действия</span></th></tr></thead>
-      <tbody>${rows.map((r) => `<tr class="rrow" data-rid="${r.rid}" id="row-${key}-${r.rid}">
+      <tbody>${tableRows(rows.slice(0, BIG_TABLE ? TCHUNK : rows.length), key)}${BIG_TABLE && rows.length > TCHUNK ? moreRow(key, rows) : ""}</tbody></table></div>`;
+  }
+  const TCHUNK = 120, TBL = {};
+  function moreRow(key, rows) {
+    TBL[key] = { rows, n: TCHUNK };
+    return `<tr class="more-rows" data-more="${key}"><td colspan="7"><button class="btn btn-sm btn-outline" type="button" data-more-btn="${key}">Показать ещё (${rows.length - TCHUNK})</button> <span class="small faint">большой документ: строки дорисовываются при прокрутке</span></td></tr>`;
+  }
+  function moreRows(key, upto) {
+    const t = TBL[key], tr = t && $(`tr.more-rows[data-more="${key}"]`); if (!tr) return;
+    const n2 = Math.min(t.rows.length, Math.max(upto || 0, t.n + TCHUNK));
+    tr.insertAdjacentHTML("beforebegin", tableRows(t.rows.slice(t.n, n2), key)); t.n = n2;
+    if (t.n >= t.rows.length) tr.remove(); else $("button", tr).textContent = `Показать ещё (${t.rows.length - t.n})`;
+  }
+  // автодогрузка, когда строка «Показать ещё» приближается к экрану
+  const moreIO = window.IntersectionObserver ? new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) moreRows(e.target.dataset.more); }), { rootMargin: "600px 0px" }) : null;
+  function armMore(el) { if (moreIO) $$("tr.more-rows", el).forEach((x) => moreIO.observe(x)); }
+  document.addEventListener("click", (e) => { const b = e.target.closest("[data-more-btn]"); if (b) moreRows(b.dataset.moreBtn); });
+  function tableRows(rows, key) {
+    return `${rows.map((r) => `<tr class="rrow" data-rid="${r.rid}" id="row-${key}-${r.rid}">
         <td><b>${esc(r.rid)}</b></td><td>${r.doc_id ? `<span class="chip chip-brand">${esc(r.doc_id)}</span>` : `<span class="small faint">присвоен агентом</span>`}</td>
-        <td style="min-width:260px;max-width:460px">${esc(short(r.text, 120))}</td>
+        <td style="min-width:260px;max-width:460px">${esc(short(r.text, 120))}${r.category ? `<div style="margin-top:6px"><span class="chip chip-outline cat-chip">${ic("layers", 12)}${esc(r.category)}</span></div>` : ""}</td>
         <td>${critDots(r)}</td>
         <td>${ring(r.score)}</td>
         <td>${statusChip(r.worst)}</td>
         <td><div class="row" style="gap:6px;justify-content:flex-end"><button class="btn btn-sm btn-ghost btn-icon" data-go-doc="${r.rid}" aria-label="Показать ${esc(r.rid)} в документе" title="Показать в документе">${ic("file", 15)}</button>
           <button class="btn btn-sm btn-outline" data-exp="${r.rid}" aria-expanded="false" aria-controls="exp-${key}-${r.rid}">Подробнее ${ic("chevron", 14)}</button></div></td></tr>
-        <tr class="exp" id="exp-${key}-${r.rid}" hidden><td colspan="7">${expandHTML(r)}</td></tr>`).join("")}</tbody></table></div>`;
+        <tr class="exp" id="exp-${key}-${r.rid}" hidden><td colspan="7">${expandHTML(r)}</td></tr>`).join("")}`;
   }
   function wireTable(el) {
     el.addEventListener("click", (e) => {
@@ -428,7 +473,7 @@
   }
 
   // ------------------------------------------------------------ Требования: фильтры + таблица
-  const qstate = { q: "", sev: "all", crit: "", section: "", sort: "order" };
+  const qstate = { q: "", sev: "all", crit: "", section: "", cat: "", sort: "order" };
   let reqUpdate = () => {};
   function renderReqs(el) {
     const sections = [...new Set(D.reqs.map((r) => r.section).filter(Boolean))];
@@ -438,6 +483,7 @@
         <div class="seg" role="group" aria-label="Серьёзность">${["all", "critical", "major", "minor", "ok"].map((k) => `<button data-sev="${k}" aria-pressed="${k === "all"}">${k === "all" ? "Все" : SEV[k].label}</button>`).join("")}</div>
         <select class="input" id="fcrit" style="width:auto" aria-label="Критерий"><option value="">Все критерии</option>${D.criteria.map((c) => `<option value="${c.key}">${esc(c.name)}</option>`).join("")}</select>
         ${sections.length > 1 ? `<select class="input" id="fsec" style="width:auto;max-width:240px" aria-label="Раздел"><option value="">Все разделы</option>${sections.map((s) => `<option>${esc(s)}</option>`).join("")}</select>` : ""}
+        ${CATS.length ? `<select class="input" id="fcat" style="width:auto;max-width:220px" aria-label="Категория"><option value="">Все категории</option>${CATS.map((c) => `<option>${esc(c)}</option>`).join("")}</select>` : ""}
         <div class="seg" role="group" aria-label="Сортировка"><button data-sort="order" aria-pressed="true">По порядку</button><button data-sort="score" aria-pressed="false">Сначала худшие</button></div>
         <span class="small faint" id="req-count" aria-live="polite"></span></div>
       <div id="req-body"></div>`;
@@ -446,6 +492,7 @@
         if (qstate.sev !== "all" && r.worst !== qstate.sev) return false;
         if (qstate.crit && !r.crit.includes(qstate.crit)) return false;
         if (qstate.section && r.section !== qstate.section) return false;
+        if (qstate.cat && r.category !== qstate.cat) return false;
         if (qstate.q) {
           const hay = (r.rid + " " + (r.doc_id || "") + " " + r.text + " " + r.findings.map((id) => D.findings[id].quote + " " + D.findings[id].problem).join(" ")).toLowerCase();
           if (!hay.includes(qstate.q.toLowerCase())) return false;
@@ -454,26 +501,28 @@
       });
       if (qstate.sort === "score") rs = rs.slice().sort((a, b) => a.score - b.score);
       $("#req-count").textContent = `Показано ${rs.length} из ${D.reqs.length}`;
-      $("#req-body").innerHTML = reqTable(rs, "rq");
+      $("#req-body").innerHTML = reqTable(rs, "rq"); armMore($("#req-body"));
     };
     $$("[data-sev]", el).forEach((b) => b.onclick = () => { qstate.sev = b.dataset.sev; $$("[data-sev]", el).forEach((x) => x.setAttribute("aria-pressed", x === b)); upd(); });
     $$("[data-sort]", el).forEach((b) => b.onclick = () => { qstate.sort = b.dataset.sort; $$("[data-sort]", el).forEach((x) => x.setAttribute("aria-pressed", x === b)); upd(); });
     $("#fcrit", el).onchange = (e) => { qstate.crit = e.target.value; upd(); };
     if ($("#fsec", el)) $("#fsec", el).onchange = (e) => { qstate.section = e.target.value; upd(); };
+    if ($("#fcat", el)) $("#fcat", el).onchange = (e) => { qstate.cat = e.target.value; upd(); };
     wireTable($("#req-body", el));
     reqUpdate = upd;
     upd();
   }
   function resetReqFilters() {
-    Object.assign(qstate, { q: "", sev: "all", crit: "", section: "" }); $("#gsearch").value = "";
+    Object.assign(qstate, { q: "", sev: "all", crit: "", section: "", cat: "" }); $("#gsearch").value = "";
     $$("#view-reqs [data-sev]").forEach((x) => x.setAttribute("aria-pressed", x.dataset.sev === "all"));
-    if ($("#fcrit")) $("#fcrit").value = ""; if ($("#fsec")) $("#fsec").value = "";
+    if ($("#fcrit")) $("#fcrit").value = ""; if ($("#fsec")) $("#fsec").value = ""; if ($("#fcat")) $("#fcat").value = "";
     reqUpdate();
   }
   function goReq(rid) {
     if (!reqById[rid]) return;
     show("reqs");
     if (!$(`#row-rq-${CSS.escape(rid)}`)) resetReqFilters();
+    if (!$(`#row-rq-${CSS.escape(rid)}`) && TBL.rq) moreRows("rq", TBL.rq.rows.findIndex((x) => x.rid === rid) + 1);
     const tr = expandRow(rid, "rq");
     if (tr) {
       tr.scrollIntoView({ behavior: REDUCED ? "auto" : "smooth", block: "center" });
@@ -504,6 +553,23 @@
     return out + md_(t.slice(pos));
   }
   const docFilter = { critical: true, major: true, minor: true, set: true };
+  function lineRow(l) {
+    const r = lineReq[l.n], starts = reqAt[l.n] || [];
+    return `<div class="ln ${l.h ? "h" : ""} ${r && !l.h ? "in-req w-" + r.worst : ""}" id="L${l.n}" ${r ? `data-rid="${r.rid}"` : ""}><span class="n">${l.n}</span><span class="t">${lineHTML(l)}</span><span class="rq">${starts.map((x) => `<button class="ln-req" data-go-req="${x.rid}" title="${esc(label(x))}: открыть в таблице">${x.worst !== "ok" ? ic(SEV[x.worst].icon, 11) : ic("check", 11)}${esc(x.doc_id || x.rid)}</button>`).join("")}</span></div>`;
+  }
+  // виртуализация: заглушки высотой с чанк, содержимое появляется при приближении к экрану
+  const CH = 200, lineIdx = {}; D.lines.forEach((l, i) => (lineIdx[l.n] = i));
+  const filled = {};
+  function docChunks() {
+    let out = ""; for (let c = 0; c * CH < D.lines.length; c++) out += `<div class="doc-chunk" data-c="${c}" style="min-height:${Math.min(CH, D.lines.length - c * CH) * 26}px"></div>`; return out;
+  }
+  function fillChunk(c) {
+    if (filled[c]) return; const box = $(`.doc-chunk[data-c="${c}"]`); if (!box) return;
+    filled[c] = true; box.innerHTML = D.lines.slice(c * CH, (c + 1) * CH).map(lineRow).join(""); box.style.minHeight = "";
+    $$("mark.hl", box).forEach((m) => { const off = !docFilter[m.dataset.sev] || (m.classList.contains("set") && !docFilter.set); m.classList.toggle("off", off); m.tabIndex = off ? -1 : 0; });
+  }
+  function ensureLine(n) { if (BIG_DOC && lineIdx[n] != null) fillChunk(Math.floor(lineIdx[n] / CH)); }
+  const MARKS = Object.entries(D.marks).flatMap(([n, ms]) => ms.map((m) => ({ n: +n, s: m[0], fid: m[2], sev: m[3], set: m[4] === "set" }))).sort((a, b) => a.n - b.n || a.s - b.s);
   function renderDoc(el) {
     const setMarks = Object.values(D.marks).reduce((a, ms) => a + ms.filter((m) => m[4] === "set").length, 0);
     const cnt = (k) => Object.values(D.marks).reduce((a, ms) => a + ms.filter((m) => m[3] === k && m[4] === "req").length, 0);
@@ -514,10 +580,7 @@
       <div class="toolbar no-print" role="group" aria-label="Показывать замечания">${["critical", "major", "minor"].filter((k) => cnt(k)).map((k) => `<button class="pill" aria-pressed="true" data-docf="${k}"><span class="u-sample u-${k}" aria-hidden="true">abc</span>${SEV[k].label} · ${cnt(k)}</button>`).join("")}
         ${setMarks ? `<button class="pill" aria-pressed="true" data-docf="set"><span class="u-sample u-set" aria-hidden="true">abc</span>Набор · ${setMarks}</button>` : ""}
         <span class="grow"></span><span class="small faint hide-sm">Наведите или нажмите на подчёркнутое · <span class="kbd">J</span> <span class="kbd">K</span> — следующий / предыдущий</span></div>
-      ${D.lines.length ? `<div class="docview"><div class="doc" id="doc">${D.lines.map((l) => {
-        const r = lineReq[l.n], starts = reqAt[l.n] || [];
-        return `<div class="ln ${l.h ? "h" : ""} ${r && !l.h ? "in-req w-" + r.worst : ""}" id="L${l.n}" ${r ? `data-rid="${r.rid}"` : ""}><span class="n">${l.n}</span><span class="t">${lineHTML(l)}</span><span class="rq">${starts.map((x) => `<button class="ln-req" data-go-req="${x.rid}" title="${esc(label(x))}: открыть в таблице">${x.worst !== "ok" ? ic(SEV[x.worst].icon, 11) : ic("check", 11)}${esc(x.doc_id || x.rid)}</button>`).join("")}</span></div>`;
-      }).join("")}</div>
+      ${D.lines.length ? `<div class="docview"><div class="doc" id="doc">${BIG_DOC ? docChunks() : D.lines.map(lineRow).join("")}</div>
       <div class="minimap no-print" id="minimap" aria-hidden="true"><span class="mm-view" id="mm-view"></span></div></div>` : empty("Текст документа недоступен", "Документ не содержит текстовых строк.")}
       <div class="legend small muted"><span><span class="u-sample u-critical">волна</span> критичный</span><span><span class="u-sample u-major">волна</span> существенный</span><span><span class="u-sample u-minor">точки</span> незначительный</span><span><span class="u-sample u-set">штрих</span> замечание к набору</span><span>· полоса слева — требование и его худший статус, значок справа — переход к таблице</span></div>`;
     if (!D.lines.length) return;
@@ -536,6 +599,10 @@
       $$("#minimap i", el).forEach((m) => { const sev = m.classList[0]; m.style.display = docFilter[sev] && (!m.classList.contains("set") || docFilter.set) ? "" : "none"; });
     });
     $("#mk-next", el).onclick = () => stepMark(1); $("#mk-prev", el).onclick = () => stepMark(-1);
+    if (BIG_DOC) {
+      const io = window.IntersectionObserver ? new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) fillChunk(+e.target.dataset.c); }), { rootMargin: "1500px 0px" }) : null;
+      $$(".doc-chunk", el).forEach((x) => (io ? io.observe(x) : fillChunk(+x.dataset.c)));
+    }
     wirePop($("#doc", el));
     // подсветка требования при наведении на строку
     $("#doc", el).addEventListener("mouseover", (e) => { const ln = e.target.closest(".ln[data-rid]"); hoverReq(ln ? ln.dataset.rid : null); });
@@ -560,14 +627,14 @@
     for (let n = a; n <= b; n++) { const l = $("#L" + n); if (l) { l.classList.remove("flash"); void l.offsetWidth; l.classList.add("flash"); } }
   }
   function goLine(n) {
-    show("doc");
+    show("doc"); ensureLine(n);
     const l = $("#L" + n); if (!l) return;
     l.scrollIntoView({ behavior: REDUCED ? "auto" : "smooth", block: "center" });
     flashLines(n, n);
   }
   function goDocReq(rid) {
     const r = reqById[rid]; if (!r) return;
-    show("doc");
+    show("doc"); ensureLine(r.line); ensureLine(r.line_end || r.line);
     const l = $("#L" + r.line); if (!l) return;
     l.scrollIntoView({ behavior: REDUCED ? "auto" : "smooth", block: "center" });
     flashLines(r.line, r.line_end || r.line);
@@ -576,10 +643,12 @@
   let markIdx = -1;
   function stepMark(dir) {
     show("doc");
-    const ms = $$("#doc mark.hl:not(.off)"); if (!ms.length) return;
-    const cur = ms.indexOf($("#doc mark.hl.active"));
+    // порядок дефектов берём из данных, а не из DOM: в большом документе не все строки отрисованы
+    const ms = MARKS.filter((x) => docFilter[x.sev] && (!x.set || docFilter.set)); if (!ms.length) return;
+    const act = $("#doc mark.hl.active"), cur = act ? ms.findIndex((x) => x.fid === act.dataset.f && x.n === +act.closest(".ln").id.slice(1)) : -1;
     markIdx = ((cur >= 0 ? cur : markIdx) + dir + ms.length) % ms.length;
-    const m = ms[markIdx];
+    ensureLine(ms[markIdx].n);
+    const m = $(`#L${ms[markIdx].n} mark.hl[data-f="${CSS.escape(ms[markIdx].fid)}"]`); if (!m) return;
     m.scrollIntoView({ behavior: REDUCED ? "auto" : "smooth", block: "center" });
     m.focus({ preventScroll: true });
     showPop(m, true);
@@ -599,6 +668,7 @@
       <p class="small">${esc(f.problem)}</p>
       <div class="small"><b>Как исправить:</b> ${esc(f.fix)}</div>
       ${f.rewrite ? `<div class="pop-rw"><div class="caption" style="color:var(--ok)">Предложенная правка</div><p class="small" style="margin-top:4px">${esc(f.rewrite)}</p></div>` : ""}
+      ${basisHTML(f, true)}
       <div class="row wrap" style="gap:6px">
         ${f.rewrite ? `<button class="btn btn-sm btn-primary" data-copy="${esc(f.rewrite)}" data-msg="Формулировка скопирована">${ic("copy", 14)}Копировать правку</button>` : ""}
         <button class="btn btn-sm btn-outline" data-open="${fid}">Подробнее</button>
@@ -677,6 +747,7 @@
       <div><div class="caption" style="margin-bottom:6px">Нарушенный критерий</div><p><b>${esc(f.cname)}</b> — ${esc(f.cref)}</p></div>
       <div><div class="caption" style="margin-bottom:6px">Объяснение</div><p>${esc(f.problem)}</p></div>
       <div><div class="caption" style="margin-bottom:6px">Как исправить</div><p>${esc(f.fix)}</p></div>
+      ${basisHTML(f, false)}
       ${f.rewrite ? `<div class="card" style="padding:16px;background:var(--ok-soft);border-color:transparent"><div class="row between"><div class="caption" style="color:var(--ok)">Предложенная правка</div>
         <button class="btn btn-sm btn-outline" data-copy="${esc(f.rewrite)}" data-msg="Формулировка скопирована">${ic("copy", 14)}Копировать</button></div><p style="margin-top:8px">${esc(f.rewrite)}</p></div>` : ""}
       ${f.critic ? `<div class="small muted">${ic("shield", 14)} Критик: ${esc(f.critic)}</div>` : ""}
@@ -721,7 +792,7 @@
         ${f.values.map((v) => `<span class="chip sev-critical" title="${esc(v.quote)}"><b>${esc(v.label)}</b>&nbsp;${esc(v.value)}</span>`).join('<span class="small muted">vs</span>')}</div>` : ""}
       <p style="margin:10px 0">${esc(f.problem)}</p>
       ${f.refs.map((x) => `<div class="quote small" style="margin-top:6px">${x.rid !== "DOC" && reqById[x.rid] ? `<a href="#" data-go-req="${x.rid}"><b>${esc(x.label)}</b></a>` : "<b>документ</b>"}: «${esc(x.quote)}»${x.line ? ` · <a href="#L${x.line}" data-go-line="${x.line}">строка ${x.line}</a>` : ""}</div>`).join("")}
-      <p class="small muted" style="margin-top:10px"><b>Как исправить:</b> ${esc(f.fix)}</p></article>`; }).join("");
+      <p class="small muted" style="margin-top:10px"><b>Как исправить:</b> ${esc(f.fix)}</p>${basisLine(f)}</article>`; }).join("");
     const d = D.domain, g = D.glossary;
     const st = { covered: ["ok", "покрыта"], partial: ["major", "частично"], missing: ["critical", "не покрыта"] };
     el.innerHTML = `<div class="section-title" style="margin-top:0"><h2 class="h1">Проверка набора целиком</h2><div class="row wrap"><span class="chip chip-brand">балл набора ${D.scores.set}/100</span>
@@ -811,6 +882,14 @@
       <div class="table-wrap" style="margin-top:12px"><table class="tbl"><thead><tr><th>Требование</th><th>Статус</th><th>Балл до</th><th>Балл после</th></tr></thead><tbody>
       ${c.rows.filter((r) => r.status !== "same").map((r) => `<tr><td>${reqById[r.rid] ? `<a href="#${r.rid}" data-go-req="${r.rid}">${esc(r.rid)}${r.doc_id ? " · " + esc(r.doc_id) : ""}</a>` : esc(r.rid)}</td><td>${chip(lbl[r.status][0], lbl[r.status][1])}</td><td>${r.before == null ? "—" : r.before}</td><td>${r.after}</td></tr>`).join("") || `<tr><td colspan="4" class="muted">Изменений нет</td></tr>`}</tbody></table></div></div>`;
   }
+  function patternHTML(r) {
+    const p = r && r.rewrite_pattern; if (!p) return "";
+    const tpl = String(p.template || "").replace(/^Шаблон:\s*/i, "");
+    return `<div class="pattern"><div class="grow"><div class="small"><b>${ic("spark", 13)} По шаблону${p.title ? ` «${esc(p.title)}»` : p.ears ? ` EARS (${esc(EARS[p.ears] || p.ears)})` : ""}:</b>${p.file ? ` <span class="faint">${esc(p.file)}</span>` : ""}</div>
+        ${tpl ? `<div class="small muted" style="margin-top:4px"><code class="mono">${esc(tpl)}</code></div>` : ""}
+        <p class="small" style="margin-top:6px">${esc(p.text)}</p></div>
+      <button class="btn btn-sm btn-primary" data-copy="${esc(p.text)}" data-msg="Формулировка по шаблону скопирована">${ic("wand", 14)}Применить шаблон</button></div>`;
+  }
   function renderFixes(el) {
     const groups = {}; D.questions.forEach((q) => (groups[q.section || "Без раздела"] = groups[q.section || "Без раздела"] || []).push(q));
     const allFix = D.changes.map((c) => `${c.rid}${c.doc_id ? " (" + c.doc_id + ")" : ""}: ${c.after}`).join("\n\n");
@@ -831,7 +910,7 @@
           <span class="grow"></span>${r ? `<button class="btn btn-sm btn-ghost" data-go-doc="${c.rid}">${ic("file", 14)}<span class="hide-sm">В документе</span></button>` : ""}
           <button class="btn btn-sm btn-outline" data-copy="${esc(c.after)}" data-msg="Исправленная формулировка скопирована">${ic("copy", 14)}Скопировать</button></div>
         <div class="diff" style="margin-top:12px"><div class="side side-before"><div class="caption" style="margin-bottom:6px">${ic("x", 12)} Было${r ? ` · ${esc(r.location)}` : ""}</div>${b}</div>
-          <div class="side side-after"><div class="caption" style="margin-bottom:6px;color:var(--ok)">${ic("check", 12)} Стало</div>${a}</div></div></article>`; }).join("")}</div>`
+          <div class="side side-after"><div class="caption" style="margin-bottom:6px;color:var(--ok)">${ic("check", 12)} Стало</div>${a}</div></div>${patternHTML(r)}</article>`; }).join("")}</div>`
         : empty("Исправлений нет", D.reqs.some((r) => r.findings.length) ? "Модель не предложила новых формулировок." : "Замечаний не найдено — исправлять нечего.")}
       <div class="section-title" id="questions"><h3 class="h2">Вопросы аналитику <span class="faint">(${D.questions.length})</span></h3>
         ${D.questions.length ? `<div class="row wrap no-print"><button class="btn btn-sm btn-outline" data-copy="${esc(allQ)}" data-msg="Вопросы скопированы">${ic("copy", 14)}Скопировать все</button>
@@ -863,7 +942,11 @@
       ["fixed", "Исправленный документ", `${D.changes.length} исправленных формулировок`, "wand"], ["feature", "tests.feature", `${D.scores.tests_ok} сценариев Gherkin`, "flask"],
       ["questions", "Вопросы аналитику", `${D.questions.length} вопросов, Markdown`, "chat"]];
     const rows = [["Документ", P.document], ["Файл", `${P.file} (${P.format}${P.pages ? ", " + P.pages + " стр." : ""})`], ["SHA-256", P.sha256], ["Дата и время", P.started], ["Модель", P.model],
-      ["Версия агента", P.agent_version], ["Профиль / режим", `${P.profile} · ${P.mode}`], ["Обращений к модели", `${P.calls} (повторов: ${P.retries})`], ["Токены (вход / выход)", P.tokens_in ? `${P.tokens_in} / ${P.tokens_out}` : "—"],
+      ["Версия агента", P.agent_version], ["Профиль / режим", `${P.profile} · ${P.mode}`], ["Обращений к модели", `${P.calls} (повторов: ${P.retries})`],
+      ...(CTX ? [["Контекст модели", CTX_RAG ? "RAG-выборка — в запрос попадают релевантные фрагменты документа" : "полный текст документа в каждом запросе"]] : []),
+      ...(CTX && CTX.avg_prompt_tokens ? [["Токенов на запрос (в среднем)", "~" + Number(CTX.avg_prompt_tokens).toLocaleString("ru-RU")]] : []),
+      ...(RAG ? [["База знаний (RAG)", `${RAG.kb_chunks} фрагментов kb/ · поиск: ${RAG.search || "—"} · эмбеддинги: ${RAG.embedder || "—"}`],
+        ["Основания в отчёте", `${RAG.basis || 0} (нормы РК: ${RAG.law || 0}, шаблоны: ${RAG.patterns || 0})`]] : P.rag && P.rag.enabled === false ? [["База знаний (RAG)", "выключена (RAG=off)"]] : []), ["Токены (вход / выход)", P.tokens_in ? `${P.tokens_in} / ${P.tokens_out}` : "—"],
       ["Длительность", P.duration_s + " с"], ["Способ нарезки", { ids: "по идентификаторам документа", modal: "по модальным формулировкам", llm: "моделью" }[P.split_method]],
       ["Критик-агент", P.critic ? "включён" : "выключен"], ["Отброшено неподтверждённых цитат", P.dropped], ["Отклонено критиком", P.rejected], ["Критерии", "ISO/IEC/IEEE 29148:2018 п. 5.2.5, 5.2.6; IEEE Std 830-1998 п. 4.3"]];
     const tbl = (title, items, cols) => items.length ? `<div class="section-title"><h3 class="h2">${title} <span class="faint">(${items.length})</span></h3></div><div class="table-wrap"><table class="tbl"><thead><tr>${cols.map((c) => `<th>${c[0]}</th>`).join("")}</tr></thead><tbody>${items.map((d) => `<tr>${cols.map((c) => `<td class="small">${esc(d[c[1]])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` : "";
@@ -883,7 +966,50 @@
       <div class="h3" style="color:var(--text)">${esc(title)}</div><p class="small" style="margin-top:6px">${esc(text)}</p></div>`;
   }
 
-  Object.assign(RENDER, { overview: renderOverview, reqs: renderReqs, doc: renderDoc, set: renderSet, tests: renderTests, fixes: renderFixes, trace: renderTrace, export: renderExport });
+  function renderKB(el) {
+    const top = {}, bySrc = {};
+    BASIS_FINDINGS.forEach((f) => f.basis.forEach((b) => {
+      const k = b.source + "|" + b.clause, t = (top[k] = top[k] || { b, fids: new Set(), rids: new Set() });
+      t.fids.add(f.fid); (f.kind === "req" ? [f.rid] : f.refs.map((x) => x.rid)).forEach((r) => reqById[r] && t.rids.add(r));
+      (bySrc[b.source] = bySrc[b.source] || { kind: b.kind, n: 0, url: b.url }).n++;
+    }));
+    const rows = Object.values(top).sort((a, b) => b.fids.size - a.fids.size || b.rids.size - a.rids.size).slice(0, 10), max = rows.length ? rows[0].fids.size : 1;
+    const laws = Object.values(bySrc).filter((x) => x.kind === "law").length, totalF = Object.keys(D.findings).length;
+    el.innerHTML = `<div class="section-title" style="margin-top:0"><div><h2 class="h1">База знаний</h2>
+        <p class="small muted" style="margin-top:4px">На какие нормы стандартов, законов РК и шаблонов опираются замечания. Каждое основание — фрагмент базы знаний с источником.</p></div></div>
+      <div class="grid g-3" style="margin-bottom:16px">
+        <article class="kpi kpi-hero"><span class="lbl">Замечаний с основанием</span><div class="kpi-num">${num(BASIS_FINDINGS.length)}<span class="h2" style="opacity:.85"> из ${totalF}</span></div><div class="sub">каждое — с источником и пунктом</div></article>
+        <article class="kpi"><span class="lbl">Источников</span><div class="kpi-num">${num(Object.keys(bySrc).length)}</div><div class="sub">${ic("book", 14)}стандарты, законы, шаблоны</div></article>
+        <article class="kpi"><span class="lbl">Законов РК</span><div class="kpi-num" style="color:${laws ? "var(--major)" : "var(--text-2)"}">${num(laws)}</div><div class="sub">${ic("shield", 14)}нормативные требования</div></article></div>
+      <div class="card"><div class="card-title">${ic("spark")}<span class="h2 grow">Чаще всего нарушены</span><span class="small muted">топ-${rows.length} по числу замечаний</span></div>
+        <ol class="kb-top">${rows.map((t, i) => `<li class="kb-row">
+          <span class="kb-n">${i + 1}</span>
+          <div class="grow" style="min-width:0"><div class="row wrap" style="gap:8px"><span class="chip basis-${t.b.kind}">${ic(BKIND[t.b.kind][1], 13)}${BKIND[t.b.kind][0]}</span><b class="small">${esc(t.b.source)}</b>${t.b.clause ? `<span class="small muted">· ${esc(t.b.clause)}</span>` : ""}</div>
+            <div class="bar" style="margin-top:8px" aria-hidden="true"><i style="width:${Math.max(6, (100 * t.fids.size) / max)}%"></i></div>
+            <details class="kb-reqs"><summary class="small">${t.fids.size} замеч. · ${t.rids.size} треб. — показать требования</summary>
+              <div class="row wrap" style="gap:6px;margin-top:8px">${[...t.rids].map((r) => `<a class="chip chip-outline" href="#${r}" data-go-req="${r}">${esc(label(reqById[r]))}</a>`).join("")}
+                ${[...t.fids].filter((x) => x.startsWith("S-")).map((x) => `<a class="chip chip-outline" href="#${x}" data-open="${x}">${x}</a>`).join("")}</div>
+              <p class="small muted" style="margin-top:8px">«${esc(short(t.b.quote, 240))}»${t.b.paraphrase ? " — пересказ" : ""}${t.b.url ? ` · <a href="${esc(t.b.url)}" target="_blank" rel="noopener noreferrer">официальный текст</a>` : ""}</p></details></div>
+          <b class="kb-count" aria-label="${t.fids.size} замечаний">${t.fids.size}</b></li>`).join("")}</ol></div>
+      <div class="section-title"><h3 class="h2">Источники</h3></div>
+      <div class="row wrap">${Object.entries(bySrc).sort((a, b) => b[1].n - a[1].n).map(([src, x]) => `<span class="chip basis-${x.kind}" style="height:auto;padding:6px 12px">${ic(BKIND[x.kind][1], 13)}${esc(src)} · ${x.n}${x.url ? ` <a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer" aria-label="Официальный текст: ${esc(src)}">${ic("arrow-up-right", 12)}</a>` : ""}</span>`).join("")}</div>`;
+  }
+
+  // ------------------------------------------------------------ U3: покрытие процесса — шаги и покрывающие требования
+  function renderCoverage(el) {
+    const c = D.coverage, n = c.steps.length;
+    el.innerHTML = `<div class="section-title" style="margin-top:0"><div><h2 class="h1">Покрытие процесса</h2>
+        <p class="small muted" style="margin-top:4px">${esc(c.process || "Бизнес-процесс")}: какие шаги описаны требованиями, а какие — нет.</p></div>
+        <span class="chip ${COV_OK === n ? "sev-ok" : "sev-major"}">${ic(COV_OK === n ? "check" : "alert", 13)}покрыто ${COV_OK} из ${n} шагов</span></div>
+      <div class="flowmap" role="list">${c.steps.map((s, i) => `<article class="flow-step ${s.rids.length ? "" : "gap"}" role="listitem">
+          <div class="row" style="gap:8px"><span class="flow-n">${i + 1}</span><b class="small grow">${esc(s.title)}</b></div>
+          ${s.rids.length ? `<div class="row wrap" style="gap:6px;margin-top:10px">${s.rids.filter((r) => reqById[r]).map((r) => { const q = reqById[r]; return `<a class="chip ${q.worst === "ok" ? "chip-neutral" : "sev-" + q.worst}" href="#${r}" data-go-req="${r}" title="${esc(short(q.text, 120))}">${ic(SEV[q.worst].icon, 12)}${esc(q.doc_id || r)}</a>`; }).join("")}</div>`
+            : `<span class="chip sev-critical" style="margin-top:10px">${ic("x", 12)}не покрыто</span>${s.question ? `<p class="small" style="margin-top:8px">${ic("chat", 13)} <b>Вопрос аналитику:</b> ${esc(s.question)}</p>` : ""}`}
+        </article>${i < n - 1 ? `<span class="flow-arrow" aria-hidden="true">${ic("arrow-right", 18)}</span>` : ""}`).join("")}</div>
+      <div class="legend small muted"><span>${ic("check", 12)} цвет чипа — статус требования</span><span><span class="chip sev-critical" style="height:20px">не покрыто</span> — шаг процесса без требований: пропуск в наборе</span></div>`;
+  }
+
+  Object.assign(RENDER, { kb: renderKB, coverage: renderCoverage, overview: renderOverview, reqs: renderReqs, doc: renderDoc, set: renderSet, tests: renderTests, fixes: renderFixes, trace: renderTrace, export: renderExport });
 
   // ------------------------------------------------------------ горячие клавиши
   const KEYS = [["/", "поиск по требованиям"], ["J / K", "следующий / предыдущий дефект в документе"], ["T", "сменить тему"], ["Esc", "закрыть панель или карточку"], ["1–9", "разделы меню"], ["?", "эта подсказка"]];
