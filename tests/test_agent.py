@@ -163,3 +163,19 @@ def test_rest_get_for_mutation_and_empty_prod(tmp_path):
         for ref in f.refs:
             if ref.req_id in by:
                 assert quote_in(ref.quote, by[ref.req_id])
+
+
+def test_api_consistency_rules(tmp_path):
+    from req_review.checker import api_consistency
+
+    p = tmp_path / "api.md"
+    p.write_text("# API\n\n## Функциональные требования\n- **F-1.** Клиент задаёт порог.\n\n### Query-параметры\n\n| Parameter | Format | Description |\n| :--- | :--- | :--- |\n"
+                 "| `amount` | integer | Порог |\n\n### Ответ\n\n| Parameter | Format | Description |\n| :--- | :--- | :--- |\n"
+                 "| `amount` | string | Порог |\n\n### Статусы\n\n**200.** Ответ при успехе.  \n**400.** Ответ при ошибке.\n\n"
+                 "#### 200. Successful\n```json\n{\"result\":\"ERROR\",\"message\":\"x\"}\n```\n\n"
+                 "#### 403. Unsuccessful — Forbidden\nДля чужой карты возвращается 404, как и для отсутствующей карты.\n",
+                 encoding="utf-8")
+    doc = read_document(p)
+    s = split_requirements(doc)
+    kinds = sorted(f.kind for f in api_consistency(s.requirements, doc))
+    assert kinds == ["contradiction", "contradiction", "terminology"]
