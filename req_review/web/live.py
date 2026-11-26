@@ -74,11 +74,21 @@ def classify_error(msg: str) -> str:
 
 def provider_status() -> dict:
     """Что Studio знает о модели до запуска: провайдер, модель, задан ли ключ (сам ключ не возвращается)."""
-    provider = os.getenv("LLM_PROVIDER", "gemini").strip().lower()
-    key_name = {"gemini": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY", "openai-compatible": "OPENAI_API_KEY"}.get(provider)
-    model = {"gemini": os.getenv("GEMINI_MODEL", "gemini-3.8-flash"), "mock": "mock-heuristic"}.get(
+    from ..llm import default_provider
+
+    provider = default_provider()
+    if provider == "claude":
+        provider = "anthropic"
+    key_name = {"gemini": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY", "openai-compatible": "OPENAI_API_KEY",
+                "openrouter": "OPENROUTER_API_KEY",
+                "anthropic": "ANTHROPIC_API_KEY" if os.getenv("ANTHROPIC_API_KEY", "").strip() or not os.getenv("CLAUDE_API_KEY")
+                else "CLAUDE_API_KEY"}.get(provider)
+    model = {"gemini": os.getenv("GEMINI_MODEL", "gemini-3.8-flash"), "mock": "mock-heuristic", "rules": "только правила",
+             "anthropic": os.getenv("ANTHROPIC_MODEL", "claude-opus-5-5"),
+             "openrouter": os.getenv("OPENROUTER_MODEL", "anthropic/claude-opus-5.5"),
+             "ollama": os.getenv("OLLAMA_MODEL", os.getenv("OFFLINE_MODEL", "qwen2.5:14b"))}.get(
         provider, os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
-    if provider == "mock":
+    if provider in ("mock", "rules", "ollama"):
         key_ok = True
     elif key_name:
         v = os.getenv(key_name, "").strip().strip('"').strip("'")

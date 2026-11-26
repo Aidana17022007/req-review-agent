@@ -59,7 +59,7 @@ def test_basis_quotes_exist_in_kb(tmp_path):
     for b in bases:
         assert quote_in(b["quote"], (root / b["file"]).read_text(encoding="utf-8"))
     assert "Основание" in out.read_text(encoding="utf-8")
-    assert data["schema_version"] == "2.2" and data["categories"] and data["coverage_map"]
+    assert data["schema_version"] == "2.3" and data["categories"] and data["coverage_map"]
     # шаблон правки соответствует категории требования: «надёжной» у NFR-02 не притягивает шаблон OTP
     from req_review.rag.basis import pattern_fits
 

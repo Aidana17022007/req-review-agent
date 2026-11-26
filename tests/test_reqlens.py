@@ -170,7 +170,7 @@ def test_full_run_writes_all_artifacts(tmp_path, monkeypatch):
     assert len(html.encode("utf-8")) < 1_000_000
     _check_offline_3d_bundle(html)
     data = json.loads((tmp_path / "report.json").read_text(encoding="utf-8"))
-    assert data["schema_version"] == "2.2" and data["scores"]["document"] >= 0
+    assert data["schema_version"] == "2.3" and data["scores"]["document"] >= 0
     assert (tmp_path / "report_traceability.xlsx").stat().st_size > 3000
     assert "Summary" in (tmp_path / "report_jira_import.csv").read_text(encoding="utf-8-sig").splitlines()[0]
     assert "[^fix1]" in (tmp_path / "report_requirements_fixed.md").read_text(encoding="utf-8")
@@ -269,7 +269,13 @@ def test_benchmark_has_40_plus_known_defects():
     from inject import build_all
 
     truth = build_all()
-    assert truth["total_defects"] >= 40 and len(truth["documents"]) == 3
+    assert truth["total_defects"] >= 60 and len(truth["documents"]) == 5
+    for name in ("deposit_kk", "cards"):  # v5: казахский документ и DOCX с таблицами — по 10–15 дефектов
+        assert 10 <= len(truth["documents"][name]["defects"]) <= 15
+    import docx
+
+    d = docx.Document(str(Path(__file__).parent.parent / truth["documents"]["cards"]["file"]))
+    assert len(d.tables) >= 3 and any(c.text == "CRD-15" for t in d.tables for r in t.rows for c in r.cells)
 
 
 def test_compare_cli(tmp_path, monkeypatch):
@@ -280,7 +286,7 @@ def test_compare_cli(tmp_path, monkeypatch):
     out = tmp_path / "r.md"
     assert main([str(FIX), str(out), "--env", str(tmp_path / "x.env"), "--quiet", "--no-xlsx", "--no-jira"]) == 0
     data = json.loads((tmp_path / "r.json").read_text(encoding="utf-8"))
-    assert data["schema_version"] == "2.2"
+    assert data["schema_version"] == "2.3"
     f = next(f for r in data["requirements"] for f in r["findings"])
     assert "span" in f and 0 < f["confidence_score"] <= 1
     res = diff_reports(data, data)

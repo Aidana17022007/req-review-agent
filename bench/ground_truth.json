@@ -164,7 +164,8 @@
         "PAY-14",
         "NFR-03",
         "NFR-04"
-      ]
+      ],
+      "file": "bench/out/payments_seeded.md"
     },
     "credit": {
       "defects": [
@@ -339,7 +340,8 @@
         "CR-09",
         "CR-14",
         "CNF-04"
-      ]
+      ],
+      "file": "bench/out/credit_seeded.md"
     },
     "onboarding": {
       "defects": [
@@ -513,8 +515,343 @@
         "ON-02",
         "ON-06",
         "ONF-04"
-      ]
+      ],
+      "file": "bench/out/onboarding_seeded.md"
+    },
+    "deposit_kk": {
+      "defects": [
+        {
+          "doc": "deposit_kk",
+          "type": "vague",
+          "ids": [
+            "DEP-01"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "deposit_kk",
+          "type": "vague",
+          "ids": [
+            "DNF-01"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "deposit_kk",
+          "type": "missing_units",
+          "ids": [
+            "DEP-08"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous",
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "deposit_kk",
+          "type": "open_list",
+          "ids": [
+            "DEP-11"
+          ],
+          "criteria": [
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "deposit_kk",
+          "type": "tbd",
+          "ids": [
+            "DNF-05"
+          ],
+          "criteria": [
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "deposit_kk",
+          "type": "and_or",
+          "ids": [
+            "DEP-09"
+          ],
+          "criteria": [
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "deposit_kk",
+          "type": "conditional",
+          "ids": [
+            "DEP-04"
+          ],
+          "criteria": [
+            "unambiguous",
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "deposit_kk",
+          "type": "design",
+          "ids": [
+            "DEP-13"
+          ],
+          "criteria": [
+            "appropriate"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "deposit_kk",
+          "type": "compound",
+          "ids": [
+            "DEP-14"
+          ],
+          "criteria": [
+            "singular"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "deposit_kk",
+          "type": "subjective",
+          "ids": [
+            "DNF-06"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "deposit_kk",
+          "type": "absolute",
+          "ids": [
+            "DNF-02"
+          ],
+          "criteria": [
+            "feasible",
+            "verifiable"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "deposit_kk",
+          "type": "contradiction",
+          "ids": [
+            "DEP-06",
+            "DEP-15"
+          ],
+          "criteria": [
+            "set_consistent"
+          ],
+          "level": "set"
+        },
+        {
+          "doc": "deposit_kk",
+          "type": "duplicate",
+          "ids": [
+            "DEP-02",
+            "DEP-16"
+          ],
+          "criteria": [
+            "set_consistent",
+            "necessary"
+          ],
+          "level": "set"
+        }
+      ],
+      "clean_ids": [
+        "DEP-03",
+        "DEP-05",
+        "DEP-07",
+        "DEP-10",
+        "DEP-12",
+        "DNF-03",
+        "DNF-04"
+      ],
+      "file": "bench/out/deposit_kk_seeded.md"
+    },
+    "cards": {
+      "defects": [
+        {
+          "doc": "cards",
+          "type": "vague",
+          "ids": [
+            "CRD-01"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "cards",
+          "type": "vague",
+          "ids": [
+            "KNF-01"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "cards",
+          "type": "missing_units",
+          "ids": [
+            "CRD-07"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous",
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "cards",
+          "type": "open_list",
+          "ids": [
+            "CRD-08"
+          ],
+          "criteria": [
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "cards",
+          "type": "tbd",
+          "ids": [
+            "KNF-05"
+          ],
+          "criteria": [
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "cards",
+          "type": "and_or",
+          "ids": [
+            "CRD-09"
+          ],
+          "criteria": [
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "cards",
+          "type": "conditional",
+          "ids": [
+            "CRD-03"
+          ],
+          "criteria": [
+            "unambiguous",
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "cards",
+          "type": "design",
+          "ids": [
+            "CRD-13"
+          ],
+          "criteria": [
+            "appropriate"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "cards",
+          "type": "compound",
+          "ids": [
+            "CRD-12"
+          ],
+          "criteria": [
+            "singular"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "cards",
+          "type": "subjective",
+          "ids": [
+            "KNF-06"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "cards",
+          "type": "absolute",
+          "ids": [
+            "KNF-02"
+          ],
+          "criteria": [
+            "feasible",
+            "verifiable"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "cards",
+          "type": "contradiction",
+          "ids": [
+            "CRD-05",
+            "CRD-15"
+          ],
+          "criteria": [
+            "set_consistent"
+          ],
+          "level": "set"
+        },
+        {
+          "doc": "cards",
+          "type": "duplicate",
+          "ids": [
+            "CRD-02",
+            "CRD-16"
+          ],
+          "criteria": [
+            "set_consistent",
+            "necessary"
+          ],
+          "level": "set"
+        }
+      ],
+      "clean_ids": [
+        "CRD-04",
+        "CRD-06",
+        "CRD-10",
+        "CRD-11",
+        "CRD-14",
+        "KNF-03",
+        "KNF-04"
+      ],
+      "file": "bench/out/cards_seeded.docx"
     }
   },
-  "total_defects": 41
+  "total_defects": 67
 }

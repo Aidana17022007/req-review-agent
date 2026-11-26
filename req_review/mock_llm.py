@@ -27,6 +27,14 @@ class MockLLM(BaseLLM):
             return json.dumps(self._check(context), ensure_ascii=False)
         if task == "set":
             return json.dumps(self._set(context), ensure_ascii=False)
+        if task == "gaps":  # проход полноты: одно подтверждаемое замечание и одна «галлюцинация» для проверки верификатора
+            r = context["reqs"][0]
+            return json.dumps({"findings": [
+                {"check": "terms", "type": "gap", "criterion": "set_comprehensible",
+                 "refs": [{"id": r.rid, "quote": " ".join(r.text.split()[:5])}],
+                 "problem": "[mock] Термин в требовании не определён.", "severity": "minor", "fix": "[mock] Добавить определение."},
+                {"check": "edge", "type": "gap", "refs": [{"id": "DOC", "quote": "этой фразы нет в документе"}],
+                 "problem": "[mock] выдуманный пропуск", "severity": "major", "fix": "—"}]}, ensure_ascii=False)
         if task == "crosscheck":
             return json.dumps({"findings": []}, ensure_ascii=False)
         if task == "critic":

@@ -82,9 +82,11 @@ class ReviewResult:
     glossary: object = None  # GlossaryResult
     critic_used: bool = False
     critic_scope: str = ""  # "all" | "critical" (self-consistency в профиле fast)
+    critic_merged: int = 0  # v5: дубли, объединённые критиком (ушли в rejected с причиной «дубль S-xx»)
     rag: dict = field(default_factory=dict)  # статистика базы знаний: число оснований, режим поиска
     categories: dict = field(default_factory=dict)  # {категория: число требований}
     coverage: list = field(default_factory=list)  # карта покрытия шагов процесса домена
+    depth: dict = field(default_factory=dict)  # v5: учёт строк, матрица критериев, покрытие приёмкой, вердикты, план
 
 
 # ---------------------------------------------------------------- промпты
@@ -146,7 +148,11 @@ ISO/IEC/IEEE 29148:2018 п. 5.2.6 и IEEE Std 830-1998 п. 4.3:
   параметры и их форматы в запросе и ответе, заявленный Content-Type и наличие тела, перечень кодов ответа и примеры
   (код, указанный в одном месте и отличающийся в другом; ошибка внутри успешного кода; описанный, но не используемый код);
 - единицы измерения одной величины в разных разделах (тенге/тиыны, секунды/минуты);
-- незаполненные места шаблона: «—» вместо значения, «заполняется позже/тестировщиками», пустые таблицы и версии документа.
+- незаполненные места шаблона: «—» вместо значения, «заполняется позже/тестировщиками», пустые таблицы и версии документа;
+- CRUD-полноту API: экран показывает текущие значения или интеграция «читает» данные, а в API описан только метод
+  изменения (save/update) — нет метода чтения; это critical gap (функцию нельзя реализовать целиком);
+- контракт интеграции: расчёт строится на событиях/сообщениях внешней системы (процессинг, шина, очередь), но нигде нет
+  состава полей события, перечня типов операций, гарантий доставки, порядка и обработки дублей — critical gap.
 
 Правила ответа:
 1. Каждое замечание содержит refs — список ссылок {{"id": "R-xxx", "quote": "дословный фрагмент текста этого требования"}}.
@@ -204,6 +210,21 @@ def llm_split(doc: Document, llm: BaseLLM) -> list[Requirement]:
 
 # ---------------------------------------------------------------- проверка требований
 
+def norm_refs(refs) -> list[dict]:
+    """Ссылки замечания из ответа модели → [{"id", "quote"}]. Модель иногда возвращает строку вместо объекта
+    («R-003: цитата» или просто цитату) или одиночный объект вместо списка — такие ответы не должны ронять прогон."""
+    if isinstance(refs, (dict, str)):
+        refs = [refs]
+    out = []
+    for ref in refs or []:
+        if isinstance(ref, dict):
+            out.append(ref)
+        elif isinstance(ref, str) and ref.strip():
+            m = re.match(r"^\s*(R-\d{3}|DOC)\s*[:—–-]\s*(.+)$", ref.strip())
+            out.append({"id": m.group(1), "quote": m.group(2).strip().strip("«»\"")} if m else {"id": "DOC", "quote": ref.strip()})
+    return out
+
+
 def _norm_sev(s: str) -> str:
     s = str(s or "").lower().strip()
     if s in SEVERITY:
@@ -248,8 +269,9 @@ def check_requirements(reqs: list[Requirement], doc: Document, llm: BaseLLM, bat
         record(doc, mode, len(SYSTEM_REQ) + len(prompt))
         try:
             data = llm.generate_json(SYSTEM_REQ, prompt, task="check", context={"reqs": batch, "hints": hints_by_req})
-            for item in data.get("results", []):
-                llm_out[str(item.get("id", "")).strip()] = item
+            for item in data.get("results", []) or []:
+                if isinstance(item, dict):  # ответ модели не по схеме — пропускаем элемент
+                    llm_out[str(item.get("id", "")).strip()] = item
         except LLMFatalError:
             raise
         except LLMError as e:
@@ -265,6 +287,8 @@ def check_requirements(reqs: list[Requirement], doc: Document, llm: BaseLLM, bat
             res.note = "Модель не вернула результат по этому требованию; показаны только срабатывания правил."
         dismissed = {norm(str(x)) for x in (item or {}).get("dismissed_hints", []) or []}
         for f in (item or {}).get("findings", []) or []:
+            if not isinstance(f, dict):  # ответ модели не по схеме — пропускаем элемент
+                continue
             quote = str(f.get("quote", "")).strip()
             if not quote_in(quote, r.text):
                 dropped.append({"where": r.rid, "quote": quote, "problem": f.get("problem", "")})
@@ -399,6 +423,11 @@ def deterministic_set_checks(split: SplitResult, doc: Document) -> list[SetFindi
                 "critical", "Использовать POST/PUT (например, PUT /alerts/limit), параметры передать в теле JSON; "
                 "GET оставить только для чтения настройки.", "правило"))
     out.extend(api_consistency(reqs, doc))
+    from .depth import completeness_rules, integration_contract, missing_read_method  # v5: глубина
+
+    out.extend(missing_read_method(reqs, doc))
+    out.extend(integration_contract(reqs, doc))
+    out.extend(completeness_rules(reqs, doc))
     # незаполненные значения для продуктивной среды («Prod: —»)
     for r in reqs:
         m = re.search(r"\b(?:prod|прод\w*|production)\s*:\s*[—–-](?=\s*(?:$|\.|\||;))", r.text, re.I)
@@ -440,9 +469,11 @@ def check_set(split: SplitResult, doc: Document, llm: BaseLLM, dropped: list[dic
         add_numeric_conflicts(found, reqs, log)
         return found, False
     for f in data.get("findings", []) or []:
+        if not isinstance(f, dict):  # ответ модели не по схеме — пропускаем элемент
+            continue
         refs: list[SetRef] = []
         bad = False
-        for ref in f.get("refs", []) or []:
+        for ref in norm_refs(f.get("refs")):
             rid = str(ref.get("id", "")).strip()
             q = str(ref.get("quote", "")).strip()
             src = by_id[rid].text if rid in by_id else doc.text
@@ -464,6 +495,9 @@ def check_set(split: SplitResult, doc: Document, llm: BaseLLM, dropped: list[dic
                                 str(f.get("fix", "")).strip(), "LLM"))
     add_numeric_conflicts(found, reqs, log)
     crosscheck(split, doc, llm, dropped, found, log)
+    from .depth import completeness_pass  # v5: узкий проход полноты по чек-листу (1 запрос)
+
+    completeness_pass(split, doc, llm, dropped, found, log)
     found.sort(key=lambda f: {"critical": 0, "major": 1, "minor": 2}[f.severity])
     return found, True
 
@@ -572,8 +606,10 @@ def crosscheck(split: SplitResult, doc: Document, llm: BaseLLM, dropped: list[di
     data = {"findings": [f for d in results for f in (d.get("findings") or [])]}
     have = {frozenset(r.req_id for r in f.refs) for f in found if f.kind == "contradiction"}
     for f in data.get("findings", []) or []:
+        if not isinstance(f, dict):  # ответ модели не по схеме — пропускаем элемент
+            continue
         refs = []
-        for ref in f.get("refs", []) or []:
+        for ref in norm_refs(f.get("refs")):
             rid, q = str(ref.get("id", "")).strip(), str(ref.get("quote", "")).strip()
             if rid in by_id and quote_in(q, by_id[rid].text):
                 refs.append(SetRef(rid, q))

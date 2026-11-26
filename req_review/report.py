@@ -83,6 +83,14 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
               "llm": "моделью (номера присвоены агентом)"}[split.method]
     w(f"| Способ нарезки | {method} |")
     w(f"| Отброшено неподтверждённых цитат модели | {len(rv.dropped)} |")
+    dp = getattr(rv, "depth", None) or {}
+    if dp.get("line_coverage"):
+        lc = dp["line_coverage"]
+        w(f"| Учтено строк документа | {lc['accounted']} из {lc['total']} ({lc['percent']} %) — в требованиях или исключены с причиной |")
+    if dp.get("review_stats"):
+        st = dp["review_stats"]
+        w(f"| Самопроверка | предложено {st['proposed']}, подтверждено {st['confirmed']}, отклонено критиком {st['rejected']}, "
+          f"без подтверждённой цитаты {st['unconfirmed_quotes']} |")
     w("| Критерии | ISO/IEC/IEEE 29148:2018 п. 5.2.5, 5.2.6; IEEE Std 830-1998 п. 4.3 |")
     w("")
     for warn in doc.warnings + rv.notes:
@@ -248,9 +256,15 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     w("")
     if sc is not None:
         w(f"| **Балл документа** | **{sc.doc_score} / 100** (балл набора — {sc.set_score}) |")
-        w(f"| **Готовность к разработке** | **{sc.readiness} %** ({len(sc.ready_ids)} из {len(reqs)} требований без критичных и существенных замечаний) |")
+        w(f"| **Готовность к разработке** | **{sc.readiness} %** ({len(sc.ready_ids)} из {len(reqs)} требований без критичных и существенных замечаний, "
+          "в том числе к набору) |")
         if sc.tests_total:
             w(f"| Покрыто тест-пробой | {sc.tests_ok} из {sc.tests_total} требований ({round(100 * sc.tests_ok / sc.tests_total)} %) |")
+        acc = (getattr(rv, "depth", None) or {}).get("acceptance_coverage") or {}
+        if acc.get("percent") is not None:
+            unc = ", ".join(u["doc_id"] or u["rid"] for u in acc["uncovered"][:10])
+            w(f"| Покрытие правил критериями приёмки | {acc['percent']} % ({len(acc['covered'])} из "
+              f"{len(acc['covered']) + len(acc['uncovered'])}){'; без примеров: ' + unc if unc else ''} |")
         if rv.rejected:
             w(f"| Отклонено критиком | {len(rv.rejected)} |")
         w("")
@@ -311,8 +325,8 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     n_crit = sev_counts.get("critical", 0)
     n_major = sev_counts.get("major", 0)
     blocked = {f.req_id for f in critical_items} | {ref.req_id for f in set_critical for ref in f.refs if ref.req_id in by_rid}
-    ready = [rr.req.rid for rr in rv.req_results
-             if rr.req.rid not in blocked and all(f.severity == "minor" for f in rr.findings)]
+    ready = list(sc.ready_ids) if sc is not None else [rr.req.rid for rr in rv.req_results
+                                                      if rr.req.rid not in blocked and all(f.severity == "minor" for f in rr.findings)]
     if n_crit:
         w(f"**Вердикт: начинать разработку и тестирование по документу в текущем виде нельзя.** "
           f"Найдено {n_crit} критичных дефектов в {len(blocked)} требованиях — их невозможно однозначно реализовать "
@@ -323,6 +337,15 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     else:
         w("**Вердикт: можно начинать разработку и тестирование.** Критичных и существенных дефектов не найдено.")
     w("")
+    vd = (getattr(rv, "depth", None) or {}).get("verdict")
+    if vd:
+        icon = {"нельзя": "❌", "с оговорками": "⚠️", "можно": "✅"}
+        w("| Разработка | Тестирование |")
+        w("|---|---|")
+        w(f"| {icon[vd['development']]} {vd['development']} | {icon[vd['testing']]} {vd['testing']} |")
+        w("")
+        w(f"*Правило:* {vd['rule']}")
+        w("")
     if ready and n_crit:
         w(f"Без критичных и существенных замечаний (можно брать в работу уже сейчас): {', '.join(ready)}.")
         w("")
@@ -337,8 +360,37 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     for i, p in enumerate(prio[:10], 1):
         w(f"{i}. {p}")
     w("")
+    plan = [it for it in (getattr(rv, "depth", None) or {}).get("fix_plan", []) if it.get("example")]
+    if plan:
+        w("**Как переписать (пример правильной формулировки):**")
+        w("")
+        w("| Пункт | Пример | Источник |")
+        w("|---|---|---|")
+        for it in plan:
+            w(f"| {_cell(', '.join(it['ids'][:4]))}: {_cell(it['title'][:90])} | {_cell(it['example'][:300])} | {it['example_source']} |")
+        w("")
     if ctx is not None:
         _extras_tail(w, ctx)
+    lc = (getattr(rv, "depth", None) or {}).get("line_coverage")
+    if lc:
+        w("### Приложение. Учёт строк документа")
+        w("")
+        w(f"Непустых строк: {lc['total']}; в требованиях: {lc['requirements']}; учтено всего: {lc['accounted']} ({lc['percent']} %).")
+        if lc.get("recovered"):
+            w(f"Дорезка: из {lc.get('uncovered_before_recovery', 0)} строк вне нарезки модель выделила требований — "
+              f"{lc['recovered']}; они проверены вместе с остальными.")
+        w("")
+        w("| Причина исключения | Строк |")
+        w("|---|---|")
+        for e in lc["excluded"]:
+            w(f"| {e['reason']} | {e['lines']} |")
+        w("")
+        for u in lc.get("unnumbered", []):
+            w(f"- строка {u['line']}: утверждение без идентификатора — «{_cell(u['text'][:120])}»")
+        for u in lc["uncovered"]:
+            w(f"- ⚠️ строка {u['line']} не учтена: «{_cell(u['text'][:120])}»")
+        if lc.get("unnumbered") or lc["uncovered"]:
+            w("")
     w("---")
     w("")
     w("### Приложение. Критерии проверки")
