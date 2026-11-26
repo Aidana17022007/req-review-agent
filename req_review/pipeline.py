@@ -123,6 +123,18 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
         # self-consistency: даже в fast критичные замечания перепроверяются вторым проходом (1 запрос)
         run_critic(rv, llm, log=log, only_critical=True)
     default_confidence(rv)
+    # RAG: основания замечаний из базы знаний (стандарты, нормы РК, шаблоны). RAG=off или нет kb/ — пропускаем
+    try:
+        from .rag.basis import attach_basis
+        from .rag.index import get_kb
+
+        kb = get_kb()
+        if kb is not None:
+            st = attach_basis(rv, kb, log=log)
+            rv.rag = {"kb_chunks": len(kb.chunks), "search": kb.mode,
+                      "embedder": kb.embedder.label if kb.embedder else "none", **st}
+    except Exception as e:  # RAG никогда не ломает основной прогон
+        log(f"база знаний недоступна: {e}")
     return rv
 
 
@@ -147,6 +159,7 @@ def build_context(rv, llm, opts: Options, started: datetime, t0: float, input_pa
         "calls": llm.stats.calls, "retries": llm.stats.retries, "tokens_in": llm.stats.prompt_tokens,
         "tokens_out": llm.stats.output_tokens, "duration_s": round(time.monotonic() - t0),
         "model_switches": list(getattr(llm.stats, "switches", [])),
+        "rag": getattr(rv, "rag", None) or {"enabled": False},
         "split_method": rv.split.method, "dropped": len(rv.dropped), "rejected": len(rv.rejected),
         "critic": rv.critic_used, "domain": opts.domain,
     }

@@ -116,11 +116,13 @@ def _objects(text: str) -> set[str]:
     return {o for o in _OBJ if o in low}
 
 
-def find_conflicts(reqs: list[Requirement], min_similarity: float = 0.65) -> list[Conflict]:
+def find_conflicts(reqs: list[Requirement], min_similarity: float = 0.75) -> list[Conflict]:
     """Высокоточные эвристики (лучше пропустить, чем выдать ложное противоречие):
     (a) формулировки совпадают, если заменить числа на #, а значения разные — «3 попытки» vs «5 попыток»;
     (b) оба требования задают лимит денежной суммы для одного объекта (перевод, платёж…) и периода;
     (c) счётные величины с одинаковым существительным рядом («неверных вводов») и общим контекстом."""
+    # строки таблиц (критерии приёмки, параметры) — это разные сценарии/поля, а не альтернативные значения одного правила
+    reqs = [r for r in reqs if " | " not in r.text and not re.search(r"критери\w* при[её]мк|пример", r.section or "", re.I)]
     qs = {r.rid: extract(r) for r in reqs}
     texts = {r.rid: r.text for r in reqs}
     out: list[Conflict] = []

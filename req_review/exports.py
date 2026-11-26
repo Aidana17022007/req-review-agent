@@ -10,7 +10,7 @@ from pathlib import Path
 from .criteria import INDIVIDUAL, SEVERITY, criterion_name, criterion_ref
 from .verify import norm
 
-SCHEMA_VERSION = "2.1"  # 2.1: span, confidence_score, char_start, tests[], values, unified (только добавления)
+SCHEMA_VERSION = "2.2"  # 2.1: span, confidence_score, char_start, tests[], values, unified (только добавления)
 
 
 # ---------------------------------------------------------------- report.json
@@ -68,6 +68,7 @@ def to_json(ctx) -> dict:
             "rid": rr.req.rid, "doc_id": rr.req.doc_id, "text": rr.req.text, "section": rr.req.section,
             "location": rr.req.location, "line_start": rr.req.line_start, "line_end": rr.req.line_end, "page": rr.req.page,
             "score": sc.req[rr.req.rid], "ears": rr.ears, "rewrite": rr.rewrite, "llm_checked": rr.llm_checked,
+            "rewrite_pattern": rr.rewrite_pattern, "category": rr.category,
             "char_start": offsets.get(rr.req.line_start, 0),
             "test": {"possible": rr.test_possible, "gherkin": rr.test_gherkin, "blocker": rr.test_blocker, "reason": rr.test_reason},
             "tests": list(getattr(rr, "test_scenarios", []) or []),

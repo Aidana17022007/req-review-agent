@@ -132,6 +132,7 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
                 w(f"| {i} | {criterion_name(f.criterion)} | {_q(f.quote)} | {_cell(f.problem)} | "
                   f"{ICON[f.severity]} {SEVERITY[f.severity]} | {_cell(f.fix)} | {f.source} |")
             w("")
+            _basis_lines(w, rr.findings)
         bad = {f.criterion for f in rr.findings}
         ok = [v[0] for k, v in INDIVIDUAL.items() if k not in bad]
         if rr.llm_checked:
@@ -140,6 +141,10 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
         if rr.rewrite and rr.findings:
             w(f"**Предлагаемая формулировка:** {_cell(rr.rewrite)}")
             w("")
+            if getattr(rr, "rewrite_pattern", None):
+                p = rr.rewrite_pattern
+                w(f"*Шаблон из базы знаний ({_cell(p['title'])}, `{p['file']}`):* {_cell(p['template'])}")
+                w("")
         if rr.test_possible is True:
             w("<details><summary>🧪 Тест-проба: приёмочный тест составлен</summary>")
             w("")
@@ -190,6 +195,8 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
             w(f"**Проблема:** {_cell(f.problem)}")
             w("")
             w(f"**Как исправить:** {_cell(f.fix)}")
+            w("")
+            _basis_lines(w, [f])
             w("")
             w(f"*Источник: {f.source}*")
             w("")
@@ -438,4 +445,21 @@ def _extras_tail(w, ctx) -> None:
         w("```mermaid")
         w(mermaid(ctx.graph))
         w("```")
+        w("")
+
+
+def _basis_lines(w, findings) -> None:
+    """«Основание» из базы знаний kb/: пункт стандарта / норма РК с дословной цитатой из kb (без повторов)."""
+    seen, lines = set(), []
+    for f in findings:
+        for b in getattr(f, "basis", None) or []:
+            key = (b["file"], b["section"])
+            if key in seen:
+                continue
+            seen.add(key)
+            kind = {"standards": "стандарт", "law_kz": "норма РК, пересказ", "patterns": "шаблон"}.get(b.get("kind"), "база знаний")
+            lines.append(f"- **Основание ({kind}):** {_cell(b['section'])} — «{_cell(b['quote'])}» (`{b['file']}`)")
+    if lines:
+        for x in lines:
+            w(x)
         w("")
