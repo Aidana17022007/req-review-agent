@@ -43,6 +43,7 @@ class Options:
     compare: str | None = None
     batch_size: int = 8
     pdf: bool | None = None  # PDF-версия отчёта; None — по профилю (deep — да)
+    fix_loop: bool = False  # v7: «исправил → проверил заново» — блок «До / После» и файл <отчёт>_before_after.md
 
 
 @dataclass
@@ -216,6 +217,51 @@ def depth_summary(rv, acc: dict | None = None) -> dict:
             "verdict": verdicts(rv), "fix_plan": fix_plan(rv), "citation_audit": citation_audit(rv)}
 
 
+def _sev_counts(rv) -> dict:
+    fs = [f for rr in rv.req_results for f in rr.findings] + list(rv.set_findings)
+    return {s: sum(1 for f in fs if f.severity == s) for s in ("critical", "major", "minor")} | {"total": len(fs)}
+
+
+def _before_after(rv, rv2, ctx, ctx2) -> dict:
+    from .exports import compare, summarize_for_compare, to_json
+
+    cmp = compare(summarize_for_compare(to_json(ctx)), summarize_for_compare(to_json(ctx2)))
+    v1, v2 = (rv.depth or {}).get("verdict") or {}, (rv2.depth or {}).get("verdict") or {}
+    return {"counts_before": _sev_counts(rv), "counts_after": _sev_counts(rv2),
+            "verdict_before": v1, "verdict_after": v2, "compare": cmp, "changes": len(ctx.changes),
+            "remaining": ([{"rid": rr.req.rid, "doc_id": rr.req.doc_id, "problem": f.problem}
+                           for rr in rv2.req_results for f in rr.findings if f.severity == "critical"] +
+                          [{"rid": f"S-{i:02d}", "doc_id": None, "problem": f.problem}
+                           for i, f in enumerate(rv2.set_findings, 1) if f.severity == "critical"])[:15]}
+
+
+def before_after_md(ctx) -> str:
+    rs = ctx.rescore or {}
+    b, a = rs.get("counts_before", {}), rs.get("counts_after", {})
+    lab = {"fixed": "✅ исправлено", "improved": "⬆️ улучшилось", "new": "⚠️ новое", "worse": "🔻 ухудшилось", "same": "без изменений"}
+    L = [f"# До / После: {ctx.rv.doc.title}", "",
+         f"Агент применил {rs.get('changes', 0)} исправлений формулировок (файл *_requirements_fixed.md) и проверил "
+         "исправленный документ заново той же моделью.", "",
+         "| Показатель | До | После |", "|---|---|---|",
+         f"| Балл документа | {rs.get('before')} | **{rs.get('after')}** |",
+         f"| Готовность к разработке | {rs.get('readiness_before')} % | **{rs.get('readiness_after')} %** |"]
+    for k, name in (("critical", "Критичных"), ("major", "Существенных"), ("minor", "Незначительных"), ("total", "Всего замечаний")):
+        L.append(f"| {name} | {b.get(k, '—')} | **{a.get(k, '—')}** |")
+    vb, va = rs.get("verdict_before") or {}, rs.get("verdict_after") or {}
+    if vb and va:
+        L.append(f"| Вердикт: разработка / тестирование | {vb.get('development')} / {vb.get('testing')} | "
+                 f"**{va.get('development')} / {va.get('testing')}** |")
+    c = rs.get("compare") or {}
+    if c:
+        L += ["", "**По требованиям:** " + " · ".join(f"{lab.get(k, k)}: {v}" for k, v in c.get("counts", {}).items())]
+    if rs.get("remaining"):
+        L += ["", "**Что осталось критичным после автоисправления** (нужно решение аналитика — данных в документе нет):", ""]
+        L += [f"- {x['doc_id'] or x['rid']}: {x['problem'][:200]}" for x in rs["remaining"]]
+    L += ["", "Автоисправление не придумывает бизнес-значения: где в документе нет данных (порог, код, срок), "
+          "агент ставит плейсхолдер и вопрос аналитику — такие пункты остаются в «что осталось»."]
+    return "\n".join(L) + "\n"
+
+
 def _ctx_info(doc) -> dict:
     st = getattr(doc, "_ctx_stats", None) or {}
     pc = st.get("prompt_chars") or []
@@ -294,6 +340,9 @@ def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda
             s2 = compute(rv2)
             ctx.rescore = {"before": ctx.scores.doc_score, "after": s2.doc_score,
                            "readiness_before": ctx.scores.readiness, "readiness_after": s2.readiness}
+            if opts.fix_loop:  # v7: подробное «До / После» — без новых обращений к модели сверх одного повторного прогона
+                ctx2 = build_context(rv2, llm, o2, started, t0, str(p))
+                ctx.rescore.update(_before_after(rv, rv2, ctx, ctx2))
         ctx.passport["calls"] = llm.stats.calls
 
     if opts.compare:
@@ -318,6 +367,10 @@ def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda
                                  duration_s=time.monotonic() - t0, llm_stats=llm.stats, input_path=input_path, ctx=ctx)
     out.write_text(ctx.report_md, encoding="utf-8")
     ctx.artifacts["Отчёт (Markdown)"] = out
+    if opts.fix_loop and (ctx.rescore or {}).get("counts_after"):
+        ba = out.with_name(out.stem + "_before_after.md")
+        ba.write_text(before_after_md(ctx), encoding="utf-8")
+        ctx.artifacts["До / После (исправленный документ)"] = ba
     if opts.pdf if opts.pdf is not None else PROFILES.get(opts.profile, {}).get("pdf", False):
         try:  # v7: PDF-версия для сдачи и печати; без шрифта или reportlab прогон не падает
             from .pdf_report import PdfFontError, markdown_to_pdf

@@ -726,3 +726,19 @@ def test_pdf_report_is_readable(tmp_path, monkeypatch):
     assert main([str(ROOT / "tests" / "fixtures" / "sample_requirements.md"), str(tmp_path / "n.md"),
                  "--env", str(tmp_path / "x.env"), "--quiet", "--no-xlsx", "--no-jira"]) == 0
     assert not (tmp_path / "n.pdf").exists()  # профиль fast без --pdf — PDF не создаётся
+
+
+def test_fix_loop_writes_before_after(tmp_path, monkeypatch):
+    from req_review.cli import main
+
+    monkeypatch.setenv("LLM_PROVIDER", "mock")
+    out = tmp_path / "r.md"
+    assert main([str(ROOT / "tests" / "fixtures" / "sample_requirements.md"), str(out), "--env", str(tmp_path / "x.env"),
+                 "--quiet", "--no-xlsx", "--no-jira", "--fix-loop"]) == 0
+    ba = (tmp_path / "r_before_after.md").read_text(encoding="utf-8")
+    assert "| Балл документа |" in ba and "| Критичных |" in ba and "По требованиям" in ba
+    d = json.loads((tmp_path / "r.json").read_text(encoding="utf-8"))
+    rs = d["rescore"]
+    assert rs["counts_after"]["critical"] <= rs["counts_before"]["critical"] and rs["after"] >= rs["before"]
+    assert rs["compare"]["counts"]["fixed"] >= 1
+    assert len(rs["remaining"]) == rs["counts_after"]["critical"] or len(rs["remaining"]) == 15
