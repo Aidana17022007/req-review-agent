@@ -742,3 +742,43 @@ def test_fix_loop_writes_before_after(tmp_path, monkeypatch):
     assert rs["counts_after"]["critical"] <= rs["counts_before"]["critical"] and rs["after"] >= rs["before"]
     assert rs["compare"]["counts"]["fixed"] >= 1
     assert len(rs["remaining"]) == rs["counts_after"]["critical"] or len(rs["remaining"]) == 15
+
+
+def test_ensemble_merge_unions_without_duplicates(monkeypatch):
+    from req_review.ensemble import merge, refresh_depth
+    from req_review.mock_llm import MockLLM
+    from req_review.pipeline import Options, review_document
+
+    monkeypatch.setenv("REQLENS_GAPS", "1")
+    fix = ROOT / "tests" / "fixtures" / "sample_requirements.md"
+    rv_a = review_document(fix, MockLLM(), Options(), log=lambda m: None)
+    rv_b = review_document(fix, MockLLM(), Options(), log=lambda m: None)
+    llm_b_only = [(rr.req.rid, f.criterion) for rr in rv_a.req_results for f in rr.findings if "LLM" in f.source][:3]
+    assert llm_b_only, "в mock-прогоне должны быть замечания модели"
+    for rr in rv_a.req_results:  # модель A «пропустила» три замечания, которые нашла модель B
+        rr.findings = [f for f in rr.findings if (rr.req.rid, f.criterion) not in llm_b_only or "LLM" not in f.source]
+    total_b = sum(len(rr.findings) for rr in rv_b.req_results) + len(rv_b.set_findings)
+    st = merge(rv_a, rv_b)
+    refresh_depth(rv_a)
+    assert st["b_added"] >= len(llm_b_only) and st["both"] >= 1
+    total = sum(len(rr.findings) for rr in rv_a.req_results) + len(rv_a.set_findings)
+    assert total == total_b  # одинаковые модели: после объединения — тот же набор, без дублей
+    labels = {f.ensemble for rr in rv_a.req_results for f in rr.findings} | {f.ensemble for f in rv_a.set_findings}
+    assert labels <= {"обе", "модель A", "модель B", "правило"} and "модель B" in labels and "" not in labels
+    by = {rr.req.rid: rr.req.text for rr in rv_a.req_results}
+    assert all(quote_in(f.quote, by[rr.req.rid]) for rr in rv_a.req_results for f in rr.findings if f.quote)
+    assert rv_a.depth["review_stats"]["confirmed"] == total and rv_a.depth["citation_audit"]["missing"] == 0
+
+
+def test_ensemble_cli_passport(tmp_path, monkeypatch):
+    from req_review.cli import main
+
+    monkeypatch.setenv("LLM_PROVIDER", "mock")
+    out = tmp_path / "r.md"
+    assert main([str(ROOT / "tests" / "fixtures" / "sample_requirements.md"), str(out), "--env", str(tmp_path / "x.env"),
+                 "--quiet", "--no-xlsx", "--no-jira", "--ensemble", "m-one,m-two"]) == 0
+    d = json.loads((tmp_path / "r.json").read_text(encoding="utf-8"))
+    ens = d["passport"]["ensemble"]
+    assert len(ens["models"]) == 2 and ens["both"] >= 1 and ens["only_b"] == 0  # одинаковые mock-модели
+    assert "Ансамбль моделей" in out.read_text(encoding="utf-8") and "ансамбль" in d["passport"]["model"]
+    assert all(f.get("ensemble") for r in d["requirements"] for f in r["findings"])

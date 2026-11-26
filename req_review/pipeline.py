@@ -43,6 +43,7 @@ class Options:
     compare: str | None = None
     batch_size: int = 8
     pdf: bool | None = None  # PDF-версия отчёта; None — по профилю (deep — да)
+    ensemble: str = ""  # v7: «модель1,модель2» — два прогона и объединение подтверждённых замечаний
     fix_loop: bool = False  # v7: «исправил → проверил заново» — блок «До / После» и файл <отчёт>_before_after.md
 
 
@@ -317,15 +318,41 @@ def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda
         timeline.append({"i": i, "t": round(time.monotonic() - t0, 2)})
         step(i, label)
 
-    llm = make_llm() if make_llm else build_llm_from_env()
+    from .ensemble import model_env, parse
+
+    models = [] if make_llm else parse(opts.ensemble)
+    if models:
+        with model_env(models[0]):
+            llm = build_llm_from_env()
+    else:
+        llm = make_llm() if make_llm else build_llm_from_env()
     if llm_wrap:
         llm = llm_wrap(llm)
     rv = review_document(input_path, llm, opts, log=log, step=tstep)
+    ens_info = None
+    if models:  # v7: второй прогон другой моделью и объединение подтверждённых замечаний
+        from .ensemble import merge, refresh_depth
+
+        log(f"ансамбль: второй прогон моделью {models[1]}")
+        with model_env(models[1]):
+            llm_b = build_llm_from_env()
+        rv_b = review_document(input_path, llm_b, opts, log=lambda m: log("  [B] " + m))
+        st = merge(rv, rv_b, f"модель A ({models[0]})", f"модель B ({models[1]})")
+        refresh_depth(rv)
+        for k in ("calls", "retries", "prompt_tokens", "output_tokens", "cached"):
+            if hasattr(llm.stats, k) and hasattr(llm_b.stats, k):
+                setattr(llm.stats, k, getattr(llm.stats, k) + getattr(llm_b.stats, k))
+        ens_info = {"models": [llm.label, llm_b.label], "only_a": st["a"], "only_b": st["b_added"], "both": st["both"],
+                    "rules": st["rules"]}
+        log(f"ансамбль: только A — {st['a']}, только B — {st['b_added']}, обе — {st['both']}, правила — {st['rules']}")
     if rv.dropped:  # лог трассировки: замечания модели с цитатами, которых нет в документе
         log(f"отброшено замечаний с неподтверждёнными цитатами: {len(rv.dropped)} "
             + "; ".join(f"{d['where']}: «{str(d['quote'])[:40]}»" for d in rv.dropped[:3]))
     ctx = build_context(rv, llm, opts, started, t0, input_path)
     ctx.trace = timeline
+    if ens_info:
+        ctx.passport["ensemble"] = ens_info
+        ctx.passport["model"] = " + ".join(ens_info["models"]) + " (ансамбль)"
 
     rescore = PROFILES[opts.profile]["rescore"] if opts.rescore is None else opts.rescore
     if rescore and ctx.changes:
@@ -363,7 +390,7 @@ def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda
     out = Path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)
     stem = out.with_suffix("")
-    ctx.report_md = build_report(rv, model_label=llm.label, agent_version=ctx.passport["agent_version"], started=started,
+    ctx.report_md = build_report(rv, model_label=ctx.passport["model"], agent_version=ctx.passport["agent_version"], started=started,
                                  duration_s=time.monotonic() - t0, llm_stats=llm.stats, input_path=input_path, ctx=ctx)
     out.write_text(ctx.report_md, encoding="utf-8")
     ctx.artifacts["Отчёт (Markdown)"] = out
