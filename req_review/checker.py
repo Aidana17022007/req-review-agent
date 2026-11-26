@@ -41,6 +41,7 @@ class ReqResult:
     test_blocker: str = ""  # дословная цитата, мешающая составить тест
     test_reason: str = ""
     ears: str = ""  # тип по EARS
+    test_scenarios: list = field(default_factory=list)  # [{"title", "gherkin"}] — 1–3 сценария
 
 
 @dataclass
@@ -60,6 +61,7 @@ class SetFinding:
     source: str
     confidence: str = ""
     critic_note: str = ""
+    values: list = field(default_factory=list)  # конфликтующие значения: [{"rid", "value", "quote"}]
 
 
 @dataclass
@@ -75,6 +77,7 @@ class ReviewResult:
     domain: object = None  # DomainResult (финтех-чек-лист)
     glossary: object = None  # GlossaryResult
     critic_used: bool = False
+    critic_scope: str = ""  # "all" | "critical" (self-consistency в профиле fast)
 
 
 # ---------------------------------------------------------------- промпты
@@ -102,10 +105,11 @@ ISO/IEC/IEEE 29148:2018 п. 5.2.5 и IEEE Std 830-1998 п. 4.3:
    optional («Там, где <функция включена>, система должна …»), complex.
 9. test — Testability Probe: попробуй написать приёмочный тест для требования В ТЕКУЩЕЙ формулировке
    (Gherkin на русском: «Дано / Когда / Тогда», с конкретными значениями ИЗ ТЕКСТА требования, не выдумывай чисел).
-   Если тест составить можно — possible=true и gherkin. Если нельзя (нет измеримого критерия, открытый список, TBD,
+   Если тест составить можно — possible=true и scenarios: 1–3 сценария (основной позитивный; негативный и/или
+   граничный — если в тексте есть порог, лимит или условие ошибки), у каждого title и gherkin. Если нельзя (нет измеримого критерия, открытый список, TBD,
    субъективная оценка) — possible=false, reason (почему) и blocker_quote — ДОСЛОВНЫЙ фрагмент, который мешает.
 10. Пиши на русском языке. Верни ТОЛЬКО JSON по схеме:
-{{"results":[{{"id":"R-001","ears":"event","findings":[{{"criterion":"<ключ критерия>","quote":"...","problem":"...","severity":"critical|major|minor","fix":"..."}}],"dismissed_hints":["..."],"suggested_rewrite":"...","test":{{"possible":true,"gherkin":"Дано ...\\nКогда ...\\nТогда ...","reason":"","blocker_quote":""}}}}]}}
+{{"results":[{{"id":"R-001","ears":"event","findings":[{{"criterion":"<ключ критерия>","quote":"...","problem":"...","severity":"critical|major|minor","fix":"..."}}],"dismissed_hints":["..."],"suggested_rewrite":"...","test":{{"possible":true,"scenarios":[{{"title":"...","gherkin":"Дано ...\\nКогда ...\\nТогда ..."}}],"reason":"","blocker_quote":""}}}}]}}
 Ключи критериев: {", ".join(INDIVIDUAL)}."""
 
 SYSTEM_SET = f"""Ты — опытный аналитик требований. Проведи статическое ревью НАБОРА требований целиком по критериям
@@ -266,7 +270,17 @@ def _apply_test_probe(res: ReqResult, t: dict, dropped: list[dict]) -> None:
     r = res.req
     possible = bool(t.get("possible"))
     if possible:
-        g = str(t.get("gherkin", "") or "").strip()
+        scen = []
+        for x in (t.get("scenarios") or [])[:3]:
+            if isinstance(x, dict) and str(x.get("gherkin", "")).strip():
+                scen.append({"title": str(x.get("title", "") or "").strip() or (r.doc_id or r.rid),
+                             "gherkin": str(x["gherkin"]).strip()})
+        if not scen and str(t.get("gherkin", "") or "").strip():  # старый формат ответа — один сценарий
+            scen = [{"title": r.doc_id or r.rid, "gherkin": str(t["gherkin"]).strip()}]
+        res.test_scenarios = scen
+        # для UI и Markdown — все сценарии одним текстом с заголовками «Сценарий:»
+        g = "\n\n".join(f"Сценарий: {x['title']}\n" + "\n".join("  " + ln.strip() for ln in x["gherkin"].splitlines() if ln.strip())
+                        for x in scen)
         if g:
             res.test_possible, res.test_gherkin = True, g
         return
@@ -352,6 +366,7 @@ def check_set(split: SplitResult, doc: Document, llm: BaseLLM, dropped: list[dic
     except LLMFatalError:
         raise
     except LLMError:
+        add_numeric_conflicts(found, reqs, log)
         return found, False
     for f in data.get("findings", []) or []:
         refs: list[SetRef] = []
@@ -376,8 +391,40 @@ def check_set(split: SplitResult, doc: Document, llm: BaseLLM, dropped: list[dic
         found.append(SetFinding(kind, _norm_crit(f.get("criterion"), SET, "set_consistent"), refs,
                                 str(f.get("problem", "")).strip(), _norm_sev(f.get("severity")),
                                 str(f.get("fix", "")).strip(), "LLM"))
+    add_numeric_conflicts(found, reqs, log)
     found.sort(key=lambda f: {"critical": 0, "major": 1, "minor": 2}[f.severity])
     return found, True
+
+
+def add_numeric_conflicts(found: list[SetFinding], reqs: list[Requirement], log=print) -> None:
+    """Числовые противоречия (детерминированно, numbers.py). Если модель уже нашла противоречие по той же паре —
+    помечаем его как подтверждённое правилом и добавляем конфликтующие значения; иначе — новое замечание."""
+    from .numbers import find_conflicts
+
+    by_id = {r.rid: r for r in reqs}
+    lbl = lambda rid: rid + (f" ({by_id[rid].doc_id})" if by_id[rid].doc_id else "")  # noqa: E731
+    conflicts = find_conflicts(reqs)
+    if conflicts:
+        log(f"  числовые противоречия (правило): {len(conflicts)}")
+    for c in conflicts:
+        values = [{"rid": c.a.rid, "value": c.a.raw, "quote": c.a.quote}, {"rid": c.b.rid, "value": c.b.raw, "quote": c.b.quote}]
+        pair = {c.a.rid, c.b.rid}
+        same = next((f for f in found if f.kind == "contradiction" and pair <= {r.req_id for r in f.refs}), None)
+        if same:
+            if "правило" not in same.source:
+                same.source = same.source + " + правило"
+            same.values = values
+            same.severity = "critical"
+            continue
+        found.append(SetFinding(
+            "contradiction", "set_consistent",
+            [SetRef(c.a.rid, c.a.quote), SetRef(c.b.rid, c.b.quote)],
+            f"Числовое противоречие: {lbl(c.a.rid)} — «{c.a.raw}», {lbl(c.b.rid)} — «{c.b.raw}» ({c.reason}). "
+            "Реализовать и протестировать оба требования одновременно невозможно.",
+            "critical",
+            f"Согласовать одно значение с владельцем требований и оставить его в одном требовании "
+            f"(второе — ссылкой на первое), например: заменить «{c.b.raw}» на «{c.a.raw}» или наоборот.",
+            "правило", values=values))
 
 
 def run_review(doc: Document, split: SplitResult, llm: BaseLLM, batch_size: int = 8, log=print,

@@ -40,8 +40,16 @@ def _collect(rv: ReviewResult) -> list[tuple[str, object, object]]:
     return items
 
 
-def run_critic(rv: ReviewResult, llm: BaseLLM, log=print) -> None:
-    items = _collect(rv)
+def _protected(f) -> bool:
+    """Объективные факты критик не отклоняет: невозможность теста и числовые противоречия, найденные правилом."""
+    return f.source == "тест-проба" or (getattr(f, "values", None) and "правило" in f.source)
+
+
+def run_critic(rv: ReviewResult, llm: BaseLLM, log=print, only_critical: bool = False) -> None:
+    """only_critical=True — self-consistency для профиля fast: второй проход только по критичным замечаниям (1 запрос)."""
+    all_items = _collect(rv)
+    items = [it for it in all_items if not only_critical or it[1].severity == "critical"]
+    rv.critic_scope = "critical" if only_critical else "all"
     if not items:
         rv.critic_used = True
         return
@@ -78,11 +86,15 @@ def run_critic(rv: ReviewResult, llm: BaseLLM, log=print) -> None:
     rv.critic_used = True
     keep_req: dict[int, list] = {}
     keep_set = []
-    for idx, (kind, f, rr) in enumerate(items, start=1):
-        v = verdicts.get(idx)
+    sent = {id(it[1]): n for n, it in enumerate(items, start=1)}
+    for kind, f, rr in all_items:
+        if id(f) not in sent:  # не отправлялось критику (only_critical) — оставляем как есть
+            (keep_req.setdefault(id(rr), []) if kind == "req" else keep_set).append(f)
+            continue
+        v = verdicts.get(sent[id(f)])
         verdict = str((v or {}).get("verdict", "")).lower()
         reason = str((v or {}).get("reason", "") or "").strip()
-        if verdict == "drop" and f.source != "тест-проба":
+        if verdict == "drop" and not _protected(f):
             where = rr.req.rid if kind == "req" else "набор"
             quote = f.quote if kind == "req" else " / ".join(r.quote for r in f.refs)
             rv.rejected.append({"where": where, "quote": quote, "problem": f.problem, "reason": reason or "отклонено критиком"})
@@ -92,7 +104,7 @@ def run_critic(rv: ReviewResult, llm: BaseLLM, log=print) -> None:
         f.critic_note = reason
         if not v:
             f.confidence = "low"
-        elif "+" in f.source or f.source == "тест-проба":
+        elif "+" in f.source or _protected(f):
             f.confidence = "high"
         else:
             f.confidence = "medium"
@@ -114,4 +126,16 @@ def default_confidence(rv: ReviewResult) -> None:
                 f.confidence = "medium" if ("+" in f.source or f.source == "тест-проба") else "low"
     for f in rv.set_findings:
         if not f.confidence:
-            f.confidence = "medium" if f.source == "правило" else "low"
+            f.confidence = "high" if _protected(f) else "medium" if "правило" in f.source else "low"
+
+
+# Числовая уверенность 0–1 (для JSON/UI): источник + вердикт критика
+def confidence_score(f) -> float:
+    if f.source == "тест-проба":
+        return 0.95
+    if getattr(f, "values", None) and "правило" in f.source:
+        return 0.95 if "LLM" in f.source else 0.9
+    base = {"high": 0.9, "medium": 0.75, "low": 0.55}.get(f.confidence, 0.55)
+    if f.source in ("правило", "домен") and f.confidence != "high":
+        base = 0.6
+    return base

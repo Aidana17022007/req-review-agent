@@ -118,6 +118,10 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
     step(5)
     if critic:
         run_critic(rv, llm, log=log)
+    elif os.getenv("REQLENS_CRITIC_CRITICAL", "1") != "0" and any(
+            f.severity == "critical" for rr in rv.req_results for f in rr.findings):
+        # self-consistency: даже в fast критичные замечания перепроверяются вторым проходом (1 запрос)
+        run_critic(rv, llm, log=log, only_critical=True)
     default_confidence(rv)
     return rv
 

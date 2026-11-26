@@ -163,7 +163,7 @@ def test_full_run_writes_all_artifacts(tmp_path, monkeypatch):
     assert "D.report_md" in html and '"trace"' in html  # «Скачать отчёт» и таймлайн агента
     _check_offline_3d_bundle(html)
     data = json.loads((tmp_path / "report.json").read_text(encoding="utf-8"))
-    assert data["schema_version"] == "2.0" and data["scores"]["document"] >= 0
+    assert data["schema_version"] == "2.1" and data["scores"]["document"] >= 0
     assert (tmp_path / "report_traceability.xlsx").stat().st_size > 3000
     assert "Summary" in (tmp_path / "report_jira_import.csv").read_text(encoding="utf-8-sig").splitlines()[0]
     assert "[^fix1]" in (tmp_path / "report_requirements_fixed.md").read_text(encoding="utf-8")

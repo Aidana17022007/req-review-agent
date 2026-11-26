@@ -10,13 +10,54 @@ from pathlib import Path
 from .criteria import INDIVIDUAL, SEVERITY, criterion_name, criterion_ref
 from .verify import norm
 
-SCHEMA_VERSION = "2.0"
+SCHEMA_VERSION = "2.1"  # 2.1: span, confidence_score, char_start, tests[], values, unified (только добавления)
 
 
 # ---------------------------------------------------------------- report.json
 
+def _line_offsets(doc) -> dict[int, int]:
+    off, pos = {}, 0
+    for line in doc.lines:
+        off[line.lineno] = pos
+        pos += len(line.text) + 1
+    return off
+
+
+def _finding_json(f, rr, doc, offsets) -> dict:
+    from .critic import confidence_score
+    from .verify import locate
+
+    d = asdict(f)
+    loc = locate(f.quote, doc.lines, rr.req.line_start, rr.req.line_end)
+    if loc:
+        ln, (a, b) = loc
+        d["span"] = {"line": ln, "start": a, "end": b, "offset": offsets.get(ln, 0) + a}
+    d["confidence_score"] = confidence_score(f)
+    return d
+
+
+def _set_json(f, doc, by_rid, offsets) -> dict:
+    from .critic import confidence_score
+    from .verify import locate
+
+    d = {k: v for k, v in asdict(f).items() if k != "refs"}
+    refs = []
+    for r in f.refs:
+        x = asdict(r)
+        req = by_rid.get(r.req_id)
+        loc = locate(r.quote, doc.lines, req.line_start if req else 0, req.line_end if req else 0)
+        if loc:
+            x["span"] = {"line": loc[0], "start": loc[1][0], "end": loc[1][1], "offset": offsets.get(loc[0], 0) + loc[1][0]}
+        refs.append(x)
+    d["refs"] = refs
+    d["confidence_score"] = confidence_score(f)
+    return d
+
+
 def to_json(ctx) -> dict:
     rv, sc = ctx.rv, ctx.scores
+    offsets = _line_offsets(rv.doc)
+    by_rid = {r.rid: r for r in rv.split.requirements}
     return {
         "schema_version": SCHEMA_VERSION,
         "passport": ctx.passport,
@@ -27,11 +68,12 @@ def to_json(ctx) -> dict:
             "rid": rr.req.rid, "doc_id": rr.req.doc_id, "text": rr.req.text, "section": rr.req.section,
             "location": rr.req.location, "line_start": rr.req.line_start, "line_end": rr.req.line_end, "page": rr.req.page,
             "score": sc.req[rr.req.rid], "ears": rr.ears, "rewrite": rr.rewrite, "llm_checked": rr.llm_checked,
+            "char_start": offsets.get(rr.req.line_start, 0),
             "test": {"possible": rr.test_possible, "gherkin": rr.test_gherkin, "blocker": rr.test_blocker, "reason": rr.test_reason},
-            "findings": [asdict(f) for f in rr.findings],
+            "tests": list(getattr(rr, "test_scenarios", []) or []),
+            "findings": [_finding_json(f, rr, rv.doc, offsets) for f in rr.findings],
         } for rr in rv.req_results],
-        "set_findings": [{**{k: v for k, v in asdict(f).items() if k != "refs"},
-                          "refs": [asdict(r) for r in f.refs]} for f in rv.set_findings],
+        "set_findings": [_set_json(f, rv.doc, by_rid, offsets) for f in rv.set_findings],
         "domain": asdict(rv.domain) if rv.domain else None,
         "glossary": asdict(rv.glossary) if rv.glossary else None,
         "questions": [asdict(q) for q in ctx.questions],

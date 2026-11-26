@@ -63,7 +63,13 @@ class MockLLM(BaseLLM):
             else:
                 gh = (f"Дано система в рабочем состоянии\nКогда выполняется сценарий {r.doc_id or r.rid}\n"
                       f"Тогда {' '.join(r.text.split()[:12])}")
-                test = {"possible": True, "gherkin": gh, "reason": "", "blocker_quote": ""}
+                scen = [{"title": f"{r.doc_id or r.rid}: основной сценарий", "gherkin": gh}]
+                num = _NUM.search(r.text)
+                if num:  # граничный сценарий для требований с порогом
+                    scen.append({"title": f"{r.doc_id or r.rid}: граничное значение {num.group(0)}",
+                                 "gherkin": f"Дано значение на границе {num.group(0)}\nКогда выполняется сценарий {r.doc_id or r.rid}\n"
+                                            f"Тогда система ведёт себя согласно порогу {num.group(0)}"})
+                test = {"possible": True, "scenarios": scen, "reason": "", "blocker_quote": ""}
             rewrite = ""
             if findings:
                 # mock-«исправление»: убрать маркеры размытых формулировок из текста
