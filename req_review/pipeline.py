@@ -148,7 +148,8 @@ def build_context(rv, llm, opts: Options, started: datetime, t0: float, input_pa
     return ctx
 
 
-def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda i, label="": None) -> Context:
+def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda i, label="": None, llm_wrap=None) -> Context:
+    """llm_wrap — необязательная обёртка над моделью (Studio наблюдает за пакетами для живой таблицы); логику не меняет."""
     from .exports import compare, summarize_for_compare, to_json, write_jira_csv, write_json, write_xlsx
     from .llm import build_llm_from_env
     from .report import build_report
@@ -163,6 +164,8 @@ def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda
         step(i, label)
 
     llm = build_llm_from_env()
+    if llm_wrap:
+        llm = llm_wrap(llm)
     rv = review_document(input_path, llm, opts, log=log, step=tstep)
     ctx = build_context(rv, llm, opts, started, t0, input_path)
     ctx.trace = timeline

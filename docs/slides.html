@@ -355,7 +355,7 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font:var(--t-smal
 /* --- Документ (подсветка как в Grammarly) */
 .docview{display:grid;grid-template-columns:1fr 12px;gap:var(--s-3)}
 .doc{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:var(--s-4) 0;font:400 15px/26px var(--font-sans);overflow:hidden}
-.ln{display:grid;grid-template-columns:52px 1fr;padding:0 var(--s-5) 0 0;min-height:26px;scroll-margin-top:120px}
+.ln{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:0 8px;padding:0 var(--s-4) 0 0;min-height:26px;scroll-margin-top:120px;border-left:3px solid transparent}
 .ln .n{color:var(--text-3);font:400 12px/26px var(--font-mono);text-align:right;padding-right:16px;user-select:none}
 .ln .t{white-space:pre-wrap;word-break:break-word}
 .ln.h .t{font-weight:700;font-size:17px}
@@ -364,15 +364,16 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font:var(--t-smal
 @keyframes flash{0%,40%{background:var(--brand-soft)}100%{background:transparent}}
 mark.hl{background:transparent;color:inherit;cursor:pointer;border-radius:3px;text-decoration-line:underline;text-decoration-style:wavy;
   text-decoration-thickness:1.5px;text-underline-offset:4px}
-mark.hl.critical{text-decoration-color:var(--critical-accent)}
+mark.hl.critical{text-decoration-color:var(--critical-accent);text-decoration-thickness:2px}
 mark.hl.major{text-decoration-color:var(--major-accent)}
-mark.hl.minor{text-decoration-color:var(--minor-accent)}
+mark.hl.minor{text-decoration-color:var(--minor-accent);text-decoration-style:dotted;text-decoration-thickness:2px}
 mark.hl.set{text-decoration-style:dashed;text-decoration-color:var(--brand-light)}
 mark.hl.off{text-decoration:none;cursor:default}
 mark.hl:hover,mark.hl.active{background:var(--brand-soft)}
 mark.hl.critical:hover,mark.hl.critical.active{background:var(--critical-soft)}
 .minimap{position:sticky;top:100px;height:calc(100vh - 140px);border-radius:7px;background:var(--surface)}
-.minimap i{position:absolute;left:2px;right:2px;height:4px;border-radius:2px;cursor:pointer}
+.minimap i{position:absolute;left:2px;right:2px;height:4px;border-radius:2px;cursor:pointer;z-index:1}
+.minimap i.set{left:5px;right:5px;background:var(--brand-light)!important}
 .minimap i.critical{background:var(--critical-accent)}.minimap i.major{background:var(--major-accent)}.minimap i.minor{background:var(--minor-accent)}
 
 .quote{border-left:3px solid var(--brand-light);padding:10px 14px;background:var(--surface);border-radius:0 12px 12px 0;font:400 14px/22px var(--font-sans);color:var(--text)}
@@ -454,7 +455,7 @@ pre.code{margin:0;padding:12px 14px;border-radius:12px;background:var(--surface-
 @media (max-width:640px){
   .kpi-num{font-size:34px;line-height:38px}.display{font-size:28px;line-height:34px}
   .docview{grid-template-columns:1fr}.minimap{display:none}
-  .ln{grid-template-columns:36px 1fr;padding-right:12px}.ln .n{padding-right:8px}
+  .ln{grid-template-columns:32px minmax(0,1fr) auto;padding-right:8px;gap:0 4px}.ln .n{padding-right:6px}
   .kv{grid-template-columns:110px 1fr}
   .topbar .hide-sm,.btn .hide-sm{display:none}
 }
@@ -464,7 +465,11 @@ pre.code{margin:0;padding:12px 14px;border-radius:12px;background:var(--surface-
   @page{size:A4;margin:14mm}
   body{background:#fff;font-size:11pt}
   .app{display:block;padding:0}.content{background:#fff;padding:0}
-  .sidebar,.topbar,.tabs,.toolbar,.drawer,.overlay,.minimap,.no-print,.graph-wrap,.toast,.burger{display:none!important}
+  .sidebar,.topbar,.tabs,.toolbar,.drawer,.overlay,.minimap,.no-print,.graph-wrap,.toast,.burger,.hl-pop,.g-stage,.g-side,.ln .rq{display:none!important}
+  .g-layout{display:block}.fix-card,.tcase{break-inside:avoid}.ln{border-left-color:transparent!important}
+  .btn,.arrow-btn,button.pill,.ln-req{display:none!important}
+  .view:empty{display:none!important}
+  .rise{animation:none!important}
   .view{display:block!important;animation:none}.view+.view{page-break-before:always}
   .panel{display:block!important}
   .card,.kpi,.agent,.stat{box-shadow:none;break-inside:avoid}
@@ -473,7 +478,7 @@ pre.code{margin:0;padding:12px 14px;border-radius:12px;background:var(--surface-
   .tbl .exp{display:table-row!important}
   mark.hl{text-decoration-style:solid}
 }
-@media (max-width:1000px){#ov-grid,#set-top,#up-grid,#pr-grid{grid-template-columns:minmax(0,1fr)!important}}
+@media (max-width:1000px){#ov-grid,#set-top,#up-grid,#pr-grid,#tr-grid,#res-grid{grid-template-columns:minmax(0,1fr)!important}}
 /* Шапка для простых страниц (styleguide, бенчмарк) */
 .pagebar{display:flex;align-items:center;gap:12px;background:var(--surface);border-radius:var(--r-hero);padding:14px 20px;margin:16px auto;max-width:var(--max-width)}
 .pagebar .logo{padding:0}
@@ -492,89 +497,325 @@ pre.code{margin:0;padding:12px 14px;border-radius:12px;background:var(--surface-
 .col-fill>:last-child{flex:1}
 @media (max-width:640px){.prof-row{grid-template-columns:1fr 56px}.prof-row .bar{grid-column:1/-1;grid-row:2}}
 
+/* ============================== v4: Документ, Граф, Тесты, Исправления, Studio */
+.nav-item .count.count-soft{background:var(--brand-soft);color:var(--brand)}
+.rise{animation:rise .45s var(--motion-ease) both;animation-delay:var(--d,0ms)}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.tbl tr.flash td{animation:flash 1.6s var(--motion-ease)}
+.banner-err{display:flex;gap:12px;align-items:flex-start;background:var(--critical-soft);color:var(--text);border:1px solid color-mix(in srgb,var(--critical-accent) 50%,transparent);
+  border-radius:16px;padding:14px 16px;margin-bottom:16px;font:var(--t-small)}
+.banner-err>.ic{color:var(--critical);margin-top:2px}
+.banner-warn{background:var(--major-soft);border-color:color-mix(in srgb,var(--major-accent) 50%,transparent)}.banner-warn>.ic{color:var(--major)}
+.empty-ic{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;margin:0 auto 14px;background:var(--surface-2);color:var(--text-3)}
+.linkish{border:0;background:none;padding:0;color:var(--brand);font:inherit;cursor:pointer;text-align:left}.linkish:hover{text-decoration:underline}
+
+/* --- Документ: строки требований, бейджи, поповер */
+.ln .rq{display:flex;gap:4px;align-items:flex-start;padding-top:3px}
+.ln-req{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 8px;border-radius:999px;border:1px solid var(--border);background:var(--surface);
+  color:var(--text-2);font:600 11px/1 var(--font-sans);cursor:pointer;white-space:nowrap}
+.ln-req:hover{border-color:var(--brand);color:var(--brand)}
+.ln.in-req.w-critical{border-left-color:var(--critical-accent)}.ln.in-req.w-major{border-left-color:var(--major-accent)}
+.ln.in-req.w-minor{border-left-color:var(--minor-accent)}.ln.in-req.w-ok{border-left-color:var(--neutral-bar)}
+.ln.hov{background:color-mix(in srgb,var(--brand-soft) 55%,transparent)}
+.u-sample{display:inline-block;margin-right:6px;font:500 12px/16px var(--font-sans);color:var(--text);text-decoration-line:underline;text-underline-offset:3px}
+.u-critical{text-decoration-style:wavy;text-decoration-color:var(--critical-accent);text-decoration-thickness:2px}
+.u-major{text-decoration-style:wavy;text-decoration-color:var(--major-accent);text-decoration-thickness:1.5px}
+.u-minor{text-decoration-style:dotted;text-decoration-color:var(--minor-accent);text-decoration-thickness:2px}
+.u-set{text-decoration-style:dashed;text-decoration-color:var(--brand-light);text-decoration-thickness:1.5px}
+.minimap .mm-view{position:absolute;left:0;right:0;top:0;height:10%;border-radius:6px;background:color-mix(in srgb,var(--brand) 14%,transparent);
+  border:1px solid color-mix(in srgb,var(--brand) 35%,transparent);pointer-events:none}
+.minimap{cursor:pointer;border:1px solid var(--border);width:14px}
+.docview{grid-template-columns:minmax(0,1fr) 14px}
+#mk-prev .ic{transform:rotate(180deg)}
+.hl-pop{position:absolute;z-index:85;background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow-lg);padding:14px 16px;
+  display:flex;flex-direction:column;gap:8px;max-width:calc(100vw - 24px)}
+.hl-pop[hidden]{display:none}
+.hl-pop.pinned{border-color:color-mix(in srgb,var(--brand) 45%,var(--border))}
+.hl-pop .pop-title{font:600 15px/22px var(--font-sans)}
+.hl-pop .pop-rw{background:var(--ok-soft);border-radius:12px;padding:10px 12px}
+@media (prefers-reduced-motion:no-preference){.hl-pop:not([hidden]){animation:fade var(--motion-fast) var(--motion-ease)}}
+
+/* --- Gherkin: подсветка синтаксиса (цвета — токены, контраст AA в обеих темах) */
+.gherkin .g-kw{color:var(--brand);font-weight:700}
+.gherkin .g-head{color:var(--text);font-weight:700}
+.gherkin .g-str{color:var(--major)}
+.gherkin .g-num{color:var(--minor);font-weight:600}
+.gherkin .g-tag{color:var(--brand)}
+.gherkin .g-com{color:var(--text-2);font-style:italic}
+.gherkin .g-pipe{color:var(--text-3)}
+.gherkin .g-ph{color:var(--major);text-decoration:underline dotted}
+.cov{display:flex;height:14px;border-radius:99px;overflow:hidden;background:var(--surface-2);margin-top:10px;gap:2px}
+.cov i{display:block;height:100%}.cov-ok{background:var(--ok-accent)}.cov-bad{background:var(--critical-accent)}
+.cov-none{background:repeating-linear-gradient(135deg,var(--neutral-bar) 0 5px,var(--surface-2) 5px 8px)}
+.tcase{display:flex;flex-direction:column;min-width:0}
+.tcase.t-bad{border-color:color-mix(in srgb,var(--critical-accent) 35%,var(--border))}
+.tcase pre{flex:1}
+.fix-card .side-before{border-left:3px solid var(--critical-accent)}
+.fix-card .side-after{border-left:3px solid var(--ok-accent)}
+.g-files{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media (max-width:1200px){.g-files{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:640px){.g-files{grid-template-columns:1fr 1fr}}
+.ai-teaser{display:flex;gap:14px;align-items:flex-start;padding:16px;border-radius:16px;background:var(--brand-soft)}
+.ai-teaser .logo-mark{flex:none}
+
+/* --- Граф */
+.g-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:stretch}
+.g-stage{position:relative;height:600px;border-radius:var(--r-card);border:1px solid var(--border);overflow:hidden;background:var(--surface);
+  background-image:radial-gradient(var(--border) 1px,transparent 1px);background-size:22px 22px}
+.g-stage.is-3d{background-image:none}
+.g-canvas{position:absolute;inset:0}
+.g-canvas canvas{display:block;outline:none}
+.g-canvas svg{cursor:grab;display:block}.g-canvas svg:active{cursor:grabbing}
+.g-labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.g-lbl{position:absolute;left:0;top:0;font:600 11px/1 var(--font-sans);color:var(--text);background:color-mix(in srgb,var(--surface) 80%,transparent);
+  padding:2px 5px;border-radius:6px;white-space:nowrap;will-change:transform}
+.g-lbl.dim{opacity:.7;color:var(--text-2)}.g-lbl.sel{background:var(--brand);color:var(--on-brand)}
+.g-note{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:999px;
+  padding:8px 14px;font:500 13px/18px var(--font-sans);color:var(--text-2);box-shadow:var(--shadow-md);z-index:2;display:flex;gap:8px;align-items:center;max-width:calc(100% - 24px)}
+.g-note[hidden]{display:none}
+.g-hint{position:absolute;left:12px;bottom:12px;right:12px;color:var(--text-2);pointer-events:none;text-shadow:0 0 6px var(--surface)}
+.g-side{display:flex;flex-direction:column;gap:10px;max-height:600px;overflow:auto;padding:18px}
+.g-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.g-stats>div{background:var(--surface-2);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:2px}
+.g-stats b{font:700 20px/1.1 var(--font-sans)}.g-stats span{font:var(--t-caption);color:var(--text-2)}
+.g-nodes,.g-rel{display:flex;flex-direction:column;gap:6px}
+.g-node-btn,.g-find{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;border:1px solid var(--border);background:var(--surface);
+  color:var(--text);cursor:pointer;text-align:left;font:inherit}
+.g-node-btn:hover,.g-find:hover{border-color:var(--brand);background:var(--brand-soft)}
+.g-node-btn .small{margin-left:auto}
+.g-rel-row{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;padding:8px 10px;border-radius:12px;background:var(--surface-2)}
+.g-rel-row.on{outline:2px solid color-mix(in srgb,var(--critical-accent) 45%,transparent)}
+.g-rel-row .small.muted{flex-basis:100%}
+.g-swatch{display:inline-block;width:18px;height:0;border-top:2px solid;vertical-align:middle;margin-right:4px}
+.g-l-red{border-color:#D64545;border-top-width:3px}.g-l-gray{border-color:#8A968E}.g-l-dash{border-color:#3FA06B;border-top-style:dashed}
+.g-l-thin{border-color:#2E8B57;border-top-width:1px}
+.g3-tip{font:500 12px/17px var(--font-sans);max-width:280px;white-space:normal}.g3-tip span{opacity:.8}
+.node text.glyph{fill:#fff;font:800 13px/1 var(--font-sans)}
+.node.dim{opacity:.22}.node.sel circle{stroke:var(--brand);stroke-width:4}
+.node:focus-visible circle{stroke:var(--brand);stroke-width:4}
+@media (max-width:1100px){.g-layout{grid-template-columns:minmax(0,1fr)}.g-side{max-height:none}}
+@media (max-width:640px){.g-stage{height:440px}.g-hint{display:none}.g-filters .caption{width:100%}}
+
+/* --- Studio: живой прогон, ассистент, сравнение */
+.live-tbl tr.new td{animation:flash 1.6s var(--motion-ease)}
+.chat{display:flex;flex-direction:column;gap:12px;min-height:0}
+.chat-log{display:flex;flex-direction:column;gap:10px;overflow:auto;max-height:440px;min-height:120px;padding-right:4px}
+.msg{max-width:92%;padding:10px 14px;border-radius:16px;font:var(--t-small);white-space:pre-wrap;overflow-wrap:anywhere}
+.msg.me{align-self:flex-end;background:var(--brand);color:var(--on-brand);border-bottom-right-radius:6px}
+.msg.ai{align-self:flex-start;background:var(--surface-2);color:var(--text);border-bottom-left-radius:6px}
+.msg.ai .ref{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:999px;border:1px solid var(--brand);background:var(--surface);
+  color:var(--brand);font:600 11px/1 var(--font-sans);cursor:pointer;vertical-align:1px;margin:0 1px}
+.msg.ai .ref:hover{background:var(--brand-soft)}
+.msg.typing{color:var(--text-2)}
+.msg .src{display:block;margin-top:6px;font:var(--t-caption);color:var(--text-3)}
+.chips-q{display:flex;flex-wrap:wrap;gap:6px}
+.chips-q button{border:1px solid var(--border);background:var(--surface);color:var(--text-2);border-radius:999px;padding:7px 12px;font:500 12px/1.2 var(--font-sans);cursor:pointer;text-align:left}
+.chips-q button:hover{border-color:var(--brand);color:var(--brand)}
+.chat-form{display:flex;gap:8px}
+.chat-form input{flex:1;min-width:0;height:42px;border-radius:999px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);padding:0 16px;font:400 14px/1 var(--font-sans)}
+.chat-form input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 4px var(--brand-soft)}
+.ba{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:center;text-align:center}
+.ba .big{font:800 clamp(48px,8vw,88px)/1 var(--font-sans);letter-spacing:-.04em}
+.ba .arrow{color:var(--text-3)}
+@media (max-width:640px){.ba{grid-template-columns:1fr}.ba .arrow{transform:rotate(90deg);justify-self:center}}
+.nav-item:disabled{opacity:.45;cursor:not-allowed}.nav-item:disabled:hover{background:none;color:var(--text-2)}
+
+/* --- Адаптивность 375px и компактная шапка в разделах */
+.section-title{flex-wrap:wrap}
+.seg{max-width:100%;overflow-x:auto;scrollbar-width:none}.seg::-webkit-scrollbar{display:none}.seg button{white-space:nowrap;flex:none}
+@media (max-width:640px){.toolbar .search{min-width:0;flex-basis:100%;max-width:none!important}.toolbar select.input{max-width:100%!important;flex:1 1 140px}}
+.hl-pop{max-height:min(62vh,480px);overflow:auto;padding-right:44px}
+.hl-pop [data-pop-close]{position:absolute;top:8px;right:8px}
+.hl-pop .chip{max-width:100%;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:0}
+.pagehead.compact{margin-bottom:12px}
+.pagehead.compact .display{font:var(--t-h2);letter-spacing:-.01em;margin-top:0!important}
+.pagehead.compact .caption,.pagehead.compact .meta{display:none}
+.pagehead.compact .btn{height:36px;padding:0 16px;font-size:13px}
+@media (max-width:640px){.hide-sm{display:none!important}}
+
 html,body{height:100%;overflow:hidden}
 .deck{height:100vh;position:relative}
-.slide{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:6vh 8vw;opacity:0;pointer-events:none;
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:6vh 7vw;opacity:0;pointer-events:none;overflow:auto;
   transform:translateY(12px);transition:opacity .35s var(--motion-ease),transform .35s var(--motion-ease);
   background:radial-gradient(900px 400px at 0% 0%,color-mix(in srgb,var(--brand) 16%,transparent),transparent 60%),
              radial-gradient(700px 300px at 100% 100%,color-mix(in srgb,#3FA06B 12%,transparent),transparent 60%),var(--bg)}
 .slide.on{opacity:1;pointer-events:auto;transform:none}
-.k{font:800 clamp(36px,6vw,76px)/1.05 var(--font-sans);letter-spacing:-.035em}
+.k{font:800 clamp(34px,5.4vw,72px)/1.05 var(--font-sans);letter-spacing:-.035em}
+.k2{font:800 clamp(28px,4vw,52px)/1.08 var(--font-sans);letter-spacing:-.03em}
 .grad{background:linear-gradient(90deg,#14532D,#3FA06B);-webkit-background-clip:text;background-clip:text;color:transparent}
-.lead{font:400 clamp(16px,1.8vw,24px)/1.5 var(--font-sans);color:var(--text-2);max-width:900px;margin-top:20px}
+.lead{font:400 clamp(16px,1.7vw,22px)/1.5 var(--font-sans);color:var(--text-2);max-width:920px;margin-top:18px}
 .big{font:800 clamp(64px,10vw,140px)/1 var(--font-sans);letter-spacing:-.04em}
 .num{position:fixed;right:24px;bottom:20px;font:600 13px/1 var(--font-sans);color:var(--text-3)}
 .nav{position:fixed;left:24px;bottom:16px;display:flex;gap:8px}
-.cols{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:36px}
-@media (max-width:800px){.cols{grid-template-columns:1fr}}
-.cols .card{padding:22px}.cols .card:first-child{background:var(--grad-hero);color:#fff;border-color:transparent}.cols .card:first-child .ic,.cols .card:first-child .muted{color:rgba(255,255,255,.85)}.cols .ic{color:var(--brand)}
-.flow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:32px}
-.flow span{padding:10px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--border);font:600 15px/1 var(--font-sans)}
-.flow i{color:var(--text-3);font-style:normal}
+.cols{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:32px}
+.cols.c4{grid-template-columns:repeat(4,1fr)}
+@media (max-width:900px){.cols,.cols.c4{grid-template-columns:1fr}}
+.cols .card{padding:22px}.cols .card.hero{background:var(--grad-hero);color:#fff;border-color:transparent}.cols .card.hero .ic,.cols .card.hero .muted{color:rgba(255,255,255,.85)}.cols .ic{color:var(--brand)}
+.shot{border-radius:16px;border:1px solid var(--border);box-shadow:var(--shadow-lg);width:100%;height:auto;display:block;background:var(--surface)}
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:36px;align-items:center}
+@media (max-width:900px){.split{grid-template-columns:1fr}}
+.steps{margin:20px 0 0;padding:0;list-style:none;counter-reset:s}
+.steps li{counter-increment:s;display:flex;gap:12px;align-items:flex-start;margin:12px 0;font:500 17px/1.45 var(--font-sans)}
+.steps li::before{content:counter(s);flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--brand);color:#fff;font:700 13px/1 var(--font-sans)}
+.metric-big{font:800 clamp(44px,6vw,80px)/1 var(--font-sans);letter-spacing:-.04em;color:var(--brand)}
+.vs{width:100%;border-collapse:separate;border-spacing:0;font:var(--t-small);background:var(--surface);border-radius:16px;overflow:hidden;margin-top:24px}
+.vs th,.vs td{padding:11px 14px;border-bottom:1px solid var(--border);text-align:left}
+.vs th{font:600 12px/16px var(--font-sans);text-transform:uppercase;letter-spacing:.06em;color:var(--text-3)}
+.vs td:first-child{font-weight:600}.vs tr:last-child td{border-bottom:0}
+.vs .us{background:var(--brand-soft)}
+.y{color:var(--ok);font-weight:700}.n{color:var(--text-3)}.p{color:var(--major);font-weight:600}
+.arch svg{width:100%;height:auto;display:block}
+.arch text{font-family:var(--font-sans)}
+.person{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px}
+.avatar{width:84px;height:84px;border-radius:50%;display:grid;place-items:center;background:var(--brand-soft);color:var(--brand);border:3px solid var(--brand);font:800 28px/1 var(--font-sans)}
 @media print{html,body{overflow:visible;height:auto}.slide{position:relative;opacity:1;transform:none;height:100vh;page-break-after:always}.nav,.num{display:none}}
 </style>
 </head>
 <body>
 <div class="deck" id="deck">
-  <section class="slide">
+  <!-- 1. Титул -->
+  <section class="slide" aria-label="Титул">
     <div class="logo" style="font-size:22px"><span class="logo-mark" style="width:44px;height:44px"><svg class="ic " width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/><path d="M8 11h6M11 8v6"/></svg></span>ReqLens</div>
     <h1 class="k" style="margin-top:32px">Дефекты требований —<br><span class="grad">до первой строчки кода</span></h1>
-    <p class="lead">ИИ-агент статической проверки документа требований по ISO/IEC/IEEE 29148 и IEEE 830. BCC-HUB × MNU FinTech Hackathon.</p>
+    <p class="lead">ИИ-агент статической проверки документа требований по ISO/IEC/IEEE 29148 и IEEE 830: подсветка дефектов в тексте, тест-проба, граф противоречий и исправленный документ. BCC-HUB × MNU FinTech Hackathon.</p>
   </section>
-  <section class="slide">
+
+  <!-- 2. Проблема -->
+  <section class="slide" aria-label="Проблема">
     <div class="caption">Проблема</div>
     <div class="big grad" style="margin:16px 0">~100×</div>
-    <p class="lead">Ориентир из литературы: дефект требований, найденный в эксплуатации, обходится на порядки дороже, чем найденный на ревью. «Быстро», «удобно», «и т. д.» доходят до кода — и до инцидентов.</p>
-  </section>
-  <section class="slide">
-    <div class="caption">Как работает</div>
-    <h2 class="k" style="font-size:clamp(32px,4.5vw,56px)">Один запуск — полный разбор</h2>
-    <div class="flow"><span>PDF · DOCX · MD</span><i>→</i><span>Нарезка</span><i>→</i><span>9 критериев 29148</span><i>→</i><span>Тест-проба</span><i>→</i><span>Набор целиком</span><i>→</i><span>Критик</span><i>→</i><span>Проверка цитат</span><i>→</i><span>Отчёт</span></div>
-    <p class="lead"><code class="mono">python review.py docs/requirements.md reports/report.md</code></p>
-  </section>
-  <section class="slide">
-    <div class="caption">Вау</div>
-    <h2 class="k" style="font-size:clamp(32px,4.5vw,56px)">Grammarly для требований</h2>
+    <p class="lead">Ориентир из литературы: дефект требований, найденный в эксплуатации, обходится на порядки дороже, чем найденный на ревью. «Быстро», «удобно», «и т. д.» доходят до кода — и до инцидентов. Ручное ревью — долго, субъективно и без трассировки.</p>
     <div class="cols">
-      <div class="card"><svg class="ic " width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg><div class="h3" style="margin-top:10px">Подсветка в тексте</div><p class="small muted">Клик по дефекту — пункт стандарта, проблема и готовая формулировка.</p></div>
-      <div class="card"><svg class="ic " width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6L4.5 18.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3"/><path d="M7 15h10"/></svg><div class="h3" style="margin-top:10px">Тест-проба</div><p class="small muted">Агент пишет Given/When/Then. Не получилось — доказательство непроверяемости.</p></div>
-      <div class="card"><svg class="ic " width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 4 5 5L9 20l-5-5z"/><path d="M12 7l5 5"/><path d="M5 3v4M3 5h4M19 15v4M17 17h4"/></svg><div class="h3" style="margin-top:10px">Было → стало</div><p class="small muted">Исправленный документ и повторная оценка: балл до и после.</p></div>
+      <div class="card hero"><svg class="ic " width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17.5v.01"/></svg><div class="h3" style="margin-top:10px">Двусмысленность</div><p class="small muted">«Система должна быстро проверять получателя» — сколько это?</p></div>
+      <div class="card"><svg class="ic " width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></svg><div class="h3" style="margin-top:10px">Противоречия</div><p class="small muted">500 000 ₸ в одном пункте и 300 000 ₸ в другом.</p></div>
+      <div class="card"><svg class="ic " width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6L4.5 18.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3"/><path d="M7 15h10"/></svg><div class="h3" style="margin-top:10px">Непроверяемость</div><p class="small muted">Тестировщик не может написать приёмочный тест.</p></div>
     </div>
   </section>
-  <section class="slide">
-    <div class="caption">Доверие</div>
-    <h2 class="k" style="font-size:clamp(32px,4.5vw,56px)">Никаких галлюцинаций в отчёте</h2>
-    <div class="cols">
-      <div class="card"><svg class="ic " width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4.5 4.5L19 7"/></svg><div class="h3" style="margin-top:10px">Цитаты проверяет код</div><p class="small muted">Замечание без дословной цитаты отбрасывается.</p></div>
-      <div class="card"><svg class="ic " width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.4 3.4 8.3 8 9 4.6-.7 8-4.6 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg><div class="h3" style="margin-top:10px">Критик-агент</div><p class="small muted">Второй проход: подтвердить, понизить, отклонить — с уверенностью.</p></div>
-      <div class="card"><svg class="ic " width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/></svg><div class="h3" style="margin-top:10px">Бенчмарк</div><p class="small muted">13 известных дефектов → recall и precision из bench/RESULTS.md.</p></div>
+
+  <!-- 3. Решение -->
+  <section class="slide" aria-label="Решение">
+    <div class="caption">Решение</div>
+    <h2 class="k2">Один запуск — полный разбор и готовые правки</h2>
+    <div class="cols c4">
+      <div class="card hero"><svg class="ic " width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg><div class="h3" style="margin-top:10px">Документ</div><p class="small muted">Дефекты подчёркнуты в тексте; карточка: критерий, объяснение, правка.</p></div>
+      <div class="card"><svg class="ic " width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9"/></svg><div class="h3" style="margin-top:10px">3D-граф</div><p class="small muted">Противоречия, зависимости и дубликаты; цепочка конфликта.</p></div>
+      <div class="card"><svg class="ic " width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6L4.5 18.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3"/><path d="M7 15h10"/></svg><div class="h3" style="margin-top:10px">Тесты</div><p class="small muted">Gherkin к каждому требованию и tests.feature — или доказательство непроверяемости.</p></div>
+      <div class="card"><svg class="ic " width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 4 5 5L9 20l-5-5z"/><path d="M12 7l5 5"/><path d="M5 3v4M3 5h4M19 15v4M17 17h4"/></svg><div class="h3" style="margin-top:10px">Исправления</div><p class="small muted">Diff было → стало, вопросы аналитику, «До / После» балла.</p></div>
+    </div>
+    <p class="lead"><code class="mono">python review.py docs/requirements.md reports/report.md</code> · или перетащите файл в ReqLens Studio.</p>
+  </section>
+
+  <!-- 4. Архитектура -->
+  <section class="slide" aria-label="Архитектура">
+    <div class="caption">Архитектура</div>
+    <h2 class="k2">Конвейер агента: модель предлагает — код проверяет</h2>
+    <div class="arch card" style="margin-top:24px;padding:20px">
+      <svg viewBox="0 0 1200 380" role="img" aria-label="Схема: вход, конвейер агента, LLM-провайдеры, проверки кодом, артефакты и интерфейсы">
+        <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#5E6A62"/></marker></defs>
+        <g font-size="14" fill="#111813">
+          <rect x="10" y="150" width="130" height="80" rx="14" fill="#fff" stroke="#E6EAE7"/><text x="75" y="184" text-anchor="middle" font-weight="700">Документ</text><text x="75" y="206" text-anchor="middle" font-size="12" fill="#5E6A62">PDF · DOCX · MD · TXT</text>
+          <rect x="180" y="40" width="760" height="300" rx="20" fill="#E7F4EC" stroke="#1F6B45" stroke-dasharray="6 6"/>
+          <text x="200" y="68" font-size="12" font-weight="700" fill="#1F6B45" letter-spacing="1">КОНВЕЙЕР АГЕНТА (pipeline.py)</text>
+          <g>
+            <rect x="200" y="90" width="120" height="56" rx="12" fill="#fff" stroke="#E6EAE7"/><text x="260" y="123" text-anchor="middle" font-weight="600">Чтение</text>
+            <rect x="340" y="90" width="120" height="56" rx="12" fill="#fff" stroke="#E6EAE7"/><text x="400" y="116" text-anchor="middle" font-weight="600">Нарезка</text><text x="400" y="134" text-anchor="middle" font-size="11" fill="#5E6A62">ID · модальные</text>
+            <rect x="480" y="90" width="150" height="56" rx="12" fill="#1F6B45"/><text x="555" y="116" text-anchor="middle" font-weight="700" fill="#fff">9 критериев</text><text x="555" y="134" text-anchor="middle" font-size="11" fill="#E7F4EC">+ тест-проба Gherkin</text>
+            <rect x="650" y="90" width="130" height="56" rx="12" fill="#fff" stroke="#E6EAE7"/><text x="715" y="116" text-anchor="middle" font-weight="600">Набор</text><text x="715" y="134" text-anchor="middle" font-size="11" fill="#5E6A62">противоречия, дубли</text>
+            <rect x="800" y="90" width="120" height="56" rx="12" fill="#fff" stroke="#E6EAE7"/><text x="860" y="116" text-anchor="middle" font-weight="600">Домен</text><text x="860" y="134" text-anchor="middle" font-size="11" fill="#5E6A62">финтех, глоссарий</text>
+            <path d="M320 118h18M460 118h18M630 118h18M780 118h18" stroke="#5E6A62" stroke-width="1.6" marker-end="url(#ar)"/>
+            <rect x="200" y="200" width="170" height="56" rx="12" fill="#fff" stroke="#E6EAE7"/><text x="285" y="226" text-anchor="middle" font-weight="600">Проверка цитат</text><text x="285" y="244" text-anchor="middle" font-size="11" fill="#5E6A62">выдуманное отбрасывается</text>
+            <rect x="390" y="200" width="150" height="56" rx="12" fill="#fff" stroke="#E6EAE7"/><text x="465" y="226" text-anchor="middle" font-weight="600">Критик-агент</text><text x="465" y="244" text-anchor="middle" font-size="11" fill="#5E6A62">уверенность</text>
+            <rect x="560" y="200" width="150" height="56" rx="12" fill="#fff" stroke="#E6EAE7"/><text x="635" y="226" text-anchor="middle" font-weight="600">Баллы кодом</text><text x="635" y="244" text-anchor="middle" font-size="11" fill="#5E6A62">формулы, без LLM</text>
+            <rect x="730" y="200" width="190" height="56" rx="12" fill="#fff" stroke="#E6EAE7"/><text x="825" y="226" text-anchor="middle" font-weight="600">Исправления + граф</text><text x="825" y="244" text-anchor="middle" font-size="11" fill="#5E6A62">diff, вопросы, связи</text>
+            <path d="M860 146v24H285v28" fill="none" stroke="#5E6A62" stroke-width="1.6" marker-end="url(#ar)"/>
+            <path d="M370 228h18M540 228h18M710 228h18" stroke="#5E6A62" stroke-width="1.6" marker-end="url(#ar)"/>
+            <text x="560" y="300" text-anchor="middle" font-size="12" fill="#5E6A62">правила-словари подсказывают модели и страхуют её ответы</text>
+          </g>
+          <path d="M140 190h38" stroke="#5E6A62" stroke-width="1.6" marker-end="url(#ar)"/>
+          <rect x="480" y="2" width="300" height="30" rx="10" fill="#FDF4E3" stroke="#B7791F"/><text x="630" y="22" text-anchor="middle" font-size="12" font-weight="600" fill="#8A5A12">LLM: Gemini · OpenAI-совм. · Ollama (офлайн)</text>
+          <path d="M555 32v56" stroke="#B7791F" stroke-width="1.6" stroke-dasharray="4 4" marker-end="url(#ar)"/>
+          <path d="M940 190h38" stroke="#5E6A62" stroke-width="1.6" marker-end="url(#ar)"/>
+          <rect x="980" y="60" width="210" height="130" rx="14" fill="#fff" stroke="#E6EAE7"/><text x="1000" y="86" font-weight="700">Артефакты</text>
+          <text x="1000" y="110" font-size="12" fill="#5E6A62">report.md (по ТЗ)</text><text x="1000" y="130" font-size="12" fill="#5E6A62">report.html — офлайн, 3D</text><text x="1000" y="150" font-size="12" fill="#5E6A62">JSON · Excel · CSV Jira</text><text x="1000" y="170" font-size="12" fill="#5E6A62">tests.feature · fixed.md</text>
+          <rect x="980" y="210" width="210" height="110" rx="14" fill="#1F6B45"/><text x="1000" y="236" font-weight="700" fill="#fff">Интерфейсы</text>
+          <text x="1000" y="260" font-size="12" fill="#E7F4EC">CLI · GitHub Action</text><text x="1000" y="280" font-size="12" fill="#E7F4EC">Studio: FastAPI + SSE</text><text x="1000" y="300" font-size="12" fill="#E7F4EC">AI-ассистент · До / После</text>
+        </g>
+      </svg>
     </div>
   </section>
-  <section class="slide">
-    <div class="caption">Для банка</div>
-    <h2 class="k" style="font-size:clamp(32px,4.5vw,56px)">Финтех-экспертиза и офлайн</h2>
-    <div class="cols">
-      <div class="card"><svg class="ic " width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10 12 4l9 6"/><path d="M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18"/></svg><div class="h3" style="margin-top:10px">Чек-лист полноты</div><p class="small muted">2FA, лимиты, идемпотентность, AML, персональные данные, SLA, RTO/RPO.</p></div>
-      <div class="card"><svg class="ic " width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.4 3.4 8.3 8 9 4.6-.7 8-4.6 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg><div class="h3" style="margin-top:10px">Документ не покидает контур</div><p class="small muted">Профиль offline — локальная модель через Ollama.</p></div>
-      <div class="card"><svg class="ic " width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5"/><path d="M4 18v1a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1"/></svg><div class="h3" style="margin-top:10px">Сразу в работу</div><p class="small muted">Excel-трассировка, CSV для Jira, вопросы заказчику.</p></div>
+
+  <!-- 5. Демо -->
+  <section class="slide" aria-label="Демо">
+    <div class="split">
+      <div><div class="caption">Демо · 90 секунд</div><h2 class="k2" style="margin-top:8px">Перетащили файл — агент работает вживую</h2>
+        <ol class="steps">
+          <li>Drag-and-drop в ReqLens Studio: таймлайн шагов и таблица требований заполняются по мере проверки.</li>
+          <li>«Документ»: дефекты подчёркнуты, как в проверке орфографии; <span class="kbd">J</span> — следующий.</li>
+          <li>«Граф»: красное ребро — противоречие; клик — цепочка конфликта.</li>
+          <li>AI-ассистент: «Почему R-006 критичное?» — ответ со ссылками.</li>
+          <li>«До / После»: проверка исправленной версии — балл растёт.</li>
+        </ol></div>
+      <img class="shot" src="assets/live-run.gif" alt="Живой прогон в ReqLens Studio: требования появляются в таблице по мере проверки">
     </div>
   </section>
-  <section class="slide">
-    <div class="caption">Соответствие ТЗ</div>
-    <h2 class="k" style="font-size:clamp(32px,4.5vw,56px)">Всё, что требуется — и больше</h2>
-    <p class="lead">Одна команда · PDF/DOCX/MD/TXT · отчёт на русском в файл · паспорт с моделью и коммитом · нарезка с ID · проверка каждого требования и набора · сводка и итог · ссылки на строки и цитаты · README и .env.example.</p>
+
+  <!-- 6. Ключевые экраны -->
+  <section class="slide" aria-label="Ключевые экраны">
+    <div class="caption">Отчёт — один офлайн-файл HTML</div>
+    <h2 class="k2">Документ · 3D-граф · До / После</h2>
+    <div class="cols">
+      <figure style="margin:0"><img class="shot" src="assets/screenshot-doc-light.png" alt="Документ с подсветкой дефектов и карточкой замечания"><figcaption class="small muted" style="margin-top:8px">Подсветка в тексте, миникарта, карточка с правкой</figcaption></figure>
+      <figure style="margin:0"><img class="shot" src="assets/screenshot-graph-light.png" alt="3D-граф требований"><figcaption class="small muted" style="margin-top:8px">3D-граф: цвет — статус, размер — дефекты; 2D — запасной вид</figcaption></figure>
+      <figure style="margin:0"><img class="shot" src="assets/screenshot-studio-compare.png" alt="Экран До / После"><figcaption class="small muted" style="margin-top:8px">Сравнение версий: балл, исправленные и новые дефекты</figcaption></figure>
+    </div>
   </section>
-  <section class="slide">
+
+  <!-- 7. Метрики -->
+  <section class="slide" aria-label="Метрики бенчмарка">
+    <div class="caption">Метрики · бенчмарк на документе с известными дефектами</div>
+    <h2 class="k2">Точность измеряется, а не обещается</h2>
+    <div class="cols c4">
+      <div class="card hero"><div class="caption" style="color:rgba(255,255,255,.85)">Recall</div><div class="metric-big" style="color:#fff">—</div><p class="small muted">появится после прогона на модели</p></div>
+      <div class="card"><div class="caption">Precision</div><div class="metric-big">—</div><p class="small muted">доля верных существенных замечаний</p></div>
+      <div class="card"><div class="caption">F1</div><div class="metric-big">—</div><p class="small muted">гармоническое среднее</p></div>
+      <div class="card"><div class="caption">Ложные срабатывания</div><div class="metric-big">—</div><p class="small muted">появится после прогона на модели</p></div>
+    </div>
+    <p class="lead small">Бенчмарк на модели ещё не запускался (есть только mock-прогон словарных правил). Источник: <code class="mono">bench/RESULTS.md</code>, воспроизводится командой <code class="mono">python bench/run.py</code>.</p>
+  </section>
+
+  <!-- 8. Отличие от конкурентов -->
+  <section class="slide" aria-label="Отличие от конкурентов">
+    <div class="caption">Чем отличаемся</div>
+    <h2 class="k2">Не «ещё один чат-бот», а проверяемый агент</h2>
+    <table class="vs">
+      <thead><tr><th>Возможность</th><th class="us">ReqLens</th><th>Ручное ревью</th><th>Общий LLM-чат</th><th>Классические анализаторы требований</th></tr></thead>
+      <tbody>
+        <tr><td>Критерии ISO/IEC/IEEE 29148 с пунктами стандарта</td><td class="us y">✓ да</td><td class="p">~ зависит от ревьюера</td><td class="p">~ без гарантий</td><td class="y">✓ да</td></tr>
+        <tr><td>Дословная цитата, проверенная кодом</td><td class="us y">✓ да</td><td class="y">✓ да</td><td class="n">— нет (галлюцинации)</td><td class="y">✓ да</td></tr>
+        <tr><td>Тест-проба Gherkin как доказательство</td><td class="us y">✓ да</td><td class="n">— нет</td><td class="p">~ по запросу</td><td class="n">— нет</td></tr>
+        <tr><td>Противоречия и дубли во всём наборе</td><td class="us y">✓ граф</td><td class="p">~ долго</td><td class="p">~ в пределах окна</td><td class="p">~ частично</td></tr>
+        <tr><td>Русский язык и финтех-чек-лист</td><td class="us y">✓ да</td><td class="y">✓ да</td><td class="p">~ без чек-листа</td><td class="n">— в основном английский</td></tr>
+        <tr><td>Офлайн: документ не покидает контур</td><td class="us y">✓ Ollama</td><td class="y">✓ да</td><td class="n">— облако</td><td class="p">~ лицензия on-prem</td></tr>
+        <tr><td>Исправленный документ и «До / После»</td><td class="us y">✓ да</td><td class="n">— нет</td><td class="p">~ вручную</td><td class="n">— нет</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 9. Команда (показывается, только если docs/team.yaml заполнен) -->
+  
+
+  <!-- 10. Финал -->
+  <section class="slide" aria-label="Спасибо">
     <div class="logo" style="font-size:22px"><span class="logo-mark" style="width:44px;height:44px"><svg class="ic " width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/><path d="M8 11h6M11 8v6"/></svg></span>ReqLens</div>
     <h2 class="k" style="margin-top:28px">Спасибо!<br><span class="grad">Вопросы?</span></h2>
     <p class="lead">Дальше: интеграция с Confluence и Jira, ревью требований в каждом PR, новые доменные чек-листы одним YAML-файлом.</p>
   </section>
 </div>
 <div class="nav"><button class="btn btn-secondary btn-sm" id="prev" aria-label="Назад">←</button><button class="btn btn-secondary btn-sm" id="next" aria-label="Вперёд">→</button></div>
-<div class="num" id="num"></div>
+<div class="num" id="num" aria-live="polite"></div>
 <script>
 (function(){const s=[...document.querySelectorAll(".slide")];let i=Math.max(0,Math.min(s.length-1,(+location.hash.slice(1)||1)-1));
-const go=n=>{i=Math.max(0,Math.min(s.length-1,n));s.forEach((x,k)=>x.classList.toggle("on",k===i));document.getElementById("num").textContent=`${i+1} / ${s.length}`;history.replaceState(null,"","#"+(i+1));};
+const go=n=>{i=Math.max(0,Math.min(s.length-1,n));s.forEach((x,k)=>{x.classList.toggle("on",k===i);x.setAttribute("aria-hidden",k!==i);});document.getElementById("num").textContent=`${i+1} / ${s.length}`;history.replaceState(null,"","#"+(i+1));};
 document.addEventListener("keydown",e=>{if(["ArrowRight","PageDown"," "].includes(e.key))go(i+1);else if(["ArrowLeft","PageUp"].includes(e.key))go(i-1);else if(e.key==="p"||e.key==="P")print();});
 document.getElementById("next").onclick=()=>go(i+1);document.getElementById("prev").onclick=()=>go(i-1);go(i);})();
 </script>

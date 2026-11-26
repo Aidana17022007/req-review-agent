@@ -45,13 +45,22 @@ def asset(name: str) -> str:
     return (ASSETS / name).read_text(encoding="utf-8")
 
 
+@lru_cache(maxsize=None)
+def asset_b64(name: str) -> str:
+    """Бинарный ассет (например, gzip-бандл библиотеки) в base64 — для инлайна в офлайн-HTML без CDN."""
+    import base64
+
+    p = ASSETS / name
+    return base64.b64encode(p.read_bytes()).decode("ascii") if p.exists() else ""
+
+
 def env():
     from jinja2 import Environment, FileSystemLoader, select_autoescape
 
     from .icons import ICONS, icon
 
     e = Environment(loader=FileSystemLoader(str(TEMPLATES)), autoescape=select_autoescape(["html", "j2"]))
-    e.globals.update(icon=icon, ICONS=ICONS, tokens_css=tokens_css, asset=asset)
+    e.globals.update(icon=icon, ICONS=ICONS, tokens_css=tokens_css, asset=asset, asset_b64=asset_b64)
     return e
 
 

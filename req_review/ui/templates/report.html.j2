@@ -21,6 +21,7 @@
     <div class="nav-label">Меню</div>
     <nav id="nav" aria-label="Разделы отчёта"></nav>
     <div class="nav-label">Общее</div>
+    <button class="nav-item" id="btn-ai" type="button">{{ icon("bot") }}<span>AI-ассистент</span><span class="count count-soft">Studio</span></button>
     <button class="nav-item" id="btn-theme" type="button">{{ icon("moon") }}<span>Тёмная тема</span></button>
     <button class="nav-item" id="btn-keys" type="button">{{ icon("keyboard") }}<span>Горячие клавиши</span></button>
     <button class="nav-item" id="btn-print" type="button">{{ icon("print") }}<span>Печать / PDF</span></button>
@@ -56,11 +57,17 @@
   <div class="body" id="drawer-body"></div>
 </aside>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="hl-pop" id="hlpop" role="dialog" aria-label="Замечание к фрагменту" hidden></div>
 
 <script type="application/json" id="data">{{ data_json|safe }}</script>
 <script>const ICONS = {{ ICONS|tojson }};</script>
+{# 3d-force-graph (с three.js) — инлайн, gzip+base64; распаковывается только при открытии раздела «Граф» #}
+<script type="application/octet-stream" id="lib-3d" data-enc="gzip-base64">{{ asset_b64("vendor/3d-force-graph.min.js.gz") }}</script>
 <script>
 {{ asset("report.js")|safe }}
+</script>
+<script>
+{{ asset("report-graph.js")|safe }}
 </script>
 </body>
 </html>

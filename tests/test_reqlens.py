@@ -161,6 +161,7 @@ def test_full_run_writes_all_artifacts(tmp_path, monkeypatch):
     assert "<script" in html
     assert not _re.search(r'<(script|img|iframe)[^>]+src="https?://|<link[^>]+href="https?://|url\(\s*["\']?https?://|@import', html)
     assert "D.report_md" in html and '"trace"' in html  # «Скачать отчёт» и таймлайн агента
+    _check_offline_3d_bundle(html)
     data = json.loads((tmp_path / "report.json").read_text(encoding="utf-8"))
     assert data["schema_version"] == "2.0" and data["scores"]["document"] >= 0
     assert (tmp_path / "report_traceability.xlsx").stat().st_size > 3000
@@ -171,6 +172,20 @@ def test_full_run_writes_all_artifacts(tmp_path, monkeypatch):
     assert main([str(FIX), str(out2), "--env", str(tmp_path / "none.env"), "--compare", str(tmp_path / "report.json"),
                  "--quiet", "--no-xlsx", "--no-jira"]) == 0
     assert "Динамика относительно предыдущей версии" in out2.read_text(encoding="utf-8")
+
+
+def _check_offline_3d_bundle(html: str):
+    """3D-движок встроен в отчёт (gzip+base64), распаковывается лениво; новые разделы на месте."""
+    import base64
+    import gzip
+    import re as _re
+
+    m = _re.search(r'<script type="application/octet-stream" id="lib-3d"[^>]*>([A-Za-z0-9+/=]+)</script>', html)
+    assert m, "нет встроенного бандла 3D"
+    js = gzip.decompress(base64.b64decode(m.group(1))).decode("utf-8")
+    assert "ForceGraph3D" in js
+    for marker in ('RENDER.graph', 'renderDoc', 'renderTests', 'renderFixes', 'tests.feature', 'id="hlpop"'):
+        assert marker in html, marker
 
 
 def test_html_highlights_every_finding(rv):
@@ -184,6 +199,8 @@ def test_html_highlights_every_finding(rv):
     data = build_data(ctx)
     req_f = [f for f in data["findings"].values() if f["kind"] == "req"]
     assert req_f and all("line" in f for f in req_f)
+    # диапазон строк требования — для перехода «таблица → документ»
+    assert all(r["line"] <= r["line_end"] for r in data["reqs"] if r["line"])
     for ms in data["marks"].values():
         for a, b in zip(ms, ms[1:]):
             assert a[1] <= b[0]  # метки на строке не пересекаются
@@ -207,3 +224,18 @@ def test_vague_goal_without_mechanism_is_unverifiable():
     # конкретное требование с числами не должно ловиться этим правилом
     ok = check_requirement(_req("После 5 неверных вводов кода операция должна блокироваться на 30 минут."))
     assert not any(h.criterion == "verifiable" for h in ok)
+
+
+def test_slides_hide_mock_metrics_and_placeholder_team(tmp_path):
+    from req_review.ui.styleguide import bench_metrics, team
+
+    res = tmp_path / "RESULTS.md"
+    res.write_text("*Модель:* mock / mock-heuristic · x\n| Recall | **69 %** (9 из 13) |\n| Precision | **100 %** |\n", encoding="utf-8")
+    m = bench_metrics(res)
+    assert m["recall"] == "—" and "ещё не запускался" in m["model_note"] and "выше" not in m["model_note"]
+    real = tmp_path / "REAL.md"
+    real.write_text("*Модель:* gemini / gemini-3.8-flash · x\n| Recall | **85 %** (34 из 40) |\n", encoding="utf-8")
+    assert bench_metrics(real)["recall"] == "85%"
+    y = tmp_path / "team.yaml"
+    y.write_text('team:\n  - name: "Имя Фамилия"\n    role: "x"\n  - name: "Айдана С."\n    role: "UI"\n', encoding="utf-8")
+    assert [t["name"] for t in team(y)] == ["Айдана С."]

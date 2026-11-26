@@ -142,7 +142,7 @@ def build_data(ctx) -> dict:
                 add_mark(loc[0], loc[1], fid, f.severity, "req")
         worst = min((f.severity for f in rr.findings), key=ORDER.get, default="ok")
         reqs.append({"rid": r.rid, "doc_id": r.doc_id, "text": r.text, "section": r.section, "location": r.location,
-                     "line": r.line_start, "score": sc.req[r.rid], "ears": rr.ears, "rewrite": rr.rewrite,
+                     "line": r.line_start, "line_end": r.line_end, "score": sc.req[r.rid], "ears": rr.ears, "rewrite": rr.rewrite,
                      "llm_checked": rr.llm_checked, "note": rr.note, "worst": worst, "findings": fids,
                      "crit": sorted({f.criterion for f in rr.findings}),
                      "test": {"possible": rr.test_possible, "gherkin": rr.test_gherkin, "blocker": rr.test_blocker,
