@@ -218,3 +218,27 @@ def write_xlsx(ctx, path: Path) -> None:
 
 def write_json(ctx, path: Path) -> None:
     path.write_text(json.dumps(to_json(ctx), ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+
+
+# ---------------------------------------------------------------- tests.feature (Gherkin, русский)
+
+def feature_text(ctx) -> str:
+    rv, p = ctx.rv, ctx.passport
+    ok = [rr for rr in rv.req_results if rr.test_possible]
+    bad = [rr for rr in rv.req_results if rr.test_possible is False]
+    out = ["# language: ru", f"# Сгенерировано ReqLens · {p.get('agent_version', '')} · {p.get('started', '')}",
+           f"# Документ: {p.get('document', '')}", f"# Тестируемо {len(ok)} из {len(ok) + len(bad)} требований", "",
+           f"Функция: Приёмочные тесты — {p.get('document', '')}", ""]
+    for rr in ok:
+        r = rr.req
+        out.append(f"  # {r.rid}{f' · {r.doc_id}' if r.doc_id else ''} · {r.location}")
+        scen = rr.test_scenarios or [{"title": r.doc_id or r.rid, "gherkin": rr.test_gherkin}]
+        for x in scen:
+            out.append(f"  Сценарий: {x['title']}")
+            out += ["    " + ln.strip() for ln in x["gherkin"].splitlines() if ln.strip() and not ln.strip().startswith("Сценарий")]
+            out.append("")
+    if bad:
+        out.append("  # ---- Тест составить невозможно (доказательство непроверяемости) ----")
+        for rr in bad:
+            out.append(f"  # {rr.req.doc_id or rr.req.rid}: {rr.test_reason} · мешает «{rr.test_blocker}»")
+    return "\n".join(out) + "\n"

@@ -133,10 +133,39 @@ def parse_json(text: str) -> dict:
         i = min([p for p in (t.find("{"), t.find("[")) if p >= 0], default=-1)
         if i >= 0:
             t = t[i:]
-    data = json.loads(t)
+    try:
+        data = json.loads(t)
+    except json.JSONDecodeError:
+        data = json.loads(repair_json(t))  # если и ремонт не помог — исключение уйдёт в повтор запроса
     if isinstance(data, list):
         data = {"items": data}
     return data
+
+
+def repair_json(t: str) -> str:
+    """Авто-ремонт типичных дефектов JSON от модели: висячие запятые и обрезанный хвост (незакрытые строки/скобки)."""
+    t = re.sub(r",\s*([}\]])", r"\1", t.strip())
+    stack, in_str, esc = [], False, False
+    for ch in t:
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch in "{[":
+            stack.append("}" if ch == "{" else "]")
+        elif ch in "}]" and stack:
+            stack.pop()
+    if in_str:
+        t += '"'
+    t = re.sub(r",\s*$", "", t)
+    t = re.sub(r':\s*$', ': null', t)
+    return t + "".join(reversed(stack))
 
 
 def _retry_delay_from_body(body: str) -> float | None:
@@ -230,10 +259,22 @@ def _env_key(name: str) -> str:
     return v
 
 
+def _min_interval() -> float:
+    """Пауза между запросами: LLM_MIN_INTERVAL (с) или лимит LLM_RPM (запросов в минуту) — берётся более строгое."""
+    iv = float(os.getenv("LLM_MIN_INTERVAL", "6"))
+    rpm = os.getenv("LLM_RPM", "").strip()
+    if rpm:
+        try:
+            iv = max(iv, 60.0 / max(1.0, float(rpm)))
+        except ValueError:
+            pass
+    return iv
+
+
 def build_llm_from_env() -> BaseLLM:
     provider = os.getenv("LLM_PROVIDER", "gemini").strip().lower()
     common = dict(
-        min_interval=float(os.getenv("LLM_MIN_INTERVAL", "6")),
+        min_interval=_min_interval(),
         max_retries=int(os.getenv("LLM_MAX_RETRIES", "6")),
         timeout=float(os.getenv("LLM_TIMEOUT", "180")),
     )

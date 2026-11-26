@@ -53,3 +53,19 @@ def test_daily_quota_fails_fast(monkeypatch):
     with pytest.raises(LLMFatalError, match="Квота"):
         GeminiLLM(api_key="k", model="m").generate_json("s", "p")
     assert not slept
+
+
+def test_json_repair_trailing_commas_and_truncation():
+    from req_review.llm import parse_json
+
+    assert parse_json('{"results": [{"id": "R-001", "findings": [],},],}') == {"results": [{"id": "R-001", "findings": []}]}
+    cut = parse_json('```json\n{"results": [{"id": "R-001", "findings": [{"quote": "быстро')
+    assert cut["results"][0]["id"] == "R-001"
+
+
+def test_rpm_limit_sets_interval(monkeypatch):
+    from req_review.llm import _min_interval
+
+    monkeypatch.setenv("LLM_MIN_INTERVAL", "0")
+    monkeypatch.setenv("LLM_RPM", "5")
+    assert _min_interval() == 12.0

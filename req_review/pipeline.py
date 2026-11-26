@@ -171,6 +171,9 @@ def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda
     if llm_wrap:
         llm = llm_wrap(llm)
     rv = review_document(input_path, llm, opts, log=log, step=tstep)
+    if rv.dropped:  # лог трассировки: замечания модели с цитатами, которых нет в документе
+        log(f"отброшено замечаний с неподтверждёнными цитатами: {len(rv.dropped)} "
+            + "; ".join(f"{d['where']}: «{str(d['quote'])[:40]}»" for d in rv.dropped[:3]))
     ctx = build_context(rv, llm, opts, started, t0, input_path)
     ctx.trace = timeline
 
@@ -215,6 +218,18 @@ def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda
         p = out.parent / f"{stem.name}_requirements_fixed.md"
         p.write_text(ctx.fixed_text, encoding="utf-8")
         ctx.artifacts["Исправленный документ"] = p
+    if opts.fixed and ctx.changes:
+        from .fixer import document_diff
+
+        p = out.parent / f"{stem.name}_fixed.diff"
+        p.write_text(document_diff(rv, ctx.fixed_text), encoding="utf-8")
+        ctx.artifacts["Исправления (unified diff)"] = p
+    if opts.tests and any(rr.test_possible for rr in rv.req_results):
+        from .exports import feature_text
+
+        p = out.parent / f"{stem.name}_tests.feature"
+        p.write_text(feature_text(ctx), encoding="utf-8")
+        ctx.artifacts["Приёмочные тесты (.feature)"] = p
     if opts.json:
         p = stem.with_suffix(".json")
         write_json(ctx, p)
