@@ -933,3 +933,24 @@ def test_external_annotation_scoring_by_location_and_class():
     assert [r["found"] for r in res["rows"]] == [True, False, False]
     assert res["found"] == 1 and [f["id"] for f in res["agent_only"]] == ["S-02"]
     assert "Пропуски агента" in score.to_md(res)
+
+
+def test_calibration_folds_llm_twin_of_rule_and_caps_unconfirmed_critical(tmp_path):
+    """v8: замечание модели к набору, повторяющее правило, — «дубль S-xx»; критичный пропуск модели без правила —
+    существенный; критичное противоречие модели остаётся критичным."""
+    from req_review.checker import ReviewResult, SetFinding, SetRef
+    from req_review.depth import calibrate_severity
+
+    doc, s = _doc(tmp_path, API_DOC)
+    rule = SetFinding("gap", "set_complete", [SetRef("DOC", "a")], "В спецификации API описан только метод изменения данных "
+                      "saveLimit, метода чтения настроек и порога нет; приложение не покажет сохранённый порог.", "critical", "—", "правило")
+    twin = SetFinding("gap", "set_complete", [SetRef("DOC", "b")], "В спецификации API только метод изменения данных saveLimit: "
+                      "нет метода чтения настроек и порога, приложение не покажет порог.", "critical", "—", "LLM")
+    gap = SetFinding("gap", "set_complete", [SetRef("DOC", "c")], "Не описана идемпотентность повторной доставки.", "critical", "—", "LLM")
+    contra = SetFinding("contradiction", "set_consistent", [SetRef("DOC", "d")], "Пример 31 января противоречит Ф-2.",
+                        "critical", "—", "LLM (перекрёстная проверка)")
+    rv = ReviewResult(doc=doc, split=s, req_results=[], set_findings=[rule, twin, gap, contra], dropped=[])
+    st = calibrate_severity(rv)
+    assert twin not in rv.set_findings and rule.source == "правило+LLM" and st["folded"] == 1
+    assert gap.severity == "major" and contra.severity == "critical"
+    assert any(r.get("duplicate_of") == "S-01" for r in rv.rejected)

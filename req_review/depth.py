@@ -719,17 +719,53 @@ def acceptance_gap(rv, cov: dict) -> SetFinding | None:
 
 # ---------------------------------------------------------------- калибровка серьёзности (v8)
 
+def _same_problem(f, r) -> bool:
+    """Два замечания к набору — об одном, если совпадает не меньше половины ключевых слов (минимум 5).
+    Порог строгий: при более низком склеиваются разные дефекты (пример 31 января и Ф-3/Ф-4).
+    Общая цитата сама по себе не дубль: к одной строке таблицы приёмки могут относиться разные дефекты."""
+    a, b = _stems(f.problem), _stems(r.problem)
+    return len(a & b) >= max(5, min(len(a), len(b)) // 2)
+
+
 def calibrate_severity(rv) -> dict:
     """Меньше шума в критичных:
     1) тест-проба применяется к требованиям: строка таблицы API, строка приёмки или заглушка — не требование,
        «тест составить невозможно» к ним не относится (замечание уходит в rejected с причиной);
     2) замечание к элементу, который не является требованием (спецификация API, приёмка, заглушка), не выше
        существенного: критичный дефект такого места — это дефект набора, и он описан замечанием S-xx;
-    3) замечание к требованию, повторяющее критичное замечание к набору про то же место, сворачивается в «дубль S-xx».
+    3) замечание к требованию, повторяющее критичное замечание к набору про то же место, сворачивается в «дубль S-xx»;
+    0) в наборе: замечание модели, повторяющее замечание правила, — «дубль S-xx»; критичное замечание модели без
+       подтверждения правилом остаётся критичным только для противоречия.
     Возвращает статистику {"test_probe_dropped", "capped", "folded"}."""
-    sid = {id(f): f"S-{i:02d}" for i, f in enumerate(rv.set_findings, 1)}
-    crit_set = [f for f in rv.set_findings if f.severity == "critical"]
     st = {"test_probe_dropped": 0, "capped": 0, "folded": 0}
+    # 0) набор: замечание модели, повторяющее замечание правила (та же суть), — дубль правила; критичное замечание
+    #    модели без подтверждения правилом — критично только для противоречия (два места документа спорят)
+    order = {"critical": 0, "major": 1, "minor": 2}
+    rules = [f for f in rv.set_findings if "правило" in f.source]
+    keep_set, merged = [], []
+    for f in rv.set_findings:
+        if "правило" not in f.source:
+            twin = next((r for r in rules if _same_problem(f, r)), None)
+            if twin is not None:
+                if order[f.severity] < order[twin.severity]:
+                    twin.severity = f.severity
+                if "LLM" not in twin.source:
+                    twin.source = f"{twin.source}+LLM"
+                merged.append((f, twin))
+                continue
+            if f.severity == "critical" and f.kind != "contradiction":
+                f.severity = "major"
+                f.critic_note = (f.critic_note + " " if f.critic_note else "") + \
+                    "Серьёзность: существенная — пропуск найден моделью без подтверждения правилом."
+                st["capped"] += 1
+        keep_set.append(f)
+    rv.set_findings = sorted(keep_set, key=lambda f: order[f.severity])
+    sid = {id(f): f"S-{i:02d}" for i, f in enumerate(rv.set_findings, 1)}
+    for f, twin in merged:
+        rv.rejected.append({"where": "набор", "quote": " / ".join(x.quote for x in f.refs), "problem": f.problem,
+                            "reason": f"дубль {sid[id(twin)]}: та же проблема найдена правилом", "duplicate_of": sid[id(twin)]})
+        st["folded"] += 1
+    crit_set = [f for f in rv.set_findings if f.severity == "critical"]
     for rr in rv.req_results:
         kind = getattr(rr.req, "kind", "requirement")
         keep = []
