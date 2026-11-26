@@ -83,6 +83,15 @@ def test_logo_and_favicon_are_inline_and_offline():
     assert mark_svg(48).count("<svg") == 1
 
 
+def test_styleguide_build_is_reproducible(tmp_path):
+    """Повторная сборка даёт тот же HTML — в git diff нет шума от id градиентов."""
+    from req_review.ui.styleguide import build
+
+    a = build(tmp_path / "a.html").read_text(encoding="utf-8")
+    b = build(tmp_path / "b.html").read_text(encoding="utf-8")
+    assert a == b
+
+
 def test_brand_files_for_pwa():
     import json
 

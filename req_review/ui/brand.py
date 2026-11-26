@@ -61,9 +61,15 @@ def logo_svg(theme: str = "light", height: int = 48) -> str:
             f'font-size="26" font-weight="700" letter-spacing="-0.6">ReqLens</text></svg>')
 
 
-def logo_mark(size: int = 36) -> Markup:
+def logo_mark(size: int = 36, gid: str | None = None) -> Markup:
     """Знак для шаблонов (уникальный id градиента — несколько знаков на одной странице не конфликтуют)."""
-    return Markup(mark_svg(size, f"rl{next(_ids)}").replace('role="img" aria-label="ReqLens"', 'aria-hidden="true"'))
+    return Markup(mark_svg(size, gid or f"rl{next(_ids)}").replace('role="img" aria-label="ReqLens"', 'aria-hidden="true"'))
+
+
+def logo_mark_factory():
+    """logo_mark со своим счётчиком id: у каждого рендера id одинаковые — сборка воспроизводима, без шума в git diff."""
+    ids = itertools.count(1)
+    return lambda size=36: logo_mark(size, f"rl{next(ids)}")
 
 
 def favicon_href() -> str:
