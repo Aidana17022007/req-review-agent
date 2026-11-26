@@ -18,3 +18,4 @@ known-first-party = ["req_review"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]  # пакет req_review из корня: `pytest` (как в CI) работает так же, как `python -m pytest`
