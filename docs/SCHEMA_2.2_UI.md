@@ -1,30 +1,17 @@
-# Поля схемы 2.2 (RAG), которые читает интерфейс — договорённость человек 1 ↔ человек 2
+# Где интерфейс показывает поля схемы 2.2 (RAG)
 
-Окончательное описание схемы — в `docs/SCHEMA.md` (ведёт backend). Здесь — что ожидает UI, чтобы обе ветки сошлись.
-Пример с заполненными полями: `tests/fixtures/report_v22.json`; предпросмотр отчёта по нему — `python -m req_review.ui.preview`.
+Контракт полей — `docs/SCHEMA.md` (ведёт backend). Здесь — как интерфейс их читает и где показывает.
+Все поля необязательны: нет данных — блок скрыт, отчёт работает как в 2.1. Пример полного report.json 2.2 — `tests/fixtures/report_v22.json`
+(mock-прогон backend с RAG; предпросмотр отчёта по нему — `python -m req_review.ui.preview`).
 
-Все поля **необязательны**: если backend их не заполнил, соответствующие блоки интерфейса скрыты, отчёт работает как в 2.1.
-UI читает их из объектов прогона через `getattr` (`req_review/html_report.py`), ассистент Studio — из `report.json`.
+| Поле backend | Как читает UI (`req_review/html_report.py`) | Где в интерфейсе |
+|---|---|---|
+| `findings[].basis[]`, `set_findings[].basis[]` `{source, section, quote, url, kind, license, file}` | `kind`: `standards`→стандарт, `law_kz`→закон РК, `patterns`→шаблон; `section` — пункт; `license` с «пересказ» → пометка «пересказ своими словами»; `url` — только `https://`; без `quote` или `source` основание не выводится | блок «Основание» (карточка у фрагмента, таблица, drawer, замечания набора), раздел «База знаний», источники ассистента |
+| `requirements[].rewrite_pattern` `{id, title, template, file}` | название и шаблон из `kb/patterns`, текст — формулировка агента (`rewrite`) | «По шаблону «…»» и «Применить шаблон» в «Исправлениях» |
+| `requirements[].category` (functional, security…) | подпись из `categories.CATEGORIES` | чипы и фильтр «Категория» в таблице требований |
+| `coverage_map[]` / `rv.coverage` `{id, title, reqs, covered, question}` | шаги процесса домена | раздел «Покрытие процесса»: непокрытый шаг — красная метка и вопрос аналитику |
+| `passport.context` `{mode, avg_prompt_tokens, doc_chars}` | «RAG-выборка» / «полный текст» | карточка агента и паспорт прогона |
+| `passport.rag` `{kb_chunks, search, embedder, basis, law, patterns}` или `{enabled: false}` | размер базы знаний и число оснований | карточка агента и паспорт прогона |
 
-| Поле | Объект прогона → report.json | Формат | Где в UI |
-|---|---|---|---|
-| `basis` | `Finding.basis` → `requirements[].findings[].basis` | `[{kind, source, clause, quote, url, paraphrase}]` | «Основание» в карточке, таблице, drawer; раздел «База знаний»; источники ассистента |
-| `basis` | `SetFinding.basis` → `set_findings[].basis` | то же | «Основание» у замечаний к набору |
-| `category` | `ReqResult.category` → `requirements[].category` | строка («Платежи», «Безопасность»…) | чипы и фильтр в таблице требований |
-| `rewrite_pattern` | `ReqResult.rewrite_pattern` → `requirements[].rewrite_pattern` | `{ears, template, text}` | «По шаблону EARS» и «Применить шаблон» в «Исправлениях» |
-| `coverage` | `ctx.coverage` → `coverage` | `{process, steps: [{id, title, rids[], question}]}` | раздел «Покрытие процесса» |
-| `context_mode` | `ctx.passport["context_mode"]` | `"full"` \| `"rag"` | паспорт, карточка агента |
-| `context_chunks`, `tokens_per_call` | `ctx.passport[...]` | числа | паспорт, карточка агента |
-
-## Правила для `basis`
-
-- `kind`: `standard` (стандарт), `law` (закон РК), `template` (шаблон). Иное значение UI показывает как `standard`.
-- `quote` — **дословный фрагмент из `kb/`** (проверен кодом, как цитаты документа). Без `quote` или `source` основание не показывается.
-- `paraphrase: true` — фрагмент kb является собственным пересказом стандарта (платные тексты ISO/IEEE не коммитим); UI пишет «пересказ своими словами».
-- `url` — только `https://` (официальный текст, например adilet.zan.kz); иначе ссылка не выводится.
-- `clause` — номер пункта («5.2.5 d) Complete», «ст. 22»), для шаблона — название шаблона.
-
-## Ассистент Studio
-
-Ответ `/api/jobs/{id}/ask` дополнен полем `sources`: `{type: "req", id, label}`, `{type: "line", line, rid, text}`,
-`{type: "kb", kind, source, clause, quote, url, paraphrase}`. Строки документа берутся из `findings[].span.line` (2.1).
+Ассистент Studio (`/api/jobs/{id}/ask`) приводит `basis` к тому же виду и возвращает `sources`:
+`{type: "req"}` — требование, `{type: "line", line}` — строка документа (из `findings[].span.line`), `{type: "kb", source, clause, quote, url}` — фрагмент базы знаний.

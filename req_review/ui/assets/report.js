@@ -253,12 +253,16 @@
         <span class="chip basis-${b.kind}">${ic(BKIND[b.kind][1], 13)}${BKIND[b.kind][0]}</span>
         <div class="grow"><div class="small"><b>${esc(b.source)}</b>${b.clause ? ` · ${b.kind === "template" ? "" : "п. "}${esc(b.clause)}` : ""}</div>
           <div class="small muted" style="margin-top:2px">«${esc(compact ? short(b.quote, 170) : b.quote)}»${b.paraphrase ? ` <span class="faint">— пересказ своими словами</span>` : ""}</div>
-          ${b.url ? `<a class="small" href="${esc(b.url)}" target="_blank" rel="noopener noreferrer">${ic("arrow-up-right", 12)} официальный текст</a>` : ""}</div></div>`).join("")}</div>`;
+          <div class="small faint">${b.file ? `${ic("file", 12)} ${esc(b.file)}` : ""}${b.url ? `${b.file ? " · " : ""}<a href="${esc(b.url)}" target="_blank" rel="noopener noreferrer">${ic("arrow-up-right", 12)} официальный текст</a>` : ""}</div></div></div>`).join("")}</div>`;
   }
   // компактная строка основания для таблицы: источник и пункт, полный текст — в карточке
   const basisLine = (f) => ((f.basis || []).length ? `<div class="small faint" style="margin-top:4px">${ic("book", 12)} Основание: ${f.basis.map((b) => esc(b.source + (b.clause ? " · " + b.clause : ""))).join("; ")}</div>` : "");
   // контекст модели: весь документ в каждом запросе или RAG — только релевантные фрагменты (длинные документы)
-  const ctxChip = () => (P.context_mode ? `<span class="chip ${P.context_mode === "rag" ? "chip-brand" : "chip-outline"}" title="${P.context_mode === "rag" ? "в запрос попадают только релевантные фрагменты документа и базы знаний" : "весь документ передаётся в каждом запросе"}">${ic("layers", 13)}контекст: ${P.context_mode === "rag" ? `RAG${P.context_chunks ? ` · ${P.context_chunks} фрагм.` : ""}` : "полный"}</span>` : "");
+  const CTX = P.context || (P.context_mode ? { mode: P.context_mode === "rag" ? "RAG-выборка" : "полный текст", avg_prompt_tokens: P.tokens_per_call } : null);
+  const CTX_RAG = !!(CTX && /rag/i.test(CTX.mode || ""));
+  const RAG = P.rag && P.rag.enabled !== false && P.rag.kb_chunks ? P.rag : null;
+  const ctxChip = () => (CTX ? `<span class="chip ${CTX_RAG ? "chip-brand" : "chip-outline"}" title="${CTX_RAG ? "в запрос попадают только релевантные фрагменты длинного документа" : "весь документ передаётся в каждом запросе"}">${ic("layers", 13)}контекст: ${CTX_RAG ? "RAG-выборка" : "полный текст"}</span>`
+    + (RAG ? `<span class="chip chip-outline" title="База знаний kb/: ${esc(RAG.search || "")}">${ic("book", 13)}база знаний: ${RAG.kb_chunks} фрагм.</span>` : "") : "");
   function worstReq() { return D.reqs.slice().sort((a, b) => ORDER[a.worst] - ORDER[b.worst] || a.score - b.score)[0]; }
 
   // ------------------------------------------------------------ Обзор
@@ -354,7 +358,7 @@
                 <div class="metric"><div class="kpi-num" style="color:var(--text)">${num(s.doc)}<span class="h3 faint">/100</span></div><div class="small muted">балл качества</div></div>
                 <div class="metric"><div class="kpi-num" style="color:var(--text)">${esc(P.duration_s)}<span class="h3 faint"> с</span></div><div class="small muted">время прогона</div></div>
               </div>
-              <div class="row wrap" style="gap:8px">${ctxChip()}${P.tokens_per_call ? `<span class="chip chip-outline">${ic("cpu", 13)}~${Number(P.tokens_per_call).toLocaleString("ru-RU")} токенов на запрос</span>` : ""}
+              <div class="row wrap" style="gap:8px">${ctxChip()}${CTX && CTX.avg_prompt_tokens ? `<span class="chip chip-outline">${ic("cpu", 13)}~${Number(CTX.avg_prompt_tokens).toLocaleString("ru-RU")} токенов на запрос</span>` : ""}
               </div>
               <p class="small muted">Статическое ревью по ISO/IEC/IEEE 29148 §5.2.5–5.2.6 и IEEE 830 §4.3: нарезка, проверка каждого требования, тест-проба, проверка набора${P.critic ? ", критик-агент" : ""}.</p>
             </div>
@@ -880,7 +884,9 @@
   }
   function patternHTML(r) {
     const p = r && r.rewrite_pattern; if (!p) return "";
-    return `<div class="pattern"><div class="grow"><div class="small"><b>${ic("spark", 13)} По шаблону EARS${p.ears ? ` (${esc(EARS[p.ears] || p.ears)})` : ""}:</b> <code class="mono">${esc(p.template)}</code></div>
+    const tpl = String(p.template || "").replace(/^Шаблон:\s*/i, "");
+    return `<div class="pattern"><div class="grow"><div class="small"><b>${ic("spark", 13)} По шаблону${p.title ? ` «${esc(p.title)}»` : p.ears ? ` EARS (${esc(EARS[p.ears] || p.ears)})` : ""}:</b>${p.file ? ` <span class="faint">${esc(p.file)}</span>` : ""}</div>
+        ${tpl ? `<div class="small muted" style="margin-top:4px"><code class="mono">${esc(tpl)}</code></div>` : ""}
         <p class="small" style="margin-top:6px">${esc(p.text)}</p></div>
       <button class="btn btn-sm btn-primary" data-copy="${esc(p.text)}" data-msg="Формулировка по шаблону скопирована">${ic("wand", 14)}Применить шаблон</button></div>`;
   }
@@ -937,8 +943,10 @@
       ["questions", "Вопросы аналитику", `${D.questions.length} вопросов, Markdown`, "chat"]];
     const rows = [["Документ", P.document], ["Файл", `${P.file} (${P.format}${P.pages ? ", " + P.pages + " стр." : ""})`], ["SHA-256", P.sha256], ["Дата и время", P.started], ["Модель", P.model],
       ["Версия агента", P.agent_version], ["Профиль / режим", `${P.profile} · ${P.mode}`], ["Обращений к модели", `${P.calls} (повторов: ${P.retries})`],
-      ...(P.context_mode ? [["Контекст модели", P.context_mode === "rag" ? `RAG — релевантные фрагменты${P.context_chunks ? ` (${P.context_chunks} на запрос)` : ""}` : "полный документ в каждом запросе"]] : []),
-      ...(P.tokens_per_call ? [["Токенов на запрос", "~" + Number(P.tokens_per_call).toLocaleString("ru-RU")]] : []), ["Токены (вход / выход)", P.tokens_in ? `${P.tokens_in} / ${P.tokens_out}` : "—"],
+      ...(CTX ? [["Контекст модели", CTX_RAG ? "RAG-выборка — в запрос попадают релевантные фрагменты документа" : "полный текст документа в каждом запросе"]] : []),
+      ...(CTX && CTX.avg_prompt_tokens ? [["Токенов на запрос (в среднем)", "~" + Number(CTX.avg_prompt_tokens).toLocaleString("ru-RU")]] : []),
+      ...(RAG ? [["База знаний (RAG)", `${RAG.kb_chunks} фрагментов kb/ · поиск: ${RAG.search || "—"} · эмбеддинги: ${RAG.embedder || "—"}`],
+        ["Основания в отчёте", `${RAG.basis || 0} (нормы РК: ${RAG.law || 0}, шаблоны: ${RAG.patterns || 0})`]] : P.rag && P.rag.enabled === false ? [["База знаний (RAG)", "выключена (RAG=off)"]] : []), ["Токены (вход / выход)", P.tokens_in ? `${P.tokens_in} / ${P.tokens_out}` : "—"],
       ["Длительность", P.duration_s + " с"], ["Способ нарезки", { ids: "по идентификаторам документа", modal: "по модальным формулировкам", llm: "моделью" }[P.split_method]],
       ["Критик-агент", P.critic ? "включён" : "выключен"], ["Отброшено неподтверждённых цитат", P.dropped], ["Отклонено критиком", P.rejected], ["Критерии", "ISO/IEC/IEEE 29148:2018 п. 5.2.5, 5.2.6; IEEE Std 830-1998 п. 4.3"]];
     const tbl = (title, items, cols) => items.length ? `<div class="section-title"><h3 class="h2">${title} <span class="faint">(${items.length})</span></h3></div><div class="table-wrap"><table class="tbl"><thead><tr>${cols.map((c) => `<th>${c[0]}</th>`).join("")}</tr></thead><tbody>${items.map((d) => `<tr>${cols.map((c) => `<td class="small">${esc(d[c[1]])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` : "";

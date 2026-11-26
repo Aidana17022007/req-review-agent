@@ -41,7 +41,14 @@ class Assistant:
         self.by_rid = {r["rid"]: r for r in self.reqs}
         self.by_doc = {r["doc_id"].lower(): r for r in self.reqs if r.get("doc_id")}
         self.sets = {f"S-{i:02d}": f for i, f in enumerate(data.get("set_findings", []), 1)}
-        # схема 2.2 (RAG): основания замечаний — дословные фрагменты базы знаний с источником
+        # схема 2.2 (RAG): основания замечаний — дословные фрагменты базы знаний с источником.
+        # Формат backend ({source, section, kind: standards|law_kz|patterns, license, file}) приводим к виду UI — как в отчёте
+        from types import SimpleNamespace
+
+        from ..html_report import _basis
+        for f in [f for r in self.reqs for f in r["findings"]] + list(self.sets.values()):
+            if f.get("basis"):
+                f["basis"] = _basis(SimpleNamespace(basis=f["basis"]))
         self.has_basis = any(f.get("basis") for r in self.reqs for f in r["findings"]) or any(f.get("basis") for f in self.sets.values())
         self._extra: list[dict] = []  # дополнительные источники ответа (фрагменты документа и базы знаний)
 

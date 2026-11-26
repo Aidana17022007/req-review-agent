@@ -151,12 +151,14 @@ def test_report_renders_v22_fields_from_fixture():
     d = build_data(ctx)
     basis = [b for f in d["findings"].values() for b in f["basis"]]
     assert basis and all(b["quote"] and b["source"] for b in basis)
-    assert any(b["kind"] == "law" and b["url"].startswith("https://adilet.zan.kz/") for b in basis)
+    assert any(b["kind"] == "law" and b["url"].startswith("https://adilet.zan.kz") for b in basis)
+    assert all(b["file"].startswith("kb/") for b in basis)  # происхождение: дословный фрагмент файла базы знаний
     assert d["coverage"]["steps"] and any(not s["rids"] and s["question"] for s in d["coverage"]["steps"])
     assert all(r["category"] for r in d["reqs"]) and any(r["rewrite_pattern"] for r in d["reqs"])
-    assert d["passport"]["context_mode"] == "rag"
+    assert d["passport"]["context"]["mode"] and d["passport"]["rag"]["kb_chunks"] > 0
     html = render_html(ctx)
-    for marker in ("renderKB", "renderCoverage", "basisHTML", "patternHTML", 'id="btn-lang"', "reqlens-lang", "ensureLine"):
+    assert any(r["rewrite_pattern"]["title"] and r["rewrite_pattern"]["text"] for r in d["reqs"] if r["rewrite_pattern"])
+    for marker in ("renderKB", "renderCoverage", "basisHTML", "patternHTML", 'id="btn-lang"', "reqlens-lang", "ensureLine", "CTX_RAG"):
         assert marker in html, marker
 
 
@@ -177,6 +179,17 @@ def test_report_without_v22_fields_hides_new_blocks():
     assert d["coverage"] is None
     assert all(f["basis"] == [] for f in d["findings"].values())
     assert all(r["category"] == "" and r["rewrite_pattern"] is None for r in d["reqs"])
+
+
+def test_basis_backend_format_is_mapped():
+    from types import SimpleNamespace
+
+    from req_review.html_report import _basis
+
+    out = _basis(SimpleNamespace(basis=[{"source": "Нормы РК", "section": "Закон РК «О персональных данных»", "quote": "Пересказ нормы.",
+                                         "url": "https://adilet.zan.kz", "kind": "law_kz", "license": "собственный пересказ", "file": "kb/law_kz/x.md"}]))
+    assert out == [{"kind": "law", "source": "Нормы РК", "clause": "Закон РК «О персональных данных»", "quote": "Пересказ нормы.",
+                    "url": "https://adilet.zan.kz", "file": "kb/law_kz/x.md", "paraphrase": True}]
 
 
 def test_basis_without_quote_or_https_is_not_shown():

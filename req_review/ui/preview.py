@@ -3,7 +3,7 @@
     python -m req_review.ui.preview [tests/fixtures/report_v22.json] [reports/preview_v22.html]
 
 Документ прогоняется mock-моделью (без сети и ключа), затем поля 2.2 из фикстуры (basis, category, rewrite_pattern,
-coverage, passport.context_mode) накладываются на объекты прогона — и отчёт рендерится обычным render_html.
+coverage_map, passport.rag / context) накладываются на объекты прогона — и отчёт рендерится обычным render_html.
 Так проверяется ровно тот путь, по которому поля придут от backend.
 """
 from __future__ import annotations
@@ -37,8 +37,10 @@ def overlay(ctx, data: dict) -> None:
                 f.basis = m.get("basis", [])
     for f, src in zip(ctx.rv.set_findings, data.get("set_findings", [])):
         f.basis = src.get("basis", [])
-    ctx.coverage = data.get("coverage")
-    for k in ("context_mode", "context_chunks", "tokens_per_call"):
+    # карта покрытия: backend пишет coverage_map[] (корень report.json) и держит её в rv.coverage
+    if data.get("coverage_map") is not None:
+        ctx.rv.coverage = data["coverage_map"]
+    for k in ("rag", "context"):
         if k in data.get("passport", {}):
             ctx.passport[k] = data["passport"][k]
 
