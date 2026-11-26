@@ -1,0 +1,88 @@
+# Повторить прогон агента в один клик (Actions → Generate report → Run workflow).
+# Ключ модели — из секретов репозитория (Settings → Secrets and variables → Actions → New repository secret):
+#   GEMINI_API_KEY (бесплатный ключ Google AI Studio) или ANTHROPIC_API_KEY / OPENROUTER_API_KEY / OPENAI_API_KEY.
+# Без ключа агент работает в режиме «только правила» (LLM_PROVIDER=rules) и честно пишет это в паспорте отчёта.
+# Готовый отчёт (.md, .html, .json, .pdf) — артефакт запуска «requirements-report».
+name: Generate report
+
+on:
+  workflow_dispatch:
+    inputs:
+      document:
+        description: "Путь к документу в репозитории (PDF/DOCX/MD/TXT); по умолчанию — копия документа организаторов"
+        default: "bench/real/notifications.md"
+        required: true
+      provider:
+        description: "Провайдер: auto (по найденному ключу), gemini, anthropic, openrouter, openai, rules"
+        default: "auto"
+        required: true
+      model:
+        description: "Модель (пусто — по умолчанию провайдера, для Gemini — gemini-3.8-flash с резервом на lite)"
+        default: ""
+        required: false
+      profile:
+        description: "Профиль: deep (финальный отчёт), fast (минимум запросов)"
+        default: "deep"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # версия агента в паспорте — тег/коммит
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Шрифт с кириллицей для PDF
+        run: sudo apt-get install -y -q fonts-dejavu-core || true
+      - name: Документ на месте?
+        env:
+          DOC: ${{ inputs.document }}
+        run: |
+          if [ ! -f "$DOC" ]; then
+            echo "::error::Файл '$DOC' не найден. Положите выданный документ требований в репозиторий (например, docs/requirements.md) или укажите путь к нему во входе 'document'."
+            exit 1
+          fi
+      - name: Прогон агента
+        env:
+          DOC: ${{ inputs.document }}
+          PROVIDER: ${{ inputs.provider }}
+          MODEL: ${{ inputs.model }}
+          PROFILE: ${{ inputs.profile }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ "$PROVIDER" != "auto" ]; then export LLM_PROVIDER="$PROVIDER"; fi
+          if [ -z "$GEMINI_API_KEY$ANTHROPIC_API_KEY$OPENROUTER_API_KEY$OPENAI_API_KEY" ] && [ -z "${LLM_PROVIDER:-}" ]; then
+            echo "::warning::Ключ модели не задан в секретах — прогон в режиме «только правила» (LLM_PROVIDER=rules)."
+            export LLM_PROVIDER=rules
+          fi
+          if [ -n "$MODEL" ]; then
+            case "${LLM_PROVIDER:-gemini}" in
+              gemini) export GEMINI_MODEL="$MODEL" ;;
+              anthropic|claude) export ANTHROPIC_MODEL="$MODEL" ;;
+              openrouter) export OPENROUTER_MODEL="$MODEL" ;;
+              openai) export OPENAI_MODEL="$MODEL" ;;
+            esac
+          fi
+          python review.py "$DOC" reports/requirements-report.md --profile "$PROFILE" --pdf
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: requirements-report
+          path: |
+            reports/requirements-report.md
+            reports/requirements-report.html
+            reports/requirements-report.json
+            reports/requirements-report.pdf
+          if-no-files-found: warn

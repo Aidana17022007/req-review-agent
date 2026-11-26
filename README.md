@@ -18,8 +18,8 @@ ReqLens читает готовый документ требований (PDF, 
 
 | | |
 |---|---|
-| Документ | «Уведомление о расходах по карте» (`bench/real/notifications.md`, копия документа организаторов) |
-| Отчёт для сдачи | [`reports/requirements-report.md`](reports/requirements-report.md) · [`report.json`](reports/requirements-report.json) |
+| Документ | «Уведомление о расходах по карте» (`bench/real/notifications.md` — копия выданного документа, только как вход бенчмарка) |
+| Отчёт для сдачи | [`reports/requirements-report.md`](reports/requirements-report.md) · [`.json`](reports/requirements-report.json) · `.pdf` и `.html` — в релизе и артефакте «Generate report» |
 | Модель и профиль | `gemini-3.5-flash-lite`, профиль `deep` (ReqLens v6.0.0) |
 | Требований / замечаний | 43 требования · 75 подтверждённых замечаний: 🔴 16 критичных, 🟠 39 существенных, 🟡 20 незначительных |
 | Вердикт | ❌ разработку начинать нельзя · ❌ тестировать нельзя |
@@ -93,9 +93,19 @@ pip install -r requirements.txt
 cp .env.example .env               # Windows: copy .env.example .env
 # откройте .env и впишите GEMINI_API_KEY=<ваш ключ>
 
-# 3. Прогон: путь к документу требований и путь к отчёту
+# 3. Положите выданный организаторами документ в docs/requirements.md (в репозитории его нет — по ТЗ он
+#    сдаётся отдельно) и запустите прогон: путь к документу требований и путь к отчёту
 python review.py docs/requirements.md reports/report.md
+# финальный отчёт для сдачи (все проходы, критик на всё, PDF): добавьте --profile deep
 ```
+
+### Повторить прогон в один клик (для жюри)
+
+1. **Settings → Secrets and variables → Actions → New repository secret**: `GEMINI_API_KEY` (бесплатный ключ
+   [Google AI Studio](https://aistudio.google.com/apikey)). Без ключа агент работает в режиме «только правила».
+2. **Actions → Generate report → Run workflow**: документ по умолчанию — копия документа организаторов
+   (`bench/real/notifications.md`), можно указать свой путь, провайдера и модель.
+3. Через 5–15 минут скачайте артефакт **requirements-report**: `.md`, `.html`, `.json`, `.pdf`.
 
 **Куда ляжет отчёт.** Основной отчёт — файл, указанный вторым аргументом (в примере `reports/report.md`, папка создаётся
 автоматически). Рядом появляются дополнительные артефакты:
@@ -104,14 +114,19 @@ python review.py docs/requirements.md reports/report.md
 |---|---|
 | `reports/report.md` | **Основной отчёт на русском** (все разделы по ТЗ) |
 | `reports/report.html` | Интерактивный отчёт — откройте двойным кликом (работает офлайн) |
-| `reports/report.json` | Машиночитаемый результат (`schema_version: 2.0`) |
+| `reports/report.json` | Машиночитаемый результат (`schema_version: 2.3`, описание — `docs/SCHEMA.md`) |
+| `reports/report.pdf` | PDF-версия основного отчёта (`--pdf`; в профиле `deep` — по умолчанию) |
 | `reports/report_requirements_fixed.md` | Исправленная версия документа со сносками |
 | `reports/report_traceability.xlsx` | Требования, нарушения, тест-кейсы, матрица трассировки, вопросы |
 | `reports/report_jira_import.csv` | Дефекты для импорта в Jira |
 | `reports/report_tests.feature` | Приёмочные тесты Gherkin (1–3 сценария на проверяемое требование) |
 | `reports/report_fixed.diff` | Unified diff: исходный документ → исправленный |
 
-Формат `report.json` (версия 2.1: позиции цитат, уверенность 0–1, конфликтующие значения) — в `docs/SCHEMA.md`.
+Формат `report.json` (версия 2.3: позиции цитат, уверенность, учёт строк, матрица критериев, покрытие приёмкой,
+вердикты, план исправлений, аудит цитат) — в `docs/SCHEMA.md`.
+
+**Аудит цитат.** Первая строка отчёта: сколько цитат в замечаниях и сколько из них код нашёл в документе дословно
+(или с пропусками «…»), сколько замечаний модели отброшено как выдуманные. Отчёт без подтверждённой цитаты не бывает.
 
 Поддерживаемые входные форматы: `.pdf`, `.docx`, `.md`, `.txt`:
 
