@@ -506,3 +506,59 @@ def test_defined_condition_term_is_not_flagged(tmp_path, definition):
     d2, s2 = _doc(tmp_path, "# Д\n\n" + definition + "\n" + rule, "b.md")
     assert len(undefined_terms(s1.requirements, d1)) == 1
     assert undefined_terms(s2.requirements, d2) == []
+
+
+def test_deep_profile_runs_focused_passes_with_verified_quotes(tmp_path, monkeypatch):
+    """Профиль deep: узкие проходы (по одному классу на запрос) добавляют только замечания с подтверждённой цитатой."""
+    from req_review.mock_llm import MockLLM
+    from req_review.pipeline import Options, review_document
+
+    monkeypatch.setenv("RAG", "off")
+    rv = review_document(REAL, MockLLM(), Options(profile="deep", domain="none"), log=lambda *a: None)
+    assert set(rv.focus) == {"focus_bounds", "focus_api_negative", "focus_acceptance", "focus_nfr"}
+    added = [f for f in rv.set_findings if f.source.startswith("LLM (узкий проход")]
+    assert added and all(v >= 0 for v in rv.focus.values())
+    assert any(d["problem"] == "[mock] выдуманный пропуск" for d in rv.dropped)
+    by = {r.rid: r.text for r in rv.split.requirements}
+    assert all(quote_in(x.quote, by.get(x.req_id, rv.doc.text)) for f in rv.set_findings for x in f.refs)
+    assert rv.depth["review_stats"]["focused"] == rv.focus
+
+
+def test_focused_pass_skipped_when_not_applicable(tmp_path):
+    from req_review.focus import applicable
+
+    d, s = _doc(tmp_path, "# Д\n\n## Функциональные требования\n- **Ф-1.** Клиент видит список карт.\n")
+    assert not any(applicable(t, s, d) for t in ("focus_bounds", "focus_api_negative", "focus_acceptance", "focus_nfr"))
+
+
+def test_self_consistency_keeps_only_confirmed_llm_findings(tmp_path):
+    """Самосогласованность: замечание модели остаётся, если второй проход (другая температура) его подтвердил;
+    правило не трогается; неподтверждённое — в rejected с причиной."""
+    from req_review.checker import Finding, ReqResult, ReviewResult
+    from req_review.focus import self_consistency
+    from req_review.llm import BaseLLM
+
+    doc, s = _doc(tmp_path, API_DOC)
+    r = s.requirements[0]
+    q = " ".join(r.text.split()[:3])
+    a = Finding(r.rid, "verifiable", q, "Непроверяемо.", "major", "—", "LLM")
+    b = Finding(r.rid, "singular", q, "Составное.", "minor", "—", "LLM")
+    c = Finding(r.rid, "complete", q, "Правило.", "major", "—", "правило")
+    rv = ReviewResult(doc=doc, split=s, req_results=[ReqResult(r, [a, b, c])], set_findings=[], dropped=[])
+    temps = []
+
+    class Fake(BaseLLM):
+        provider, model, temperature = "fake", "fake", 0.0
+
+        def generate_json(self, system, prompt, *, task="", context=None):
+            temps.append(self.temperature)
+            return {"results": [{"id": r.rid, "findings": [{"criterion": "verifiable", "quote": q, "problem": "x",
+                                                            "severity": "major", "fix": "—"}]}]}
+
+    llm = Fake()
+    st = self_consistency(rv, llm, batch_size=6, log=lambda *x: None)
+    assert temps == [0.4] and llm.temperature == 0.0  # второй проход — с другой температурой, затем возврат
+    assert st == {"confirmed": 1, "removed": 1}
+    assert [f.problem for f in rv.req_results[0].findings] == ["Непроверяемо.", "Правило."]
+    assert a.source == "LLM ×2"
+    assert rv.rejected[0]["problem"] == "Составное." and "самосогласованность" in rv.rejected[0]["reason"]

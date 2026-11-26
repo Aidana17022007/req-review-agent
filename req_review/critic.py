@@ -152,7 +152,7 @@ def run_critic(rv: ReviewResult, llm: BaseLLM, log=print, only_critical: bool = 
         f.critic_note = reason
         if not v:
             f.confidence = "low"
-        elif "+" in f.source or _protected(f):
+        elif "+" in f.source or "×2" in f.source or _protected(f):
             f.confidence = "high"
         else:
             f.confidence = "medium"
@@ -182,7 +182,7 @@ def default_confidence(rv: ReviewResult) -> None:
     for rr in rv.req_results:
         for f in rr.findings:
             if not f.confidence:
-                f.confidence = "medium" if ("+" in f.source or f.source == "тест-проба") else "low"
+                f.confidence = "medium" if ("+" in f.source or "×2" in f.source or f.source == "тест-проба") else "low"
     for f in rv.set_findings:
         if not f.confidence:
             f.confidence = "high" if _protected(f) else "medium" if "правило" in f.source else "low"

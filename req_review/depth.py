@@ -815,28 +815,39 @@ _GAP_CRIT = {"terms": "set_comprehensible", "messages": "set_complete", "nfr": "
 
 
 def completeness_pass(split, doc: Document, llm, dropped: list[dict], found: list[SetFinding], log=print) -> None:
-    import json as _json
     import os
+
+    if os.getenv("REQLENS_GAPS", "1") == "0" or getattr(llm, "provider", "") == "rules":
+        return
+    log("  проход полноты: термины, граничные случаи, ошибки, умолчания, сообщения, НФТ, данные, шаблон, приёмка")
+    llm_set_pass(split, doc, llm, dropped, found, log, system=SYSTEM_GAPS, task="gaps", label="проход полноты",
+                 source="LLM (проход полноты)")
+
+
+def llm_set_pass(split, doc: Document, llm, dropped: list[dict], found: list[SetFinding], log=print, *, system: str, task: str,
+                 label: str, source: str, focus: dict | None = None) -> int:
+    """Один запрос к модели по чек-листу → замечания к набору. Цитаты проверяются quote_in (выдуманные — в dropped),
+    повторы уже найденного (тот же критерий и цитата) не добавляются. Возвращает число добавленных замечаний."""
+    import json as _json
 
     from .checker import SET, LLMError, LLMFatalError, _doc_context, _norm_crit, _norm_sev, norm_refs
     from .verify import quote_in
 
-    if os.getenv("REQLENS_GAPS", "1") == "0" or getattr(llm, "provider", "") == "rules":
-        return
     reqs = split.requirements
     by_id = {r.rid: r for r in reqs}
     known = [f.problem[:160] for f in found]
     payload = {"ДОКУМЕНТ": _doc_context(doc)[:40000], "НАРЕЗКА": [{"id": r.rid, "doc_id": r.doc_id, "text": r.text[:300]} for r in reqs],
                "УЖЕ НАЙДЕНО": known[:40]}
-    log("  проход полноты: термины, граничные случаи, ошибки, умолчания, сообщения, НФТ, данные, шаблон, приёмка")
+    if focus:
+        payload["ФОКУС"] = focus
     try:
-        data = llm.generate_json(SYSTEM_GAPS, _json.dumps(payload, ensure_ascii=False, indent=1), task="gaps",
+        data = llm.generate_json(system, _json.dumps(payload, ensure_ascii=False, indent=1), task=task,
                                  context={"reqs": reqs, "doc": doc})
     except LLMFatalError:
         raise
     except LLMError as e:
-        log(f"  проход полноты пропущен ({e})")
-        return
+        log(f"  {label} пропущен ({e})")
+        return 0
     seen = {(f.criterion, x.quote) for f in found for x in f.refs}
     added = 0
     for f in (data or {}).get("findings", []) or []:
@@ -850,7 +861,7 @@ def completeness_pass(split, doc: Document, llm, dropped: list[dict], found: lis
                 refs.append(SetRef(rid if rid in by_id else "DOC", q))
             else:
                 dropped.append({"where": rid or "набор", "quote": q, "problem": f.get("problem", "")})
-        if not refs:
+        if not refs or not str(f.get("problem", "")).strip():
             continue
         crit = _norm_crit(f.get("criterion") or _GAP_CRIT.get(str(f.get("check", "")), "set_complete"), SET, "set_complete")
         if any((crit, r.quote) in seen for r in refs):
@@ -858,6 +869,7 @@ def completeness_pass(split, doc: Document, llm, dropped: list[dict], found: lis
         seen |= {(crit, r.quote) for r in refs}
         kind = "terminology" if str(f.get("check", "")) == "terms" else "gap"
         found.append(SetFinding(kind, crit, refs, str(f.get("problem", "")).strip(), _norm_sev(f.get("severity")),
-                                str(f.get("fix", "")).strip(), "LLM (проход полноты)"))
+                                str(f.get("fix", "")).strip(), source))
         added += 1
-    log(f"  проход полноты: добавлено замечаний {added}")
+    log(f"  {label}: добавлено замечаний {added}")
+    return added

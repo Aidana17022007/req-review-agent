@@ -82,6 +82,8 @@ class ReviewResult:
     glossary: object = None  # GlossaryResult
     critic_used: bool = False
     critic_scope: str = ""  # "all" | "critical" (self-consistency в профиле fast)
+    self_check: dict = field(default_factory=dict)  # v6: самосогласованность {"confirmed", "removed"}
+    focus: dict = field(default_factory=dict)  # v6: узкие проходы {task: добавлено замечаний}
     critic_merged: int = 0  # v5: дубли, объединённые критиком (ушли в rejected с причиной «дубль S-xx»)
     rag: dict = field(default_factory=dict)  # статистика базы знаний: число оснований, режим поиска
     categories: dict = field(default_factory=dict)  # {категория: число требований}
