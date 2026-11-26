@@ -1,8 +1,8 @@
 """Сборка сайта ReqLens для Cloudflare Pages: python scripts/build_site.py [--out public] [--studio URL]
 
-Сайт собирается из дизайн-системы проекта (req_review/ui: tokens.css, base.css, логотип, иконки) — выглядит так же,
-как отчёт, Studio и слайды. Функции на главной берутся из таблицы «Чем ReqLens отличается» в README, цифры — из
-bench/results.json и отчёта для сдачи, поэтому сайт всегда совпадает с проектом.
+Исходник сайта — папка site/ (index.html, site.css, site.js, шрифт, WebP-картинки): дизайн-система v3 «Ecliptic Dawn»,
+общие токены с приложением — tokens.css из design/tokens.json. При сборке в элементы data-k подставляются свежие цифры
+из отчёта для сдачи и bench/results.json, поэтому сайт всегда совпадает с проектом.
 
 Папка public/ (в git не хранится, собирается при каждом деплое):
 - index.html — главная;
@@ -25,10 +25,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-
-# эмодзи строки README → иконка дизайн-системы
-EMOJI_ICON = {"🧪": "flask", "🔍": "search", "🪄": "wand", "🛡": "shield", "🏦": "bank", "📊": "graph", "🔒": "wifi-off",
-              "🧰": "download", "🕸": "cube", "🤖": "bot"}
 
 PAGE = """<!doctype html>
 <html lang="ru" data-theme="light">
@@ -81,54 +77,6 @@ pre.cmd{background:var(--surface);border:1px solid var(--border);border-radius:1
 </body>
 </html>"""
 
-HOME = """
-<section class="hero">
-  <div class="caption">ISO/IEC/IEEE 29148 · IEEE 830</div>
-  <h1 class="k">Дефекты требований —<br><span class="grad">до первой строчки кода</span></h1>
-  <p class="lead">ReqLens читает готовый документ требований (PDF, DOCX, Markdown, TXT), выделяет отдельные требования,
-  проверяет каждое и весь набор целиком и пишет отчёт на русском: дословная цитата, место, серьёзность и готовая
-  формулировка исправления.</p>
-  <div class="cta">
-    <a class="btn btn-primary btn-lg" href="report/">{{ icon("file", 18) }} Отчёт по документу организаторов</a>
-    <a class="btn btn-secondary btn-lg" href="{{ studio }}">{{ icon("upload", 18) }} Проверить свой документ</a>
-    <a class="btn btn-ghost btn-lg" href="slides/">{{ icon("play", 18) }} Слайды</a>
-  </div>
-</section>
-
-<div class="grid g-4">
-{% for k in kpis %}
-  <div class="kpi{% if loop.first %} kpi-hero{% endif %}"><div class="caption"{% if loop.first %} style="color:rgba(255,255,255,.8)"{% endif %}>{{ k.label }}</div>
-  <div class="kpi-num" style="margin-top:10px">{{ k.value }}</div><div class="sub small{% if not loop.first %} muted{% endif %}">{{ k.sub }}</div></div>
-{% endfor %}
-</div>
-<p class="small faint" style="margin-top:10px">{{ note }}</p>
-
-<section class="section">
-  <div class="caption">Возможности</div><h2>Чем ReqLens отличается от обычного «LLM-ревьюера»</h2>
-  <div class="grid g-3">
-  {% for f in features %}
-    <div class="card feat">{{ icon(f.icon, 26) }}<div class="h3">{{ f.title }}</div><p class="small muted">{{ f.text }}</p></div>
-  {% endfor %}
-  </div>
-</section>
-
-<section class="section shots">
-  <div class="caption">Как это выглядит</div><h2>Отчёт, граф и Studio</h2>
-  <div class="grid g-2">
-  {% for s in shots %}
-    <figure><img class="shot" loading="lazy" src="assets/{{ s.file }}" alt="{{ s.caption }}"><figcaption class="small muted">{{ s.caption }}</figcaption></figure>
-  {% endfor %}
-  </div>
-</section>
-
-<section class="section">
-  <div class="caption">Запуск</div><h2>Одна команда</h2>
-  <pre class="cmd">pip install -r requirements.txt
-python review.py docs/requirements.md reports/report.md            # ключ Gemini в .env
-LLM_PROVIDER=rules python review.py docs/requirements.md reports/report.md   # без ключа — только правила</pre>
-</section>
-"""
-
 REPORT_MD = """
 <section class="section" style="margin-top:24px">
   <div class="caption">Отчёт</div><h2>{{ title }}</h2>
@@ -138,70 +86,59 @@ REPORT_MD = """
 """
 
 
-def readme_features() -> list[dict]:
-    """Строки таблицы «Чем ReqLens отличается» из README: эмодзи, название, описание."""
-    text = (ROOT / "README.md").read_text(encoding="utf-8")
-    out = []
-    for m in re.finditer(r"^\|\s*(\S+)\s+\*\*(.+?)\*\*\s*\|\s*(.+?)\s*\|\s*$", text, re.M):
-        emoji, title, desc = m.group(1), m.group(2), m.group(3)
-        icon = next((v for k, v in EMOJI_ICON.items() if emoji.startswith(k)), "spark")
-        desc = re.sub(r"`([^`]+)`", r"\1", re.sub(r"\*([^*]+)\*", r"\1", desc))
-        out.append({"icon": icon, "title": title, "text": desc})
-    return out
-
-
-def numbers() -> tuple[list[dict], str]:
-    kpis, model = [], ""
+def fill_numbers(html: str) -> str:
+    """Свежие цифры в элементы data-k (отчёт для сдачи, bench/results.json); без данных остаются значения из разметки."""
+    vals = {}
     rep = ROOT / "reports" / "requirements-report.json"
     if rep.exists():
         d = json.loads(rep.read_text(encoding="utf-8"))
         fs = [f for r in d["requirements"] for f in r["findings"]] + d["set_findings"]
         n_req = sum(1 for r in d["requirements"] if r.get("kind", "requirement") == "requirement")
-        model = d["passport"].get("model", "")
+        vals["findings"] = f"{n_req} / {len(fs)}"
         sys.path.insert(0, str(ROOT / "bench"))
         try:
             from real_eval import evaluate
 
             ev = evaluate(d)
-            kpis.append({"label": "Документ организаторов", "value": f"{ev['found']} из {ev['total']}",
-                         "sub": f"ожидаемых дефектов найдено, критичных — {ev['critical_found']} из {ev['critical_total']}"})
+            vals["found"] = f"{ev['found']} из {ev['total']}"
         except Exception:
             pass
-        kpis.append({"label": "Замечаний", "value": str(len(fs)),
-                     "sub": f"к {n_req} требованиям, критичных — {sum(1 for f in fs if f['severity'] == 'critical')}"})
     rj = ROOT / "bench" / "results.json"
     if rj.exists():
         d = json.loads(rj.read_text(encoding="utf-8"))
-        kpis.append({"label": "Бенчмарк", "value": f"{round(100 * d['recall'])}/{round(100 * d['precision'])} %",
-                     "sub": f"recall / precision · {d['total']} дефектов, {len(d.get('cases', {}))} документов"})
-    kpis.append({"label": "Цитаты", "value": "100 %", "sub": "замечаний с дословной цитатой, проверенной кодом"})
-    note = (f"Модель отчёта: {model}. " if model else "") + "Цифры собраны кодом из отчёта и bench/results.json при сборке сайта."
-    return kpis[:4], note
+        pct = lambda x: f"{round(100 * x)} %"  # noqa: E731
+        vals.update(recall=pct(d["recall"]), precision=pct(d["precision"]), **{
+            "bench-recall": pct(d["recall"]), "bench-precision": pct(d["precision"]), "bench-total": f"{d['tp']} из {d['total']}",
+            "bench-sub": f"{len(d['cases'])} документов, {d['total']} заранее известных дефектов."})
+        names = {"payments": "Оплата услуг", "credit": "Онлайн-кредит", "onboarding": "Открытие счёта",
+                 "deposit_kk": "Онлайн-депозит (қазақ тілі)", "cards": "Перевыпуск карты (DOCX, таблицы)", "cashback": "Кэшбэк по категориям"}
+        vals["bench-rows"] = "".join(f"<tr><td>{names.get(k, k)}</td><td>{c['tp']} из {c['total']}</td><td>{pct(c['recall'])}</td>"
+                                     f"<td>{pct(c['precision'])}</td></tr>" for k, c in d["cases"].items())
+    team = ROOT / "docs" / "team.yaml"
+    if team.exists():
+        people = re.findall(r'name:\s*"([^"]+)"', team.read_text(encoding="utf-8"))
+        people = [p for p in people if p.strip() and p != "Имя Фамилия"]  # шаблон без имён не показываем
+        if people:
+            vals["team"] = "Команда: " + ", ".join(people)
+    for k, v in vals.items():
+        html = re.sub(rf'(<(\w+)[^>]*\bdata-k="{re.escape(k)}"[^>]*>)(.*?)(</\2>)', lambda m: m.group(1) + v + m.group(4), html,
+                      count=1, flags=re.S)
+    return html
 
 
 def build(out: Path, studio: str) -> None:
-    from req_review.ui import env
+    from req_review.ui import tokens_css
 
     if out.exists():
         shutil.rmtree(out)
-    (out / "assets").mkdir(parents=True)
-    for p in (ROOT / "docs" / "assets").iterdir():
-        if p.suffix.lower() in (".png", ".gif", ".svg", ".jpg", ".webp", ".mp4"):
-            shutil.copy2(p, out / "assets" / p.name)
-    e = env()
-    page = e.from_string(PAGE)
-    kpis, note = numbers()
-    shots = [{"file": f, "caption": c} for f, c in (
-        ("screenshot-doc-light.png", "Документ: дефекты подчёркнуты в тексте"),
-        ("screenshot-graph-light.png", "3D-граф: противоречия и цепочка конфликта"),
-        ("screenshot-tests-light.png", "Тесты: Gherkin и покрытие «тестируемо X из N»"),
-        ("screenshot-fixes-light.png", "Исправления: diff «было → стало» и вопросы аналитику"),
-        ("screenshot-studio-assistant.png", "Studio: AI-ассистент рядом с отчётом"),
-        ("screenshot-studio-compare.png", "Studio: «До / После» для новой версии")) if (out / "assets" / f).exists()]
-    home = e.from_string(HOME).render(kpis=kpis, note=note, features=readme_features(), shots=shots, studio=studio)
-    (out / "index.html").write_text(page.render(title="ReqLens — ИИ-ревью требований", root="./", studio=studio, body=home),
-                                    encoding="utf-8")
-
+    shutil.copytree(ROOT / "site", out)  # сайт: index.html, site.css, site.js, шрифты, картинки WebP, знак
+    (out / "tokens.css").write_text(tokens_css(), encoding="utf-8")  # общие токены с приложением (design/tokens.json)
+    gif = ROOT / "docs" / "assets" / "live-run.gif"
+    if gif.exists():
+        shutil.copy2(gif, out / "live-run.gif")
+    html = fill_numbers((out / "index.html").read_text(encoding="utf-8"))
+    html = html.replace('href="https://reqlens-studio.onrender.com"', f'href="{studio}"')
+    (out / "index.html").write_text(html, encoding="utf-8")
     (out / "report").mkdir()
     md_path = ROOT / "reports" / "requirements-report.md"
     if md_path.exists():
@@ -224,9 +161,12 @@ def build(out: Path, studio: str) -> None:
 
             body_html = f"<pre>{escape(md)}</pre>"
         title = (re.search(r"^#\s+(.+)$", md, re.M) or [None, "Отчёт"])[1]
+        from req_review.ui import env
+
+        e = env()
         body = e.from_string(REPORT_MD).render(title=title, html=body_html)
-        (out / "report" / "index.html").write_text(page.render(title=f"ReqLens · {title}", root="../", studio=studio, body=body),
-                                                   encoding="utf-8")
+        (out / "report" / "index.html").write_text(e.from_string(PAGE).render(title=f"ReqLens · {title}", root="../",
+                                                                              studio=studio, body=body), encoding="utf-8")
 
     (out / "slides").mkdir()
     slides = ROOT / "docs" / "slides.html"

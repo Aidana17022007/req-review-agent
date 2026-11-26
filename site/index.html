@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ReqLens — требования без дефектов</title>
+<meta name="description" content="ReqLens — ИИ-агент статической проверки требований по ISO/IEC/IEEE 29148 и IEEE 830: дословные цитаты, тест-проба, противоречия и готовые исправления, отчёт на русском.">
+<meta name="theme-color" content="#02030C">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/inter-cyrillic-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="site.css">
+<script>try{var t=localStorage.getItem("reqlens-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main" data-i18n="skip">Перейти к содержимому</a>
+
+<!-- 1. Hero -->
+<section class="panel hero" id="top">
+  <div class="dawn" aria-hidden="true"></div>
+  <header class="nav">
+    <a class="logo" href="#top" aria-label="ReqLens — на главную"><img src="favicon.svg" width="28" height="28" alt=""><span>ReqLens</span></a>
+    <nav class="capsule" aria-label="Разделы">
+      <a href="#features" data-i18n="nav.features">Возможности</a>
+      <a href="#how" data-i18n="nav.how">Как работает</a>
+      <a href="#bench" data-i18n="nav.bench">Бенчмарк</a>
+      <a href="https://github.com/Aidana17022007/req-review-agent" rel="noopener">GitHub</a>
+    </nav>
+    <div class="nav-act">
+      <button class="pill-btn" id="lang" type="button" aria-label="Тілді ауыстыру / Сменить язык">ҚАЗ</button>
+      <button class="pill-btn" id="theme" type="button" aria-label="Сменить тему"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+      <a class="btn btn-white btn-sm" data-studio href="https://reqlens-studio.onrender.com"><span data-i18n="cta.check">Проверить документ</span><i aria-hidden="true">›</i></a>
+    </div>
+  </header>
+
+  <div class="screens" aria-hidden="true">
+    <figure class="screen s-left"><img src="img/graph-dark.webp" width="1200" height="750" alt=""></figure>
+    <figure class="screen s-mid"><img src="img/doc-dark.webp" width="1200" height="750" alt="" fetchpriority="high"></figure>
+    <figure class="screen s-right"><img src="img/overview-dark.webp" width="1200" height="750" alt=""></figure>
+  </div>
+
+  <div class="hero-text" id="main">
+    <h1 class="display"><span data-i18n="hero.t1">Требования без дефектов —</span><br><span data-i18n="hero.t2">до первой строки кода.</span></h1>
+    <p class="lead" data-i18n="hero.lead">ReqLens проверяет документ требований по ISO/IEC/IEEE 29148 и IEEE 830 и пишет отчёт на русском: дословная цитата, место, серьёзность и готовая формулировка исправления.</p>
+    <div class="cta">
+      <a class="btn btn-white" data-studio href="https://reqlens-studio.onrender.com"><span data-i18n="cta.check">Проверить документ</span><i aria-hidden="true">›</i></a>
+      <a class="btn btn-dark" href="report/"><span data-i18n="cta.demo">Смотреть демо</span><i aria-hidden="true">›</i></a>
+    </div>
+  </div>
+</section>
+
+<!-- 2. Стандарты и модели -->
+<section class="panel logos" aria-label="Стандарты и модели">
+  <ul>
+    <li>ISO/IEC/IEEE 29148</li><li>IEEE 830</li><li>Gemini</li><li>OpenAI-compatible</li><li>Claude</li><li>Ollama</li>
+  </ul>
+</section>
+
+<!-- 3. KPI в перспективе -->
+<section class="panel kpis">
+  <div class="kpi-head">
+    <p class="eyebrow" data-i18n="kpi.eyebrow">Результат</p>
+    <h2 class="h1"><span data-i18n="kpi.t1">Создано вокруг</span><br><span class="dim" data-i18n="kpi.t2">вашего процесса ревью.</span></h2>
+  </div>
+  <div class="floor">
+    <div class="tile reveal"><b data-k="found">26 из 26</b><span data-i18n="kpi.found">ожидаемых дефектов документа организаторов</span></div>
+    <div class="tile reveal"><b data-k="recall">100 %</b><span data-i18n="kpi.recall">recall на бенчмарке</span></div>
+    <div class="tile reveal"><b data-k="precision">98 %</b><span data-i18n="kpi.precision">precision на бенчмарке</span></div>
+    <div class="tile reveal"><b data-k="findings">16 / 64</b><span data-i18n="kpi.findings">требований / подтверждённых замечаний</span></div>
+  </div>
+</section>
+
+<!-- 4. Возможности -->
+<section class="panel" id="features">
+  <p class="eyebrow" data-i18n="feat.eyebrow">Возможности</p>
+  <h2 class="h1"><span data-i18n="feat.t1">Всё для ревью требований —</span><br><span class="dim" data-i18n="feat.t2">в одном прогоне агента.</span></h2>
+  <div class="cards">
+    <article class="card reveal"><div class="crop"><img src="img/f-probe.webp" width="640" height="400" loading="lazy" alt="Экран тестов: тест-проба Given/When/Then"></div><h3 data-i18n="f1.t">Тест-проба Given/When/Then</h3><p data-i18n="f1.d">К каждому требованию агент пишет приёмочный тест. Не получилось — доказательство непроверяемости с цитатой.</p></article>
+    <article class="card reveal"><div class="crop"><img src="img/f-report.webp" width="640" height="400" loading="lazy" alt="Интерактивный отчёт: дефекты подчёркнуты в тексте"></div><h3 data-i18n="f2.t">Интерактивный отчёт</h3><p data-i18n="f2.d">Дефекты подчёркнуты прямо в тексте документа: клик — объяснение, пункт стандарта и готовая формулировка.</p></article>
+    <article class="card reveal"><div class="crop"><img src="img/f-fix.webp" width="640" height="400" loading="lazy" alt="Исправления: было и стало"></div><h3 data-i18n="f3.t">Автоисправление</h3><p data-i18n="f3.d">Исправленный документ и diff «было → стало»; повторная проверка показывает балл до и после.</p></article>
+    <article class="card reveal"><div class="crop"><img src="img/f-guard.webp" width="640" height="400" loading="lazy" alt="Трассировка агента и контроль качества"></div><h3 data-i18n="f4.t">Защита от галлюцинаций</h3><p data-i18n="f4.d">Каждая цитата проверяется кодом по тексту, выдуманное отбрасывается; критик объединяет дубли и калибрует серьёзность.</p></article>
+    <article class="card reveal"><div class="crop"><img src="img/f-fintech.webp" width="640" height="400" loading="lazy" alt="Проверка набора требований целиком"></div><h3 data-i18n="f5.t">Финтех-чек-лист</h3><p data-i18n="f5.d">Полнота для банковских продуктов: 2FA, лимиты, идемпотентность, AML, персональные данные, SLA — только с цитатами.</p></article>
+    <article class="card reveal"><div class="crop"><img src="img/f-metrics.webp" width="640" height="400" loading="lazy" alt="Обзор: балл документа и готовность"></div><h3 data-i18n="f6.t">Метрики</h3><p data-i18n="f6.d">Балл документа, готовность к разработке, радар по критериям и «цена дефекта» — считает код, а не модель.</p></article>
+    <article class="card reveal"><div class="crop"><img src="img/f-offline.webp" width="640" height="400" loading="lazy" alt="Экспорт и паспорт прогона"></div><h3 data-i18n="f7.t">Офлайн-режим</h3><p data-i18n="f7.d">Локальная модель через Ollama — документ банка не покидает контур. Без ключа работают правила.</p></article>
+    <article class="card reveal"><div class="crop"><img src="img/f-team.webp" width="640" height="400" loading="lazy" alt="Список требований с фильтрами"></div><h3 data-i18n="f8.t">Для команды</h3><p data-i18n="f8.d">Excel-трассировка, CSV для Jira, report.json, вопросы заказчику, сравнение версий, GitHub Action, Docker.</p></article>
+    <article class="card reveal"><div class="crop"><img src="img/f-graph.webp" width="640" height="400" loading="lazy" alt="3D-граф требований"></div><h3 data-i18n="f9.t">3D-граф требований</h3><p data-i18n="f9.d">Противоречия, зависимости и дубли; клик по узлу — детали и цепочка конфликта.</p></article>
+    <article class="card reveal"><div class="crop"><img src="img/f-studio.webp" width="640" height="400" loading="lazy" alt="Studio и AI-ассистент"></div><h3 data-i18n="f10.t">Studio и ассистент</h3><p data-i18n="f10.d">Перетащите файл — шаги идут вживую; ассистент отвечает на «Почему S-01 критичное?» со ссылками.</p></article>
+  </div>
+</section>
+
+<!-- 5. Как работает -->
+<section class="panel" id="how">
+  <p class="eyebrow" data-i18n="how.eyebrow">Как это работает</p>
+  <h2 class="h1"><span data-i18n="how.t1">Модель предлагает —</span> <span class="dim" data-i18n="how.t2">код проверяет.</span></h2>
+  <div class="how">
+    <ol class="steps">
+      <li class="reveal"><b data-i18n="s1.t">Загрузка</b><span data-i18n="s1.d">PDF, DOCX, Markdown: таблицы и заголовки распознаются, каждая строка учитывается.</span></li>
+      <li class="reveal"><b data-i18n="s2.t">Выделение требований</b><span data-i18n="s2.d">Пункты с номерами и без; строки таблиц API и критерии приёмки — отдельно.</span></li>
+      <li class="reveal"><b data-i18n="s3.t">Проверка и критик</b><span data-i18n="s3.d">9 критериев к требованию и 6 к набору, тест-проба, узкие проходы; критик убирает дубли.</span></li>
+      <li class="reveal"><b data-i18n="s4.t">Отчёт и исправления</b><span data-i18n="s4.d">6 разделов ТЗ, «Итог за 30 секунд», исправленный документ и вопросы аналитику.</span></li>
+    </ol>
+    <div class="gif reveal"><img src="live-run.gif" width="960" height="600" loading="lazy" alt="Живой прогон в ReqLens Studio"></div>
+  </div>
+</section>
+
+<!-- 6. Скриншоты -->
+<section class="panel" id="shots">
+  <p class="eyebrow" data-i18n="shots.eyebrow">Интерфейс</p>
+  <h2 class="h1"><span data-i18n="shots.t1">Один отчёт —</span> <span class="dim" data-i18n="shots.t2">пять способов его прочитать.</span></h2>
+  <div class="tabs">
+    <input type="radio" name="tab" id="t1" checked><label for="t1" data-i18n="tab.doc">Документ</label>
+    <input type="radio" name="tab" id="t2"><label for="t2" data-i18n="tab.graph">3D-граф</label>
+    <input type="radio" name="tab" id="t3"><label for="t3" data-i18n="tab.tests">Тесты</label>
+    <input type="radio" name="tab" id="t4"><label for="t4" data-i18n="tab.fix">Исправления</label>
+    <input type="radio" name="tab" id="t5"><label for="t5">Studio</label>
+    <div class="stage">
+      <img class="p1" src="img/doc-dark.webp" width="1200" height="750" loading="lazy" alt="Документ с подсветкой дефектов">
+      <img class="p2" src="img/graph-dark.webp" width="1200" height="750" loading="lazy" alt="3D-граф требований">
+      <img class="p3" src="img/tests-dark.webp" width="1200" height="750" loading="lazy" alt="Тест-кейсы Gherkin">
+      <img class="p4" src="img/fixes-dark.webp" width="1200" height="750" loading="lazy" alt="Исправления: было и стало">
+      <img class="p5" src="img/studio-assistant.webp" width="1200" height="750" loading="lazy" alt="Studio и AI-ассистент">
+    </div>
+  </div>
+</section>
+
+<!-- 7. Бенчмарк -->
+<section class="panel" id="bench">
+  <p class="eyebrow" data-i18n="bench.eyebrow">Бенчмарк</p>
+  <h2 class="h1"><span data-i18n="bench.t1">Точность, которую можно проверить.</span><br><span class="dim" data-k="bench-sub" data-i18n="bench.t2">5 документов, 67 заранее известных дефектов.</span></h2>
+  <div class="table">
+    <table>
+      <thead><tr><th scope="col" data-i18n="b.doc">Документ</th><th scope="col" data-i18n="b.found">Найдено</th><th scope="col">Recall</th><th scope="col">Precision</th></tr></thead>
+      <tbody data-k="bench-rows">
+        <tr><td>Оплата услуг</td><td>13 из 13</td><td>100 %</td><td>92 %</td></tr>
+        <tr><td>Онлайн-кредит</td><td>14 из 14</td><td>100 %</td><td>100 %</td></tr>
+        <tr><td>Открытие счёта</td><td>14 из 14</td><td>100 %</td><td>100 %</td></tr>
+        <tr><td>Онлайн-депозит (қазақ тілі)</td><td>13 из 13</td><td>100 %</td><td>100 %</td></tr>
+        <tr><td>Перевыпуск карты (DOCX, таблицы)</td><td>13 из 13</td><td>100 %</td><td>100 %</td></tr>
+      </tbody>
+      <tfoot><tr><td data-i18n="b.total">Итого</td><td data-k="bench-total">67 из 67</td><td data-k="bench-recall">100 %</td><td data-k="bench-precision">98 %</td></tr></tfoot>
+    </table>
+  </div>
+  <p class="note" data-i18n="bench.note">Цифры считает код (bench/run.py), а не модель. Независимая оценка — разметка со стороны по bench/external/PROTOCOL.md.</p>
+</section>
+
+<!-- 8. Быстрый старт -->
+<section class="panel" id="start">
+  <p class="eyebrow" data-i18n="start.eyebrow">Быстрый старт</p>
+  <h2 class="h1" data-i18n="start.t">Одна команда.</h2>
+  <div class="code">
+    <pre><code id="cmd">python review.py bench/real/notifications.md reports/report.md --profile deep</code></pre>
+    <button class="btn btn-dark btn-sm copy" type="button" data-copy="#cmd"><span data-i18n="copy">Скопировать</span></button>
+  </div>
+  <p class="note" data-i18n="start.note">Сначала pip install -r requirements.txt и ключ Gemini в .env. Без ключа: LLM_PROVIDER=rules — только правила агента.</p>
+</section>
+
+<!-- 9. Финальный CTA -->
+<section class="panel final">
+  <div class="dawn" aria-hidden="true"></div>
+  <div class="final-in">
+    <h2 class="display sm"><span data-i18n="final.t1">Проверьте свой документ</span><br><span data-i18n="final.t2">за пару минут.</span></h2>
+    <div class="cta center">
+      <a class="btn btn-white" data-studio href="https://reqlens-studio.onrender.com"><span data-i18n="cta.check">Проверить документ</span><i aria-hidden="true">›</i></a>
+      <a class="btn btn-dark" href="slides/"><span data-i18n="cta.slides">Слайды защиты</span><i aria-hidden="true">›</i></a>
+    </div>
+  </div>
+</section>
+
+<footer class="foot">
+  <div class="logo"><img src="favicon.svg" width="22" height="22" alt=""><span>ReqLens</span></div>
+  <p data-k="team" data-i18n="foot.team">Команда хакатона BCC-HUB × MNU</p>
+  <nav aria-label="Ссылки"><a href="report/" data-i18n="foot.report">Отчёт</a><a href="slides/" data-i18n="foot.slides">Слайды</a><a href="https://github.com/Aidana17022007/req-review-agent" rel="noopener">GitHub</a></nav>
+  <p class="small" data-i18n="foot.license">Код — лицензия проекта; шрифт Inter — SIL OFL 1.1; стандарты ISO/IEC/IEEE 29148 и IEEE 830 — пересказ, не текст.</p>
+</footer>
+<script src="site.js" defer></script>
+</body>
+</html>
