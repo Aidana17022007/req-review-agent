@@ -69,3 +69,21 @@ def test_rpm_limit_sets_interval(monkeypatch):
     monkeypatch.setenv("LLM_MIN_INTERVAL", "0")
     monkeypatch.setenv("LLM_RPM", "5")
     assert _min_interval() == 12.0
+
+
+def test_overloaded_model_falls_back(monkeypatch):
+    """503 «high demand» у основной модели → переключение на резервную, ответ получен, переключение записано."""
+    used = []
+
+    def fake_post(url, json=None, headers=None, timeout=None):
+        used.append(url.split("/models/")[1].split(":")[0])
+        if "main-model" in url:
+            return Resp(503, {"error": {"message": "high demand"}})
+        return Resp(200, {"candidates": [{"content": {"parts": [{"text": '{"ok": 1}'}]}}]})
+
+    monkeypatch.setattr(llm_mod.requests, "post", fake_post)
+    monkeypatch.setattr(llm_mod.time, "sleep", lambda s: None)
+    g = GeminiLLM(api_key="k", model="main-model", fallback=["lite-model"])
+    assert g.generate_json("s", "p") == {"ok": 1}
+    assert used[-1] == "lite-model" and g.model == "lite-model"
+    assert g.stats.switches and "main-model → lite-model" in g.stats.switches[0]

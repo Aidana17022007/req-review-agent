@@ -28,6 +28,7 @@ class LLMFatalError(LLMError):
 class LLMStats:
     calls: int = 0
     cached: int = 0
+    switches: list = field(default_factory=list)  # переключения на резервную модель: ["A → B (HTTP 503)"]
     retries: int = 0
     prompt_tokens: int = 0
     output_tokens: int = 0
@@ -44,6 +45,7 @@ class BaseLLM:
         self.timeout = timeout
         self.stats = LLMStats()
         self._last_call = 0.0
+        self.fallback_models: list[str] = []
 
     # --- публичный метод ---
     def generate_json(self, system: str, prompt: str, *, task: str = "", context: dict | None = None) -> dict:
@@ -75,6 +77,12 @@ class BaseLLM:
             except RetryableError as e:
                 last_err = e
                 self.stats.retries += 1
+                # модель перегружена (503) или не отвечает — переходим на резервную, не дожидаясь всех повторов
+                if attempt >= 1 and self.fallback_models and ("503" in str(e) or "сетев" in str(e)):
+                    old, self.model = self.model, self.fallback_models.pop(0)
+                    self.stats.switches.append(f"{old} → {self.model} ({e})")
+                    print(f"  [llm] {old} перегружена — переключаюсь на резервную модель {self.model}", flush=True)
+                    continue
                 if attempt >= self.max_retries:
                     break
                 wait = e.retry_after if e.retry_after else min(60.0, 2.0 * (2 ** attempt))
@@ -178,7 +186,8 @@ def _retry_delay_from_body(body: str) -> float | None:
 class GeminiLLM(BaseLLM):
     provider = "gemini"
 
-    def __init__(self, api_key: str, model: str, base_url: str | None = None, temperature: float = 0.0, **kw):
+    def __init__(self, api_key: str, model: str, base_url: str | None = None, temperature: float = 0.0,
+                 fallback: list[str] | None = None, **kw):
         super().__init__(**kw)
         if not api_key:
             raise LLMError("Не задан GEMINI_API_KEY. Получите ключ на https://aistudio.google.com/apikey и положите в .env")
@@ -186,6 +195,7 @@ class GeminiLLM(BaseLLM):
         self.model = model
         self.temperature = temperature
         self.base_url = (base_url or "https://generativelanguage.googleapis.com/v1beta").rstrip("/")
+        self.fallback_models = [m for m in (fallback or []) if m and m != model]
 
     def _call(self, system, prompt, *, task, context):
         url = f"{self.base_url}/models/{self.model}:generateContent"
@@ -284,6 +294,7 @@ def build_llm_from_env() -> BaseLLM:
             api_key=_env_key("GEMINI_API_KEY"),
             model=os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip(),
             base_url=os.getenv("GEMINI_BASE_URL") or None,
+            fallback=[m.strip() for m in os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3.5-flash-lite,gemini-3.1-flash-lite").split(",")],
             temperature=temperature,
             **common,
         )

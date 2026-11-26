@@ -60,6 +60,8 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     w(f"| SHA-256 файла | `{doc.sha256[:16]}…` |")
     w(f"| Дата и время прогона | {started.strftime('%Y-%m-%d %H:%M:%S %Z').strip()} |")
     w(f"| Модель | {_cell(model_label)} |")
+    if ctx is not None and ctx.passport.get("model_switches"):
+        w(f"| Переключения модели | {_cell('; '.join(ctx.passport['model_switches']))} |")
     w(f"| Версия агента | {_cell(agent_version)} |")
     cached = getattr(llm_stats, "cached", 0)
     w(f"| Обращений к модели | {llm_stats.calls} (повторов: {llm_stats.retries}"

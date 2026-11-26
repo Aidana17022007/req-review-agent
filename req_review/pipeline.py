@@ -146,6 +146,7 @@ def build_context(rv, llm, opts: Options, started: datetime, t0: float, input_pa
                 ("тестовый (mock)" if llm.provider == "mock" else "облачная модель"),
         "calls": llm.stats.calls, "retries": llm.stats.retries, "tokens_in": llm.stats.prompt_tokens,
         "tokens_out": llm.stats.output_tokens, "duration_s": round(time.monotonic() - t0),
+        "model_switches": list(getattr(llm.stats, "switches", [])),
         "split_method": rv.split.method, "dropped": len(rv.dropped), "rejected": len(rv.rejected),
         "critic": rv.critic_used, "domain": opts.domain,
     }
