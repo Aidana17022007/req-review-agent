@@ -793,7 +793,8 @@ def test_html_report_has_v7_blocks_and_hides_them_for_old_reports(tmp_path, monk
               Options(xlsx=False, jira=False), log=lambda m: None)
     html = (tmp_path / "r.html").read_text(encoding="utf-8")
     assert html.encode("utf-8").__len__() < 1024 * 1024
-    for marker in ("summary30HTML", "trustHTML", "acceptanceHTML", "matrixHTML", "Итог за 30 секунд", "30 секундтағы қорытынды"):
+    for marker in ("summary30HTML", "trustHTML", "acceptanceHTML", "matrixHTML", "Итог за 30 секунд", "30 секундтағы қорытынды",
+                   "REQLENS_ASK", "Спроси отчёт", "Есептен сұра"):
         assert marker in html, marker
     d = build_data(ctx)["depth"]
     assert d["verdict"]["development"] and d["fix_plan"] and d["citation_audit"]["total"] > 0
