@@ -1,22 +1,22 @@
 {
- "label": "gemini / gemini-3.5-flash-lite · RAG=on · профиль fast",
- "version": "v3.0.3, коммит 86b6dee (v3.0.3-20-g86b6dee-dirty)",
- "date": "2026-11-26 15:03",
- "recall": 0.9701492537313433,
- "precision": 1.0,
- "f1": 0.9848484848484849,
- "tp": 65,
+ "label": "gemini / gemini-3.5-flash-lite · RAG=on · профиль deep",
+ "version": "v6.0.0, коммит 5d85e5a (v3.0.3-26-g5d85e5a-dirty)",
+ "date": "2026-11-26 15:41",
+ "recall": 1.0,
+ "precision": 0.984375,
+ "f1": 0.9921259842519685,
+ "tp": 67,
  "total": 67,
- "fp_on_clean": 0,
+ "fp_on_clean": 1,
  "clean": 29,
  "cases": {
   "payments": {
    "recall": 1.0,
-   "precision": 1.0,
-   "f1": 1.0,
+   "precision": 0.9230769230769231,
+   "f1": 0.9600000000000001,
    "tp": 13,
    "total": 13,
-   "fp": 0
+   "fp": 1
   },
   "credit": {
    "recall": 1.0,
@@ -27,10 +27,10 @@
    "fp": 0
   },
   "onboarding": {
-   "recall": 0.8571428571428571,
+   "recall": 1.0,
    "precision": 1.0,
-   "f1": 0.923076923076923,
-   "tp": 12,
+   "f1": 1.0,
+   "tp": 14,
    "total": 14,
    "fp": 0
   },

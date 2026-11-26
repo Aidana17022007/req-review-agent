@@ -1,6 +1,7 @@
 """Формирование отчёта о проверке на русском языке (Markdown)."""
 from __future__ import annotations
 
+import re
 from collections import Counter
 from datetime import datetime
 
@@ -35,6 +36,7 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     by_rid = {r.rid: r for r in reqs}
     L: list[str] = []
     w = L.append
+    _BASIS_SEEN.clear()
 
     all_f = [f for rr in rv.req_results for f in rr.findings]
     sev_counts = Counter(f.severity for f in all_f) + Counter(f.severity for f in rv.set_findings)
@@ -49,6 +51,8 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
         w("> ⚠️ **ТЕСТОВЫЙ ПРОГОН (LLM_PROVIDER=mock).** Модель не вызывалась, замечания сгенерированы эвристиками. "
           "Этот отчёт не является результатом проверки и не подходит для сдачи.")
         w("")
+
+    _summary_30s(w, rv, sev_counts, by_rid)
 
     # ------------------------------------------------------------------ 1
     w("## 1. Паспорт прогона")
@@ -110,7 +114,7 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     w("| ID в отчёте | ID в документе | Место в документе | Краткая формулировка |")
     w("|---|---|---|---|")
     for r in reqs:
-        text = _cell(r.text) if not r.doc_id else _cell(r.short)
+        text = _cell(r.short)  # полный текст — один раз, в разборе требования (раздел 3)
         w(f"| {r.rid} | {_cell(r.doc_id) if r.doc_id else '— (присвоен агентом)'} | {_cell(r.location)} | {text} |")
     w("")
     w(f"Всего выделено требований: **{len(reqs)}**.")
@@ -119,11 +123,20 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     # ------------------------------------------------------------------ 3
     w("## 3. Проверка каждого требования")
     w("")
-    for rr in rv.req_results:
+    order = {"critical": 0, "major": 1, "minor": 2}
+    worst_of = lambda rr: min((f.severity for f in rr.findings), key=order.get, default=None)  # noqa: E731
+    full = [rr for rr in rv.req_results if worst_of(rr) in ("critical", "major")]
+    minor_only = [rr for rr in rv.req_results if worst_of(rr) == "minor"]
+    clean = [rr for rr in rv.req_results if not rr.findings]
+    w(f"Подробный разбор — у требований с критичными и существенными замечаниями ({len(full)}). Требования только с мелкими "
+      f"замечаниями ({len(minor_only)}) — в таблице ниже, без замечаний ({len(clean)}) — списком. Полный текст каждого "
+      "требования приведён один раз — в его разборе; приёмочные тесты — в приложении «Тест-пробы».")
+    w("")
+    for rr in full:
         r = rr.req
-        worst = min((f.severity for f in rr.findings), key=lambda s: {"critical": 0, "major": 1, "minor": 2}[s], default=None)
-        status = {"critical": "🔴 есть критичные дефекты", "major": "🟠 требует доработки",
-                  "minor": "🟡 мелкие замечания", None: "✅ замечаний нет"}[worst]
+        status = {"critical": "🔴 есть критичные дефекты", "major": "🟠 требует доработки"}[worst_of(rr)]
+        w(f'<a id="{_anchor(r.rid)}"></a>')
+        w("")
         w(f"### {r.rid}{f' ({r.doc_id})' if r.doc_id else ''} — {status}")
         w("")
         meta = f"*Место:* {r.location}"
@@ -138,37 +151,41 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
         if rr.note:
             w(f"⚠️ {rr.note}")
             w("")
-        if rr.findings:
-            w("| № | Критерий | Цитата | Проблема | Серьёзность | Как исправить | Источник |")
-            w("|---|---|---|---|---|---|---|")
-            for i, f in enumerate(rr.findings, 1):
-                w(f"| {i} | {criterion_name(f.criterion)} | {_q(f.quote)} | {_cell(f.problem)} | "
-                  f"{ICON[f.severity]} {SEVERITY[f.severity]} | {_cell(f.fix)} | {f.source} |")
-            w("")
-            _basis_lines(w, rr.findings)
-        bad = {f.criterion for f in rr.findings}
-        ok = [v[0] for k, v in INDIVIDUAL.items() if k not in bad]
-        if rr.llm_checked:
-            w(f"Без замечаний по критериям: {', '.join(ok)}.")
-            w("")
-        if rr.rewrite and rr.findings:
+        w("| № | Критерий | Цитата | Проблема | Серьёзность | Как исправить | Источник |")
+        w("|---|---|---|---|---|---|---|")
+        for i, f in enumerate(rr.findings, 1):
+            w(f"| {i} | {criterion_name(f.criterion)} | {_q(f.quote)} | {_cell(f.problem)} | "
+              f"{ICON[f.severity]} {SEVERITY[f.severity]} | {_cell(f.fix)} | {f.source} |")
+        w("")
+        _basis_lines(w, rr.findings)
+        if rr.rewrite:
             w(f"**Предлагаемая формулировка:** {_cell(rr.rewrite)}")
             w("")
             if getattr(rr, "rewrite_pattern", None):
                 p = rr.rewrite_pattern
                 w(f"*Шаблон из базы знаний ({_cell(p['title'])}, `{p['file']}`):* {_cell(p['template'])}")
                 w("")
-        if rr.test_possible is True:
-            w("<details><summary>🧪 Тест-проба: приёмочный тест составлен</summary>")
-            w("")
-            w("```gherkin")
-            w(rr.test_gherkin)
-            w("```")
-            w("</details>")
-            w("")
-        elif rr.test_possible is False:
+        if rr.test_possible is False:
             w(f"🧪 **Тест-проба: тест составить невозможно** — {_cell(rr.test_reason)} Мешает фрагмент: {_q(rr.test_blocker)}.")
             w("")
+    if minor_only:
+        w("### Требования с мелкими замечаниями")
+        w("")
+        w("| Требование | Критерий | Цитата | Проблема | Как исправить | Источник |")
+        w("|---|---|---|---|---|---|")
+        for rr in minor_only:
+            r = rr.req
+            for i, f in enumerate(rr.findings):
+                head = f'<a id="{_anchor(r.rid)}"></a>{r.rid}{f" ({_cell(r.doc_id)})" if r.doc_id else ""}' if i == 0 else "″"
+                w(f"| {head} | {criterion_name(f.criterion)} | {_q(f.quote)} | {_cell(f.problem)} | {_cell(f.fix)} | {f.source} |")
+        w("")
+    if clean:
+        w("### Требования без замечаний")
+        w("")
+        w(", ".join(f'<a id="{_anchor(rr.req.rid)}"></a>{rr.req.rid}{f" ({_cell(rr.req.doc_id)})" if rr.req.doc_id else ""}'
+                    for rr in clean) + " — нарушений критериев не найдено" + (" (проверены моделью и правилами)." if any(
+                        rr.llm_checked for rr in clean) else " (проверены правилами)."))
+        w("")
 
     # ------------------------------------------------------------------ 4
     w("## 4. Проверка набора требований")
@@ -186,6 +203,8 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     w("")
     if rv.set_findings:
         for i, f in enumerate(rv.set_findings, 1):
+            w(f'<a id="s-{i:02d}"></a>')
+            w("")
             w(f"#### S-{i:02d}. {KIND.get(f.kind, f.kind.capitalize())} — {ICON[f.severity]} {SEVERITY[f.severity]} "
               f"({criterion_name(f.criterion)}; {criterion_ref(f.criterion)})")
             w("")
@@ -393,6 +412,8 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
             w("")
     w("---")
     w("")
+    _tests_appendix(w, rv)
+    _basis_appendix(w)
     w("### Приложение. Критерии проверки")
     w("")
     w("| Ключ | Критерий | Источник |")
@@ -426,6 +447,67 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
         w("")
     w(f"*Отчёт сформирован автоматически агентом ReqLens / req-review ({_cell(agent_version)}).*")
     return "\n".join(L) + "\n"
+
+
+SUMMARY_START, SUMMARY_END = "<!-- reqlens:summary:start -->", "<!-- reqlens:summary:end -->"
+
+
+def _anchor(rid: str) -> str:
+    """Якорь требования или замечания набора: R-006 → r-006, S-02 → s-02 (ссылки вида [R-006](#r-006))."""
+    return rid.lower()
+
+
+def _link(i: str) -> str:
+    return f"[{i}](#{_anchor(i)})" if re.match(r"^[RS]-\d+$", i) else i
+
+
+def _summary_30s(w, rv: ReviewResult, sev_counts, by_rid) -> None:
+    """«Итог за 30 секунд»: вердикты, число дефектов по серьёзности и 5–8 пунктов «что исправить первым» со ссылками
+    на разборы и примером правильной формулировки."""
+    depth = getattr(rv, "depth", None) or {}
+    vd, plan = depth.get("verdict"), depth.get("fix_plan") or []
+    w(SUMMARY_START)
+    w("")
+    w("**Итог за 30 секунд**")
+    w("")
+    if vd:
+        icon = {"нельзя": "❌", "с оговорками": "⚠️", "можно": "✅"}
+        w("| Разработка | Тестирование | 🔴 Критичных | 🟠 Существенных | 🟡 Незначительных |")
+        w("|---|---|---|---|---|")
+        w(f"| {icon[vd['development']]} {vd['development']} | {icon[vd['testing']]} {vd['testing']} | "
+          f"{sev_counts.get('critical', 0)} | {sev_counts.get('major', 0)} | {sev_counts.get('minor', 0)} |")
+        w("")
+    if plan:
+        w("**Что исправить первым:**")
+        w("")
+        for n, it in enumerate(plan[:8], 1):
+            ids = ", ".join(_link(i) for i in it["ids"][:4]) + (" …" if len(it["ids"]) > 4 else "")
+            title = re.sub(rf"^{re.escape(it['ids'][0])}:\s*", "", it["title"]) if it["ids"] else it["title"]
+            line = f"{n}. {ICON[it['severity']]} {ids} — {_cell(title)}"
+            if it.get("example"):
+                line += f" *Пример:* «{_cell(it['example'][:220])}»"
+            w(line)
+        w("")
+    w("Подробности: разделы 3–4 (разбор по каждому требованию и набору), раздел 6 (итог и план), приложения.")
+    w("")
+    w(SUMMARY_END)
+    w("")
+
+
+def _tests_appendix(w, rv: ReviewResult) -> None:
+    ok = [rr for rr in rv.req_results if rr.test_possible is True and rr.test_gherkin]
+    if not ok:
+        return
+    w(f"### Приложение. Тест-пробы: приёмочные тесты составлены ({len(ok)})")
+    w("")
+    for rr in ok:
+        w(f"<details><summary>🧪 {_link(rr.req.rid)}{f' ({rr.req.doc_id})' if rr.req.doc_id else ''}</summary>")
+        w("")
+        w("```gherkin")
+        w(rr.test_gherkin)
+        w("```")
+        w("</details>")
+        w("")
 
 
 def _priorities(rv: ReviewResult, by_rid) -> list[str]:
@@ -519,18 +601,36 @@ def _extras_tail(w, ctx) -> None:
         w("")
 
 
+_BASIS_SEEN: dict = {}  # основания текущего отчёта: (file, section) → запись (цитата — один раз, в приложении)
+
+
 def _basis_lines(w, findings) -> None:
-    """«Основание» из базы знаний kb/: пункт стандарта / норма РК с дословной цитатой из kb (без повторов)."""
-    seen, lines = set(), []
+    """«Основание» из базы знаний kb/ у замечания — короткая ссылка (вид, пункт, файл); дословная цитата из kb/ —
+    один раз, в приложении «Основания из базы знаний» (без повторов по всему отчёту)."""
+    seen, refs = set(), []
     for f in findings:
         for b in getattr(f, "basis", None) or []:
             key = (b["file"], b["section"])
             if key in seen:
                 continue
             seen.add(key)
+            _BASIS_SEEN.setdefault(key, b)
             kind = {"standards": "стандарт", "law_kz": "норма РК, пересказ", "patterns": "шаблон"}.get(b.get("kind"), "база знаний")
-            lines.append(f"- **Основание ({kind}):** {_cell(b['section'])} — «{_cell(b['quote'])}» (`{b['file']}`)")
-    if lines:
-        for x in lines:
-            w(x)
+            refs.append(f"{kind}: {_cell(b['section'])} (`{b['file']}`)")
+    if refs:
+        w("**Основание:** " + "; ".join(refs))
         w("")
+
+
+def _basis_appendix(w) -> None:
+    if not _BASIS_SEEN:
+        return
+    w(f"### Приложение. Основания из базы знаний ({len(_BASIS_SEEN)})")
+    w("")
+    w("Дословные фрагменты файлов `kb/`, на которые ссылаются замечания (нормы РК — пересказ, не текст закона).")
+    w("")
+    for (file, section), b in sorted(_BASIS_SEEN.items()):
+        w(f"- **{_cell(section)}** (`{file}`): «{_cell(b['quote'])}»")
+    w("")
+
+

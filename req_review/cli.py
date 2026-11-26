@@ -71,7 +71,7 @@ def main(argv: list[str] | None = None) -> int:
 
         label = build_llm_from_env().label
     except LLMError as e:
-        con.error(f"Ошибка конфигурации LLM: {e}")
+        con.error(f"Ошибка конфигурации LLM: {e}\n{_rules_hint(args)}")
         return 2
     con.banner(args.input, label, profile)
     try:
@@ -80,7 +80,10 @@ def main(argv: list[str] | None = None) -> int:
         con.error(f"Ошибка: {e}")
         return 2 if isinstance(e, FileNotFoundError) or "не поддерживается" in str(e) or "Домен" in str(e) else 3
     except LLMError as e:
-        con.error(f"Ошибка обращения к модели: {e}")
+        msg = f"Ошибка обращения к модели: {e}"
+        if any(x in str(e) for x in ("HTTP 400", "HTTP 401", "HTTP 403", "API key", "API_KEY")):
+            msg += "\nПохоже, ключ неверен или не подходит для этой модели. " + _rules_hint(args)
+        con.error(msg)
         return 4
     if args.json_out:
         from .exports import write_json
@@ -90,6 +93,13 @@ def main(argv: list[str] | None = None) -> int:
     if args.open and "Интерактивный отчёт (HTML)" in ctx.artifacts:
         webbrowser.open(ctx.artifacts["Интерактивный отчёт (HTML)"].resolve().as_uri())
     return 0
+
+
+def _rules_hint(args) -> str:
+    """Подсказка, как получить отчёт без ключа: только детерминированные правила (без модели)."""
+    return ("Без ключа можно проверить документ только правилами агента (без модели):\n"
+            f"  LLM_PROVIDER=rules python review.py \"{args.input}\" \"{args.output}\"\n"
+            "  (Windows PowerShell: $env:LLM_PROVIDER=\"rules\"; python review.py …)")
 
 
 if __name__ == "__main__":

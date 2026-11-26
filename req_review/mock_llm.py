@@ -35,6 +35,14 @@ class MockLLM(BaseLLM):
                  "problem": "[mock] Термин в требовании не определён.", "severity": "minor", "fix": "[mock] Добавить определение."},
                 {"check": "edge", "type": "gap", "refs": [{"id": "DOC", "quote": "этой фразы нет в документе"}],
                  "problem": "[mock] выдуманный пропуск", "severity": "major", "fix": "—"}]}, ensure_ascii=False)
+        if task.startswith("focus_"):  # v6: узкий проход — одно подтверждаемое замечание и одна «галлюцинация»
+            r = context["reqs"][-1]
+            return json.dumps({"findings": [
+                {"check": task, "type": "gap", "criterion": "set_validatable",
+                 "refs": [{"id": r.rid, "quote": " ".join(r.text.split()[:4])}],
+                 "problem": f"[mock] {task}: поведение не определено.", "severity": "major", "fix": "[mock] Дописать."},
+                {"check": task, "type": "gap", "refs": [{"id": "DOC", "quote": "такой фразы в документе нет"}],
+                 "problem": "[mock] выдуманный пропуск", "severity": "major", "fix": "—"}]}, ensure_ascii=False)
         if task == "crosscheck":
             return json.dumps({"findings": []}, ensure_ascii=False)
         if task == "critic":

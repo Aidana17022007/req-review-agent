@@ -306,7 +306,7 @@ def acceptance_preconditions(reqs: list[Requirement], doc: Document) -> list[Set
         "за месяц 48 500 ₸, push в этом месяце не отправлялся».", "правило")]
 
 
-_DECLARED = re.compile(r"^\s*(?:\*\*|#+\s*)([1-5]\d{2})\b[.*\s]")
+_DECLARED = re.compile(r"^\s*(?:\*\*|#+\s*)?([1-5]\d{2})(?:\.\**\s|\b\**\s*$|\.\s*$)")  # «**200.**», «#### 200. …», «200. …» (PDF)
 _CODE_CTX = re.compile(r"(?:результат|код\w*|ответ\w*|статус\w*|status|response)[^.\n]{0,40}?\b([1-5]\d{2})\b(?:[^.\n]{0,20}?(?:или|,|и)\s*([1-5]\d{2})\b)?",
                        re.I)
 
@@ -357,15 +357,18 @@ _UNITS = [("тиын", "тенге"), ("копе", "рубл"), ("цент", "д
 def unit_mix(reqs: list[Requirement], doc: Document) -> list[SetFinding]:
     """Сравниваемые величины хранятся в разных единицах (сумма в тиынах, порог в тенге)."""
     by_line = {r.line_start: r for r in reqs}
-    for ln in doc.lines:
-        low = ln.text.lower()
+    # требования — со склеенными строками (в PDF фраза переносится), затем отдельные строки документа
+    items = [(r, r.text) for r in reqs] + [(ln, ln.text) for ln in doc.lines]
+    for src, text in items:
+        low = text.lower()
         for small, big in _UNITS:
             ms, mb = re.search(rf"\w*\s*в {small}\w*", low), re.search(rf"\w*\s*в {big}\w*", low)
             if ms and mb:
-                qs = ln.text[ms.start():ms.end()]
+                qs = text[ms.start():ms.end()]
+                ref = SetRef(src.rid, _ctx(src.text, qs)) if isinstance(src, Requirement) else _ref(by_line, src, qs)
                 return [SetFinding(
-                    "terminology", "set_consistent", [_ref(by_line, ln, qs)],
-                    f"Сравниваемые величины хранятся в разных единицах: «{qs.strip()}» и «{ln.text[mb.start():mb.end()].strip()}». "
+                    "terminology", "set_consistent", [ref],
+                    f"Сравниваемые величины хранятся в разных единицах: «{qs.strip()}» и «{text[mb.start():mb.end()].strip()}». "
                     f"Порог сравнивается с суммой расходов — без явного правила пересчёта ({small} × 100 = {big}) возможна "
                     "ошибка в 100 раз.", "major",
                     f"Хранить обе величины в одной единице (например, в {small}ах как целое) и записать правило пересчёта "
@@ -467,10 +470,65 @@ def refund_edges(reqs: list[Requirement], doc: Document) -> list[SetFinding]:
         "меняет только счётчик того месяца».", "правило")]
 
 
+_TERM_ADJ = r"(?:активн|действующ|проведённ|проведенн|подтверждённ|подтвержденн|заблокированн|просроченн|верифицированн)\w*"
+_TERM_NOUN = r"(?:карт|покупк|операци|сч[её]т|клиент|плат[её]ж|договор|заявк|сесси|пользовател|транзакци)\w*"
+_TERM_RE = re.compile(rf"(?<![\w-]){_TERM_ADJ}\s+{_TERM_NOUN}(?:\s+(?:KZT|USD|EUR|RUB)\b)?|(?<![\w-])исходн\w*\s+(?:итог|состояни|значени)\w*|"
+                      rf"(?<![\w-])(?:карт|сч[её]т)\w*\s+(?:KZT|USD|EUR|RUB)\b", re.I)
+_DEF_WORDS = r"(?:—\s*это|-\s*это|\bэто\b|означает|считается|понимается|определяется как|называется|относятся|включает)"
+
+
+def _stem(phrase: str) -> list[str]:
+    return [w[:4].lower() for w in re.findall(r"[\wёЁ]+", phrase)]  # 4 буквы: «карты» и «карта», «активной» и «активная»
+
+
+def _defined(phrase: str, doc: Document, sec: dict) -> bool:
+    """Термин определён: строка глоссария с ним или формулировка «… — это / означает / считается …» рядом с ним."""
+    stems = _stem(phrase)
+    pat = re.compile(r"\s+".join(re.escape(st) + r"[\wёЁ]*" for st in stems), re.I)
+    for ln in doc.lines:
+        m = pat.search(ln.text)
+        if not m:
+            continue
+        if _GLOSSARY.search(sec.get(ln.lineno, "")) and re.match(r"^\s*(?:[-*•]\s*|\|\s*)?\**" + pat.pattern, ln.text, re.I):
+            return True
+        if re.search(_DEF_WORDS, ln.text[m.end():m.end() + 50], re.I) or re.search(pat.pattern + r"\W{0,3}\)?\s*[—:]\s", ln.text, re.I):
+            return True
+    return False
+
+
+def undefined_terms(reqs: list[Requirement], doc: Document) -> list[SetFinding]:
+    """Термин-ограничение («активная карта», «карта KZT», «проведённая покупка», «исходный итог») используется как
+    условие правила, но нигде не определён — разработчик и тестировщик проверят разное."""
+    sec = _section_of(doc)
+    found: dict[str, tuple[Requirement, str]] = {}
+    for r in reqs:
+        if _GLOSSARY.search(r.section or "") or (r.section and _DESCRIPTIVE.search(r.section)):
+            continue
+        for m in _TERM_RE.finditer(r.text):
+            key = " ".join(_stem(m.group(0)))
+            if key not in found and not _defined(m.group(0), doc, sec):
+                found[key] = (r, m.group(0))
+    if not found:
+        return []
+    items = list(found.values())
+    names = ", ".join(f"«{q}»" for _, q in items[:6])
+    owners = sorted({r.doc_id or r.rid for r, _ in items})
+    return [SetFinding(
+        "terminology", "set_comprehensible", [SetRef(r.rid, _ctx(r.text, q)) for r, q in items[:4]],
+        f"Термины-условия {names} не определены ни в глоссарии, ни в тексте ({', '.join(owners)}): не сказано, какие "
+        "статусы карты считаются активными, что значит «KZT» (валюта карты или счёта), какая покупка считается проведённой "
+        "(авторизация или клиринг). От толкования зависит, сработает ли правило, — разработчик и тестировщик проверят "
+        "разное.", "major",
+        "Добавить глоссарий с определениями через проверяемые признаки, например: «Активная карта — карта в статусе "
+        "„Действует“, не заблокированная и не просроченная»; «Проведённая покупка — операция покупки в статусе клиринга».",
+        "правило")]
+
+
 def completeness_rules(reqs: list[Requirement], doc: Document) -> list[SetFinding]:
     """Детерминированные проверки полноты v5 (подключаются в checker.deterministic_set_checks)."""
     out: list[SetFinding] = []
-    for fn in (limit_vs_exception, api_codes_and_body, session_lifecycle, missing_default, refund_edges, unit_mix, nfr_metric,
+    for fn in (limit_vs_exception, api_codes_and_body, session_lifecycle, missing_default, refund_edges, undefined_terms,
+               unit_mix, nfr_metric,
                state_after_error, message_texts, acceptance_preconditions, template_unfilled):
         out.extend(fn(reqs, doc))
     return out
@@ -760,28 +818,39 @@ _GAP_CRIT = {"terms": "set_comprehensible", "messages": "set_complete", "nfr": "
 
 
 def completeness_pass(split, doc: Document, llm, dropped: list[dict], found: list[SetFinding], log=print) -> None:
-    import json as _json
     import os
+
+    if os.getenv("REQLENS_GAPS", "1") == "0" or getattr(llm, "provider", "") == "rules":
+        return
+    log("  проход полноты: термины, граничные случаи, ошибки, умолчания, сообщения, НФТ, данные, шаблон, приёмка")
+    llm_set_pass(split, doc, llm, dropped, found, log, system=SYSTEM_GAPS, task="gaps", label="проход полноты",
+                 source="LLM (проход полноты)")
+
+
+def llm_set_pass(split, doc: Document, llm, dropped: list[dict], found: list[SetFinding], log=print, *, system: str, task: str,
+                 label: str, source: str, focus: dict | None = None) -> int:
+    """Один запрос к модели по чек-листу → замечания к набору. Цитаты проверяются quote_in (выдуманные — в dropped),
+    повторы уже найденного (тот же критерий и цитата) не добавляются. Возвращает число добавленных замечаний."""
+    import json as _json
 
     from .checker import SET, LLMError, LLMFatalError, _doc_context, _norm_crit, _norm_sev, norm_refs
     from .verify import quote_in
 
-    if os.getenv("REQLENS_GAPS", "1") == "0" or getattr(llm, "provider", "") == "rules":
-        return
     reqs = split.requirements
     by_id = {r.rid: r for r in reqs}
     known = [f.problem[:160] for f in found]
     payload = {"ДОКУМЕНТ": _doc_context(doc)[:40000], "НАРЕЗКА": [{"id": r.rid, "doc_id": r.doc_id, "text": r.text[:300]} for r in reqs],
                "УЖЕ НАЙДЕНО": known[:40]}
-    log("  проход полноты: термины, граничные случаи, ошибки, умолчания, сообщения, НФТ, данные, шаблон, приёмка")
+    if focus:
+        payload["ФОКУС"] = focus
     try:
-        data = llm.generate_json(SYSTEM_GAPS, _json.dumps(payload, ensure_ascii=False, indent=1), task="gaps",
+        data = llm.generate_json(system, _json.dumps(payload, ensure_ascii=False, indent=1), task=task,
                                  context={"reqs": reqs, "doc": doc})
     except LLMFatalError:
         raise
     except LLMError as e:
-        log(f"  проход полноты пропущен ({e})")
-        return
+        log(f"  {label} пропущен ({e})")
+        return 0
     seen = {(f.criterion, x.quote) for f in found for x in f.refs}
     added = 0
     for f in (data or {}).get("findings", []) or []:
@@ -790,12 +859,15 @@ def completeness_pass(split, doc: Document, llm, dropped: list[dict], found: lis
         refs = []
         for ref in norm_refs(f.get("refs")):
             rid, q = str(ref.get("id", "")).strip(), str(ref.get("quote", "")).strip()
+            if rid in by_id and (not q or q == rid):
+                # модель указала требование без цитаты — цитата: начало его текста (дословно, место точное)
+                q = " ".join(by_id[rid].text.split()[:12])
             src = by_id[rid].text if rid in by_id else doc.text
-            if quote_in(q, src):
+            if q and quote_in(q, src):
                 refs.append(SetRef(rid if rid in by_id else "DOC", q))
             else:
                 dropped.append({"where": rid or "набор", "quote": q, "problem": f.get("problem", "")})
-        if not refs:
+        if not refs or not str(f.get("problem", "")).strip():
             continue
         crit = _norm_crit(f.get("criterion") or _GAP_CRIT.get(str(f.get("check", "")), "set_complete"), SET, "set_complete")
         if any((crit, r.quote) in seen for r in refs):
@@ -803,6 +875,7 @@ def completeness_pass(split, doc: Document, llm, dropped: list[dict], found: lis
         seen |= {(crit, r.quote) for r in refs}
         kind = "terminology" if str(f.get("check", "")) == "terms" else "gap"
         found.append(SetFinding(kind, crit, refs, str(f.get("problem", "")).strip(), _norm_sev(f.get("severity")),
-                                str(f.get("fix", "")).strip(), "LLM (проход полноты)"))
+                                str(f.get("fix", "")).strip(), source))
         added += 1
-    log(f"  проход полноты: добавлено замечаний {added}")
+    log(f"  {label}: добавлено замечаний {added}")
+    return added

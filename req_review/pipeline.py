@@ -21,7 +21,8 @@ PROFILES = {
     "offline": {"critic": True, "rescore": False},
     # deep — для финального отчёта: малые пакеты (6 требований — модель внимательнее к каждому), критик на все
     # замечания (дубли, калибровка), повторная проверка исправленного документа
-    "deep": {"critic": True, "rescore": True, "batch_size": 6},
+    # v6: + узкие проходы (по одному классу дефектов на запрос) и самосогласованность (повторная проверка требований)
+    "deep": {"critic": True, "rescore": True, "batch_size": 6, "focused": True, "self_check": True},
 }
 
 STEPS = ["Чтение", "Нарезка", "Проверка требований", "Проверка набора", "Домен и глоссарий", "Критик", "Отчёты"]
@@ -116,6 +117,16 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
     # размер пакета: явный LLM_BATCH_SIZE важнее профиля; deep — 6 требований на запрос
     batch = opts.batch_size if os.getenv("LLM_BATCH_SIZE") else PROFILES.get(opts.profile, {}).get("batch_size", opts.batch_size)
     rv = run_review(doc, split, llm, batch_size=batch, log=log, on_set=lambda: step(3))
+    prof = PROFILES.get(opts.profile, {})
+    if prof.get("self_check"):
+        from .focus import self_consistency
+
+        rv.self_check = self_consistency(rv, llm, batch, log=log)
+    if prof.get("focused"):
+        from .focus import focused_passes
+
+        rv.focus = focused_passes(split, doc, llm, rv.dropped, rv.set_findings, log=log)
+        rv.set_findings.sort(key=lambda f: {"critical": 0, "major": 1, "minor": 2}[f.severity])
     if not opts.tests:
         for rr in rv.req_results:
             rr.test_possible, rr.test_gherkin, rr.test_blocker, rr.test_reason = None, "", "", ""
@@ -169,6 +180,8 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
         log(f"  свёрнуто замечаний об оформлении пунктов без ID: {folded}")
     default_confidence(rv)
     rv.depth = depth_summary(rv, acc)
+    rv.depth["review_stats"]["self_check"] = rv.self_check or None  # v6: самосогласованность
+    rv.depth["review_stats"]["focused"] = rv.focus or None  # v6: узкие проходы {task: добавлено}
     rv.depth["line_coverage"]["recovered"] = recovered.get("recovered", 0)
     rv.depth["line_coverage"]["uncovered_before_recovery"] = recovered.get("uncovered_before", 0)
     # RAG: основания замечаний из базы знаний (стандарты, нормы РК, шаблоны). RAG=off или нет kb/ — пропускаем

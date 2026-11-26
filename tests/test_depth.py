@@ -20,6 +20,7 @@ from req_review.depth import (
     session_lifecycle,
     state_after_error,
     template_unfilled,
+    undefined_terms,
     unit_mix,
 )
 from req_review.reader import read_document
@@ -231,7 +232,7 @@ def test_completeness_rules_on_organizers_document():
     doc = read_document(REAL)
     s = split_requirements(doc)
     for fn in (nfr_metric, state_after_error, message_texts, acceptance_preconditions, template_unfilled, unit_mix,
-               limit_vs_exception, session_lifecycle, missing_default, refund_edges):
+               limit_vs_exception, session_lifecycle, missing_default, refund_edges, undefined_terms):
         found = fn(s.requirements, doc)
         assert len(found) == 1, fn.__name__
         assert _quotes_ok(found, s, doc), fn.__name__
@@ -483,3 +484,201 @@ def test_model_answers_off_schema_do_not_crash(tmp_path):
     found, dropped = [], []
     completeness_pass(s, doc, Fake(), dropped, found, log=lambda *a: None)
     assert len(found) == 1 and found[0].refs[0].quote == "Сохранение порога" and _quotes_ok(found, s, doc)
+
+
+def test_undefined_condition_terms_on_organizers_document():
+    """N24: «активная карта KZT», «проведённые покупки», «исходный итог» используются как условия, но не определены."""
+    doc = read_document(REAL)
+    s = split_requirements(doc)
+    f = undefined_terms(s.requirements, doc)[0]
+    assert f.severity == "major" and f.criterion == "set_comprehensible" and _quotes_ok([f], s, doc)
+    assert "активной карты KZT" in f.problem and "проведённые покупки" in f.problem
+
+
+@pytest.mark.parametrize("definition", [
+    "## 1. Термины\n\n- Активная карта — карта в статусе «Действует».\n",
+    "## Пояснения\nАктивная карта — это карта в статусе «Действует».\n",
+    "## Пояснения\nПод активной картой понимается карта в статусе «Действует»; активная карта означает статус «Действует».\n",
+])
+def test_defined_condition_term_is_not_flagged(tmp_path, definition):
+    rule = "## 2. Функциональные требования\n\n- **Ф-1.** Держатель активной карты задаёт порог.\n"
+    d1, s1 = _doc(tmp_path, "# Д\n\n" + rule, "a.md")
+    d2, s2 = _doc(tmp_path, "# Д\n\n" + definition + "\n" + rule, "b.md")
+    assert len(undefined_terms(s1.requirements, d1)) == 1
+    assert undefined_terms(s2.requirements, d2) == []
+
+
+def test_deep_profile_runs_focused_passes_with_verified_quotes(tmp_path, monkeypatch):
+    """Профиль deep: узкие проходы (по одному классу на запрос) добавляют только замечания с подтверждённой цитатой."""
+    from req_review.mock_llm import MockLLM
+    from req_review.pipeline import Options, review_document
+
+    monkeypatch.setenv("RAG", "off")
+    rv = review_document(REAL, MockLLM(), Options(profile="deep", domain="none"), log=lambda *a: None)
+    assert set(rv.focus) == {"focus_bounds", "focus_api_negative", "focus_acceptance", "focus_nfr", "focus_errors_ui",
+                             "focus_data", "focus_integration"}
+    added = [f for f in rv.set_findings if f.source.startswith("LLM (узкий проход")]
+    assert added and all(v >= 0 for v in rv.focus.values())
+    assert any(d["problem"] == "[mock] выдуманный пропуск" for d in rv.dropped)
+    by = {r.rid: r.text for r in rv.split.requirements}
+    assert all(quote_in(x.quote, by.get(x.req_id, rv.doc.text)) for f in rv.set_findings for x in f.refs)
+    assert rv.depth["review_stats"]["focused"] == rv.focus
+
+
+def test_focused_pass_skipped_when_not_applicable(tmp_path):
+    from req_review.focus import applicable
+
+    d, s = _doc(tmp_path, "# Д\n\n## Функциональные требования\n- **Ф-1.** Клиент видит список карт.\n")
+    from req_review.focus import PASSES
+
+    assert not any(applicable(t, s, d) for t in PASSES)
+
+
+def test_self_consistency_keeps_only_confirmed_llm_findings(tmp_path):
+    """Самосогласованность: замечание модели остаётся, если второй проход (другая температура) его подтвердил;
+    правило не трогается; неподтверждённое — в rejected с причиной."""
+    from req_review.checker import Finding, ReqResult, ReviewResult
+    from req_review.focus import self_consistency
+    from req_review.llm import BaseLLM
+
+    doc, s = _doc(tmp_path, API_DOC)
+    r = s.requirements[0]
+    q = " ".join(r.text.split()[:3])
+    a = Finding(r.rid, "verifiable", q, "Непроверяемо.", "major", "—", "LLM")
+    b = Finding(r.rid, "singular", q, "Составное.", "minor", "—", "LLM")
+    c = Finding(r.rid, "complete", q, "Правило.", "major", "—", "правило")
+    rv = ReviewResult(doc=doc, split=s, req_results=[ReqResult(r, [a, b, c])], set_findings=[], dropped=[])
+    temps = []
+
+    class Fake(BaseLLM):
+        provider, model, temperature = "fake", "fake", 0.0
+
+        def generate_json(self, system, prompt, *, task="", context=None):
+            temps.append(self.temperature)
+            return {"results": [{"id": r.rid, "findings": [{"criterion": "verifiable", "quote": q, "problem": "x",
+                                                            "severity": "major", "fix": "—"}]}]}
+
+    llm = Fake()
+    st = self_consistency(rv, llm, batch_size=6, log=lambda *x: None)
+    assert temps == [0.4] and llm.temperature == 0.0  # второй проход — с другой температурой, затем возврат
+    assert st == {"confirmed": 1, "removed": 1}
+    assert [f.problem for f in rv.req_results[0].findings] == ["Непроверяемо.", "Правило."]
+    assert a.source == "LLM ×2"
+    assert rv.rejected[0]["problem"] == "Составное." and "самосогласованность" in rv.rejected[0]["reason"]
+
+
+def test_markdown_summary_30s_anchors_and_no_repeated_texts(tmp_path, monkeypatch):
+    """Markdown: блок «Итог за 30 секунд» сверху, каждая ссылка #r-…/#s-… ведёт на существующий якорь,
+    6 разделов ТЗ по порядку, полный текст требования не повторяется, отчёт меньше, чем у v5 (129 КБ без модели)."""
+    import re as _re
+
+    from req_review.cli import main
+
+    monkeypatch.setenv("LLM_PROVIDER", "rules")
+    monkeypatch.setenv("RAG", "off")
+    out = tmp_path / "r.md"
+    assert main([str(REAL), str(out), "--env", str(tmp_path / "x.env"), "--quiet", "--no-xlsx", "--no-jira", "--no-html"]) == 0
+    md = out.read_text(encoding="utf-8")
+    head = md.split("## 1. Паспорт прогона")[0]
+    assert "<!-- reqlens:summary:start -->" in head and "<!-- reqlens:summary:end -->" in head
+    assert "Итог за 30 секунд" in head and "| Разработка | Тестирование |" in head and "Что исправить первым" in head
+    assert 5 <= len(_re.findall(r"(?m)^\d+\. ", head.split("Что исправить первым")[1])) <= 8
+    anchors = set(_re.findall(r'<a id="([rs]-\d+)"></a>', md))
+    links = set(_re.findall(r"\]\(#([rs]-\d+)\)", md))
+    assert links and links <= anchors, links - anchors
+    pos = [md.index(f"## {i}. ") for i in range(1, 7)]
+    assert pos == sorted(pos)
+    d = json.loads(out.with_suffix(".json").read_text(encoding="utf-8"))
+    for r in d["requirements"]:
+        if len(r["text"]) > 140:
+            assert md.count(r["text"]) <= 1, r["rid"]
+    assert len(md.encode()) < 129_000
+
+
+def test_ref_with_requirement_id_only_gets_verbatim_quote(tmp_path):
+    """Модель указала требование без цитаты ("R-001") — цитатой становится начало его текста (дословно);
+    "DOC" без цитаты отбрасывается: место указать нельзя."""
+    from req_review.depth import llm_set_pass
+    from req_review.llm import BaseLLM
+
+    doc, s = _doc(tmp_path, API_DOC)
+    r = s.requirements[0]
+
+    class Fake(BaseLLM):
+        provider, model = "fake", "fake"
+
+        def generate_json(self, system, prompt, *, task="", context=None):
+            return {"findings": [{"refs": [r.rid], "problem": "Граница не определена.", "severity": "major", "fix": "—"},
+                                 {"refs": ["DOC"], "problem": "Без места.", "severity": "major", "fix": "—"}]}
+
+    found, dropped = [], []
+    n = llm_set_pass(s, doc, Fake(), dropped, found, log=lambda *a: None, system="x", task="focus_bounds", label="t", source="LLM")
+    assert n == 1 and found[0].refs[0].req_id == r.rid and quote_in(found[0].refs[0].quote, r.text)
+    assert len(dropped) == 1
+
+
+@pytest.mark.parametrize("fmt", ["docx", "pdf"])
+def test_organizers_document_in_docx_and_pdf(tmp_path, monkeypatch, fmt):
+    """Документ организаторов в DOCX и PDF (таблицы Word / таблицы PDF, заголовки по размеру шрифта, переносы строк)
+    без модели находит столько же ожидаемых дефектов, сколько Markdown; цитаты дословные, у PDF есть страницы."""
+    import sys
+
+    from req_review.cli import main
+
+    sys.path.insert(0, str(ROOT / "bench" / "real"))
+    sys.path.insert(0, str(ROOT / "bench"))
+    import formats
+    import real_eval
+
+    if fmt == "pdf":
+        pytest.importorskip("reportlab")
+        if not any(f.exists() for f in formats.FONTS):
+            pytest.skip("нет шрифта с кириллицей")
+    src = (formats.to_docx if fmt == "docx" else formats.to_pdf)(tmp_path / f"n.{fmt}")
+    monkeypatch.setenv("LLM_PROVIDER", "rules")
+    monkeypatch.setenv("RAG", "off")
+    out = tmp_path / "r.md"
+    assert main([str(src), str(out), "--env", str(tmp_path / "x.env"), "--quiet", "--no-xlsx", "--no-jira", "--no-html"]) == 0
+    rep = json.loads(out.with_suffix(".json").read_text(encoding="utf-8"))
+    res = real_eval.evaluate(rep)
+    assert res["found"] >= 25 and res["critical_found"] >= 6, [r["id"] for r in res["rows"] if not r["found"]]
+    doc = read_document(src)
+    by = {r["rid"]: r["text"] for r in rep["requirements"]}
+    assert all(quote_in(f["quote"], by[r["rid"]]) for r in rep["requirements"] for f in r["findings"])
+    assert all(quote_in(x["quote"], by.get(x.get("id") or x.get("req_id"), doc.text)) for f in rep["set_findings"] for x in f["refs"])
+    if fmt == "pdf":
+        assert doc.pages >= 2 and all(r["page"] for r in rep["requirements"])
+
+
+def test_no_key_gives_clear_error_and_rules_hint(tmp_path, monkeypatch, capsys):
+    """Без ключа — понятная ошибка (код 2) и готовая команда для режима без модели."""
+    from req_review.cli import main
+
+    for v in ("GEMINI_API_KEY", "LLM_PROVIDER", "ANTHROPIC_API_KEY", "CLAUDE_API_KEY", "OPENROUTER_API_KEY", "OPENAI_API_KEY"):
+        monkeypatch.delenv(v, raising=False)
+    rc = main([str(REAL), str(tmp_path / "r.md"), "--env", str(tmp_path / "нет.env"), "--quiet"])
+    err = capsys.readouterr()
+    text = err.err + err.out
+    assert rc == 2 and "GEMINI_API_KEY" in text and "LLM_PROVIDER=rules python review.py" in text
+
+
+def test_critical_rule_marker_kept_when_model_uses_other_criterion(tmp_path):
+    """«и т.д.» (открытое перечисление → полнота, critical): модель записала его как неоднозначность —
+    замечание правила по полноте остаётся отдельно, иначе теряется нарушенная характеристика."""
+    from req_review.checker import check_requirements
+    from req_review.llm import BaseLLM
+
+    doc, s = _doc(tmp_path, "# Д\n\n## Функциональные требования\n- **Ф-1.** Система должна фильтровать историю по периоду, "
+                            "поставщику и т.д.\n")
+    r = s.requirements[0]
+
+    class Fake(BaseLLM):
+        provider, model = "fake", "fake"
+
+        def generate_json(self, system, prompt, *, task="", context=None):
+            return {"results": [{"id": r.rid, "findings": [{"criterion": "unambiguous", "quote": "поставщику и т.д.",
+                                                            "problem": "Неоднозначно.", "severity": "major", "fix": "—"}]}]}
+
+    rr = check_requirements(s.requirements, doc, Fake(), 6, [], log=lambda *a: None)[0]
+    crits = {(f.criterion, f.source) for f in rr.findings}
+    assert ("unambiguous", "LLM + правило") in crits and ("complete", "правило") in crits
