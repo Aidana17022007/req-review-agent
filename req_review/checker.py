@@ -379,6 +379,34 @@ def deterministic_set_checks(split: SplitResult, doc: Document) -> list[SetFindi
                                   "но не имеет идентификатора — оно выпадает из трассировки и проверки.",
                                   "minor", "Присвоить идентификатор и оформить как требование, либо переформулировать как пояснение.",
                                   "правило"))
+    # REST: метод GET у операции, меняющей данные (сохранение/изменение/удаление) — небезопасный и неидемпотентный по смыслу
+    get_req = next((r for r in reqs if re.search(r"\b(?:rest type|http[- ]?метод|метод|method)\b[^|]*\|\s*GET\b", r.text, re.I)), None)
+    if get_req:
+        mut = re.compile(r"\b(?:save|update|create|delete|remove|set)[A-Z]\w*|/(?:save|update|create|delete|set)\w*|"
+                         r"сохранени\w*|сохран\w+ настройк\w*|замени\w* настройк\w*|изменени\w* (?:порог|настройк)\w*|удалени\w*", re.I)
+        # ближайшее к объявлению метода упоминание изменения данных (описание метода, URL, логика работы)
+        near = sorted((r for r in reqs if r is not get_req and mut.search(r.text)),
+                      key=lambda r: abs(r.line_start - get_req.line_start))
+        mreq = near[0] if near and abs(near[0].line_start - get_req.line_start) <= 40 else None
+        if mreq:
+            mq = mut.search(mreq.text).group(0)
+            out.append(SetFinding(
+                "contradiction", "set_consistent",
+                [SetRef(get_req.rid, get_req.text[:60]), SetRef(mreq.rid, _ctx(mreq.text, mq))],
+                f"Метод объявлен как GET («{get_req.text[:40]}»), но выполняет изменение данных («{mq}»). GET по смыслу "
+                "безопасен и не меняет состояние: такие запросы кэшируются, повторяются браузером и прокси, параметры "
+                "попадают в логи и историю — сохранение порога через GET приведёт к непредсказуемым изменениям.",
+                "critical", "Использовать POST/PUT (например, PUT /alerts/limit), параметры передать в теле JSON; "
+                "GET оставить только для чтения настройки.", "правило"))
+    # незаполненные значения для продуктивной среды («Prod: —»)
+    for r in reqs:
+        m = re.search(r"\b(?:prod|прод\w*|production)\s*:\s*[—–-](?=\s*(?:$|\.|\||;))", r.text, re.I)
+        if m:
+            out.append(SetFinding(
+                "gap", "set_complete", [SetRef(r.rid, _ctx(r.text, m.group(0)))],
+                f"Для продуктивной среды не указано значение («{m.group(0)}») — реализацию нельзя развернуть и проверить в Prod.",
+                "critical", "Указать значение для Prod (URL/параметр) или явно зафиксировать, когда и кем оно будет определено.",
+                "правило"))
     # ранжирование
     has_priority = any(
         any(re.search(r"приоритет|priority|важност", k, re.I) for k in r.extra) or
@@ -477,3 +505,16 @@ def run_review(doc: Document, split: SplitResult, llm: BaseLLM, batch_size: int 
     set_findings, set_ok = check_set(split, doc, llm, dropped, log=log)
     return ReviewResult(doc=doc, split=split, req_results=req_results, set_findings=set_findings,
                         dropped=dropped, set_llm_checked=set_ok)
+
+
+def _ctx(text: str, frag: str, width: int = 30) -> str:
+    """Дословная цитата вокруг фрагмента (для ссылок замечаний набора)."""
+    i = text.find(frag)
+    if i < 0:
+        return frag
+    s, e = max(0, i - width), min(len(text), i + len(frag) + width)
+    if s > 0 and " " in text[s:i]:  # цитата начинается с целого слова
+        s = text.index(" ", s) + 1
+    if e < len(text) and " " in text[i + len(frag):e]:
+        e = text.rindex(" ", i + len(frag), e)
+    return text[s:e].strip()

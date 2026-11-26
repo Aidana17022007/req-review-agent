@@ -141,3 +141,25 @@ def test_mixed_document_units_without_ids(tmp_path):
     assert "REST type | GET" in texts                            # параметр API
     assert not any("Школа" in t or "протестировано" in t for t in texts)  # метаданные и чек-лист шаблона — не требования
     assert all(r.rid.startswith("R-") for r in s.requirements)
+
+
+def test_rest_get_for_mutation_and_empty_prod(tmp_path):
+    from req_review.checker import deterministic_set_checks
+
+    p = tmp_path / "api.md"
+    p.write_text("# API\n\n## Функциональные требования\n- **F-1.** Клиент задаёт порог.\n\n### Общие параметры\n\n"
+                 "| Поле | Значение |\n| :--- | :--- |\n| **REST type** | GET |\n"
+                 "| **Request URL** | Dev: `/alerts/saveLimit` . Prod: — |\n\n### Логика работы метода\n"
+                 "1. Заменить настройку и вернуть результат сохранения.\n", encoding="utf-8")
+    doc = read_document(p)
+    s = split_requirements(doc)
+    found = deterministic_set_checks(s, doc)
+    kinds = {(f.kind, f.severity) for f in found}
+    assert ("contradiction", "critical") in kinds and ("gap", "critical") in kinds
+    from req_review.verify import quote_in
+
+    by = {r.rid: r.text for r in s.requirements}
+    for f in found:
+        for ref in f.refs:
+            if ref.req_id in by:
+                assert quote_in(ref.quote, by[ref.req_id])
