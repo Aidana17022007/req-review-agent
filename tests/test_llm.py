@@ -105,3 +105,55 @@ def test_response_schema_sent_and_fallback_on_rejection(monkeypatch):
     assert g.generate_json("s", "p", task="critic") == {"verdicts": []}
     assert "responseSchema" in bodies[0]["generationConfig"] and "responseSchema" not in bodies[-1]["generationConfig"]
     assert g.schema_off.get("m") is True
+
+
+def test_gemini_openai_style_uses_bearer(monkeypatch):
+    """GEMINI_API=openai: OpenAI-совместимый эндпоинт Gemini, ключ в Authorization: Bearer, без x-goog-api-key."""
+    seen = {}
+
+    def fake_post(url, json=None, headers=None, timeout=None):
+        seen.update(url=url, headers=headers, body=json)
+        return Resp(200, {"choices": [{"message": {"content": '{"ok": 2}'}}], "usage": {"prompt_tokens": 3, "completion_tokens": 1}})
+
+    monkeypatch.setenv("GEMINI_API", "openai")
+    monkeypatch.setattr(llm_mod.requests, "post", fake_post)
+    g = GeminiLLM(api_key="k", model="gemini-x")
+    assert g.generate_json("s", "p") == {"ok": 2}
+    assert seen["url"].endswith("/v1beta/openai/chat/completions")
+    assert seen["headers"] == {"Authorization": "Bearer k"} and seen["body"]["model"] == "gemini-x"
+    assert g.stats.prompt_tokens == 3
+
+
+def test_quota_exhausted_switches_to_fallback(monkeypatch):
+    """429 с задержкой в часы (дневная квота) — не фатальная ошибка, если есть резервная модель: переход на неё."""
+    used = []
+
+    def fake_post(url, json=None, headers=None, timeout=None):
+        used.append(url.split("/models/")[1].split(":")[0])
+        if "main-model" in url:
+            return Resp(429, {"error": {"details": [{"retryDelay": "40000s"}]}})
+        return Resp(200, {"candidates": [{"content": {"parts": [{"text": '{"ok": 3}'}]}}]})
+
+    monkeypatch.setattr(llm_mod.requests, "post", fake_post)
+    monkeypatch.setattr(llm_mod.time, "sleep", lambda s: None)
+    g = GeminiLLM(api_key="k", model="main-model", fallback=["lite-model"])
+    assert g.generate_json("s", "p") == {"ok": 3}
+    assert used == ["main-model", "lite-model"] and "квота" in g.stats.switches[0]
+
+
+def test_overload_fallback_waits_for_retries(monkeypatch):
+    """503 переключает на резервную модель не сразу, а после LLM_FALLBACK_AFTER повторов."""
+    used = []
+
+    def fake_post(url, json=None, headers=None, timeout=None):
+        used.append(url.split("/models/")[1].split(":")[0])
+        if "main-model" in url:
+            return Resp(503, {"error": {"message": "high demand"}})
+        return Resp(200, {"candidates": [{"content": {"parts": [{"text": '{"ok": 4}'}]}}]})
+
+    monkeypatch.setenv("LLM_FALLBACK_AFTER", "3")
+    monkeypatch.setattr(llm_mod.requests, "post", fake_post)
+    monkeypatch.setattr(llm_mod.time, "sleep", lambda s: None)
+    g = GeminiLLM(api_key="k", model="main-model", fallback=["lite-model"])
+    assert g.generate_json("s", "p") == {"ok": 4}
+    assert used.count("main-model") == 4 and used[-1] == "lite-model"

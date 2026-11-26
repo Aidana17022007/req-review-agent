@@ -77,16 +77,22 @@ class BaseLLM:
             except RetryableError as e:
                 last_err = e
                 self.stats.retries += 1
-                # модель перегружена (503) или не отвечает — переходим на резервную, не дожидаясь всех повторов
-                if attempt >= 1 and self.fallback_models and ("503" in str(e) or "сетев" in str(e)):
+                # модель перегружена (503) или не отвечает — после LLM_FALLBACK_AFTER повторов переходим на резервную
+                if attempt >= int(os.getenv("LLM_FALLBACK_AFTER", "3")) and self.fallback_models and ("503" in str(e) or "сетев" in str(e)):
                     old, self.model = self.model, self.fallback_models.pop(0)
                     self.stats.switches.append(f"{old} → {self.model} ({e})")
                     print(f"  [llm] {old} перегружена — переключаюсь на резервную модель {self.model}", flush=True)
                     continue
-                if attempt >= self.max_retries:
-                    break
                 wait = e.retry_after if e.retry_after else min(60.0, 2.0 * (2 ** attempt))
                 max_wait = float(os.getenv("LLM_MAX_WAIT", "180"))
+                # квота модели исчерпана (429 с долгой задержкой или 429 подряд) — сразу на резервную модель
+                if self.fallback_models and "429" in str(e) and (wait > max_wait or attempt >= 2):
+                    old, self.model = self.model, self.fallback_models.pop(0)
+                    self.stats.switches.append(f"{old} → {self.model} (квота: {e})")
+                    print(f"  [llm] квота {old} исчерпана — переключаюсь на резервную модель {self.model}", flush=True)
+                    continue
+                if attempt >= self.max_retries:
+                    break
                 if wait > max_wait:
                     # 429 с задержкой в часы = исчерпана дневная квота: ждать бессмысленно
                     hours = wait / 3600
@@ -197,8 +203,34 @@ class GeminiLLM(BaseLLM):
         self.base_url = (base_url or "https://generativelanguage.googleapis.com/v1beta").rstrip("/")
         self.fallback_models = [m for m in (fallback or []) if m and m != model]
         self.schema_off: dict[str, bool] = {}  # модели, не принявшие responseSchema
+        # GEMINI_API=openai — OpenAI-совместимый эндпоинт Gemini (ключ в Authorization: Bearer): нужен, когда ключ
+        # подставляет прокси облачной среды, а заголовок x-goog-api-key недоступен. Модели и резервы — те же.
+        self.api_style = os.getenv("GEMINI_API", "native").strip().lower()
+
+    def _call_openai(self, system, prompt):
+        body = {"model": self.model, "temperature": self.temperature, "response_format": {"type": "json_object"},
+                "messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}]}
+        try:
+            r = requests.post(f"{self.base_url}/openai/chat/completions", json=body,
+                              headers={"Authorization": f"Bearer {self.api_key}"}, timeout=self.timeout)
+        except requests.RequestException as e:
+            raise RetryableError(f"сетевая ошибка: {e}")
+        if r.status_code in (429, 500, 502, 503, 504):
+            raise RetryableError(f"HTTP {r.status_code}", _retry_delay_from_body(r.text))
+        if r.status_code != 200:
+            raise LLMFatalError(f"Gemini HTTP {r.status_code}: {r.text[:500]}")
+        data = r.json()
+        u = data.get("usage", {})
+        self.stats.prompt_tokens += u.get("prompt_tokens", 0)
+        self.stats.output_tokens += u.get("completion_tokens", 0)
+        text = ((data.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+        if not text.strip():
+            raise RetryableError("пустой текст ответа")
+        return text
 
     def _call(self, system, prompt, *, task, context):
+        if self.api_style == "openai":
+            return self._call_openai(system, prompt)
         url = f"{self.base_url}/models/{self.model}:generateContent"
         gen = {"temperature": self.temperature, "responseMimeType": "application/json"}
         from .schemas import SCHEMAS
@@ -271,6 +303,45 @@ class OpenAICompatLLM(BaseLLM):
         return data["choices"][0]["message"]["content"]
 
 
+class AnthropicLLM(BaseLLM):
+    """Claude через Anthropic Messages API (ANTHROPIC_API_KEY или CLAUDE_API_KEY). Ответ — JSON по промпту этапа."""
+    provider = "anthropic"
+
+    def __init__(self, api_key: str, model: str, temperature: float = 0.0, max_tokens: int = 16000,
+                 base_url: str = "https://api.anthropic.com", **kw):
+        super().__init__(**kw)
+        if not api_key:
+            raise LLMError("Не задан ANTHROPIC_API_KEY (или CLAUDE_API_KEY). Ключ: https://platform.claude.com/settings/keys")
+        self.api_key = api_key
+        self.model = model
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+        self.base_url = base_url.rstrip("/")
+
+    def _call(self, system, prompt, *, task, context):
+        body = {"model": self.model, "max_tokens": self.max_tokens, "temperature": self.temperature,
+                "system": system + "\n\nОтвечай только валидным JSON без пояснений и без Markdown-блоков.",
+                "messages": [{"role": "user", "content": prompt}]}
+        headers = {"x-api-key": self.api_key, "anthropic-version": "2023-06-01", "content-type": "application/json"}
+        try:
+            r = requests.post(f"{self.base_url}/v1/messages", json=body, headers=headers, timeout=self.timeout)
+        except requests.RequestException as e:
+            raise RetryableError(f"сетевая ошибка: {e}")
+        if r.status_code in (429, 500, 502, 503, 504, 529):
+            ra = r.headers.get("retry-after")
+            raise RetryableError(f"Anthropic HTTP {r.status_code}", float(ra) if ra and ra.replace(".", "", 1).isdigit() else None)
+        if r.status_code != 200:
+            raise LLMFatalError(f"Anthropic HTTP {r.status_code}: {r.text[:500]}")
+        data = r.json()
+        u = data.get("usage", {})
+        self.stats.prompt_tokens += u.get("input_tokens", 0)
+        self.stats.output_tokens += u.get("output_tokens", 0)
+        text = "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text")
+        if data.get("stop_reason") == "max_tokens":
+            raise json.JSONDecodeError("ответ обрезан по max_tokens", text, len(text))
+        return text
+
+
 def _env_key(name: str) -> str:
     """Ключ из .env: проверяем, что это не заглушка вида «ваш_ключ» (HTTP-заголовки допускают только ASCII)."""
     v = os.getenv(name, "").strip().strip('"').strip("'")
@@ -292,8 +363,20 @@ def _min_interval() -> float:
     return iv
 
 
+def default_provider() -> str:
+    """LLM_PROVIDER из .env; если не задан — по найденному ключу (Gemini, затем Claude, OpenRouter, OpenAI)."""
+    v = os.getenv("LLM_PROVIDER", "").strip().lower()
+    if v:
+        return v
+    for name, prov in (("GEMINI_API_KEY", "gemini"), ("ANTHROPIC_API_KEY", "anthropic"), ("CLAUDE_API_KEY", "anthropic"),
+                       ("OPENROUTER_API_KEY", "openrouter"), ("OPENAI_API_KEY", "openai")):
+        if os.getenv(name, "").strip():
+            return prov
+    return "gemini"
+
+
 def build_llm_from_env() -> BaseLLM:
-    provider = os.getenv("LLM_PROVIDER", "gemini").strip().lower()
+    provider = default_provider()
     common = dict(
         min_interval=_min_interval(),
         max_retries=int(os.getenv("LLM_MAX_RETRIES", "6")),
@@ -317,6 +400,33 @@ def build_llm_from_env() -> BaseLLM:
             temperature=temperature,
             **common,
         )
+    if provider in ("anthropic", "claude"):
+        return AnthropicLLM(
+            api_key=_env_key("ANTHROPIC_API_KEY") or _env_key("CLAUDE_API_KEY"),
+            model=os.getenv("ANTHROPIC_MODEL", "claude-opus-5-5").strip(),
+            base_url=os.getenv("ANTHROPIC_BASE_URL", "https://api.anthropic.com").strip(),
+            max_tokens=int(os.getenv("ANTHROPIC_MAX_TOKENS", "16000")),
+            temperature=temperature,
+            **{**common, "min_interval": float(os.getenv("LLM_MIN_INTERVAL", "0"))},
+        )
+    if provider == "openrouter":  # один ключ к Claude, Gemini, DeepSeek, GPT (OpenAI-совместимый API)
+        llm = OpenAICompatLLM(
+            api_key=_env_key("OPENROUTER_API_KEY"),
+            model=os.getenv("OPENROUTER_MODEL", "anthropic/claude-opus-5.5").strip(),
+            base_url=os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1").strip(),
+            temperature=temperature,
+            **common,
+        )
+        llm.provider = "openrouter"
+        return llm
+    if provider == "ollama":  # локально, без ключа и без интернета
+        llm = OpenAICompatLLM(
+            api_key="", model=os.getenv("OLLAMA_MODEL", os.getenv("OFFLINE_MODEL", "qwen2.5:14b")).strip(),
+            base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1").strip(),
+            temperature=temperature, **{**common, "min_interval": 0.0},
+        )
+        llm.provider = "ollama"
+        return llm
     if provider == "mock":
         from .mock_llm import MockLLM
 
@@ -325,4 +435,4 @@ def build_llm_from_env() -> BaseLLM:
         from .rules_llm import RulesOnlyLLM
 
         return RulesOnlyLLM()
-    raise LLMError(f"Неизвестный LLM_PROVIDER={provider!r}. Допустимо: gemini, openai, rules, mock")
+    raise LLMError(f"Неизвестный LLM_PROVIDER={provider!r}. Допустимо: gemini, anthropic, openrouter, openai, ollama, rules, mock")
