@@ -459,3 +459,27 @@ def test_refund_edges_described_is_not_flagged(tmp_path):
     d2, s2 = _doc(tmp_path, base + "- **Ф-3.** Частичный возврат уменьшает расходы на сумму возврата; push не отзывается.\n", "b.md")
     assert len(refund_edges(s1.requirements, d1)) == 1 and _quotes_ok(refund_edges(s1.requirements, d1), s1, d1)
     assert refund_edges(s2.requirements, d2) == []
+
+
+def test_model_answers_off_schema_do_not_crash(tmp_path):
+    """Ответ модели не по схеме (ссылки и замечания строками) не роняет прогон: строки-ссылки разбираются,
+    строки-замечания пропускаются, цитаты по-прежнему проверяются."""
+    from req_review.checker import norm_refs
+    from req_review.depth import completeness_pass
+    from req_review.llm import BaseLLM
+
+    assert norm_refs("R-003: «Сохранение порога»") == [{"id": "R-003", "quote": "Сохранение порога"}]
+    assert norm_refs({"id": "DOC", "quote": "x"}) == [{"id": "DOC", "quote": "x"}]
+    assert norm_refs(None) == []
+    doc, s = _doc(tmp_path, API_DOC)
+
+    class Fake(BaseLLM):
+        provider, model = "fake", "fake"
+
+        def generate_json(self, system, prompt, *, task="", context=None):
+            return {"findings": ["просто строка", {"check": "terms", "refs": ["Сохранение порога", 7],
+                                                   "problem": "Термин не определён.", "severity": "major", "fix": "—"}]}
+
+    found, dropped = [], []
+    completeness_pass(s, doc, Fake(), dropped, found, log=lambda *a: None)
+    assert len(found) == 1 and found[0].refs[0].quote == "Сохранение порога" and _quotes_ok(found, s, doc)

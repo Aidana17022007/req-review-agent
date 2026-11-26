@@ -89,6 +89,8 @@ def run_critic(rv: ReviewResult, llm: BaseLLM, log=print, only_critical: bool = 
             rv.notes.append(f"Критик не ответил ({e}); уверенность части замечаний не оценена.")
             continue
         for v in data.get("verdicts", []) or []:
+            if not isinstance(v, dict):  # ответ модели не по схеме — пропускаем элемент
+                continue
             try:
                 verdicts[int(v.get("n"))] = v
             except (TypeError, ValueError):

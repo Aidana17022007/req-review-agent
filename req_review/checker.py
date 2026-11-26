@@ -210,6 +210,21 @@ def llm_split(doc: Document, llm: BaseLLM) -> list[Requirement]:
 
 # ---------------------------------------------------------------- проверка требований
 
+def norm_refs(refs) -> list[dict]:
+    """Ссылки замечания из ответа модели → [{"id", "quote"}]. Модель иногда возвращает строку вместо объекта
+    («R-003: цитата» или просто цитату) или одиночный объект вместо списка — такие ответы не должны ронять прогон."""
+    if isinstance(refs, (dict, str)):
+        refs = [refs]
+    out = []
+    for ref in refs or []:
+        if isinstance(ref, dict):
+            out.append(ref)
+        elif isinstance(ref, str) and ref.strip():
+            m = re.match(r"^\s*(R-\d{3}|DOC)\s*[:—–-]\s*(.+)$", ref.strip())
+            out.append({"id": m.group(1), "quote": m.group(2).strip().strip("«»\"")} if m else {"id": "DOC", "quote": ref.strip()})
+    return out
+
+
 def _norm_sev(s: str) -> str:
     s = str(s or "").lower().strip()
     if s in SEVERITY:
@@ -254,8 +269,9 @@ def check_requirements(reqs: list[Requirement], doc: Document, llm: BaseLLM, bat
         record(doc, mode, len(SYSTEM_REQ) + len(prompt))
         try:
             data = llm.generate_json(SYSTEM_REQ, prompt, task="check", context={"reqs": batch, "hints": hints_by_req})
-            for item in data.get("results", []):
-                llm_out[str(item.get("id", "")).strip()] = item
+            for item in data.get("results", []) or []:
+                if isinstance(item, dict):  # ответ модели не по схеме — пропускаем элемент
+                    llm_out[str(item.get("id", "")).strip()] = item
         except LLMFatalError:
             raise
         except LLMError as e:
@@ -271,6 +287,8 @@ def check_requirements(reqs: list[Requirement], doc: Document, llm: BaseLLM, bat
             res.note = "Модель не вернула результат по этому требованию; показаны только срабатывания правил."
         dismissed = {norm(str(x)) for x in (item or {}).get("dismissed_hints", []) or []}
         for f in (item or {}).get("findings", []) or []:
+            if not isinstance(f, dict):  # ответ модели не по схеме — пропускаем элемент
+                continue
             quote = str(f.get("quote", "")).strip()
             if not quote_in(quote, r.text):
                 dropped.append({"where": r.rid, "quote": quote, "problem": f.get("problem", "")})
@@ -451,9 +469,11 @@ def check_set(split: SplitResult, doc: Document, llm: BaseLLM, dropped: list[dic
         add_numeric_conflicts(found, reqs, log)
         return found, False
     for f in data.get("findings", []) or []:
+        if not isinstance(f, dict):  # ответ модели не по схеме — пропускаем элемент
+            continue
         refs: list[SetRef] = []
         bad = False
-        for ref in f.get("refs", []) or []:
+        for ref in norm_refs(f.get("refs")):
             rid = str(ref.get("id", "")).strip()
             q = str(ref.get("quote", "")).strip()
             src = by_id[rid].text if rid in by_id else doc.text
@@ -586,8 +606,10 @@ def crosscheck(split: SplitResult, doc: Document, llm: BaseLLM, dropped: list[di
     data = {"findings": [f for d in results for f in (d.get("findings") or [])]}
     have = {frozenset(r.req_id for r in f.refs) for f in found if f.kind == "contradiction"}
     for f in data.get("findings", []) or []:
+        if not isinstance(f, dict):  # ответ модели не по схеме — пропускаем элемент
+            continue
         refs = []
-        for ref in f.get("refs", []) or []:
+        for ref in norm_refs(f.get("refs")):
             rid, q = str(ref.get("id", "")).strip(), str(ref.get("quote", "")).strip()
             if rid in by_id and quote_in(q, by_id[rid].text):
                 refs.append(SetRef(rid, q))

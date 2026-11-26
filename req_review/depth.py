@@ -763,7 +763,7 @@ def completeness_pass(split, doc: Document, llm, dropped: list[dict], found: lis
     import json as _json
     import os
 
-    from .checker import SET, LLMError, LLMFatalError, _doc_context, _norm_crit, _norm_sev
+    from .checker import SET, LLMError, LLMFatalError, _doc_context, _norm_crit, _norm_sev, norm_refs
     from .verify import quote_in
 
     if os.getenv("REQLENS_GAPS", "1") == "0" or getattr(llm, "provider", "") == "rules":
@@ -785,8 +785,10 @@ def completeness_pass(split, doc: Document, llm, dropped: list[dict], found: lis
     seen = {(f.criterion, x.quote) for f in found for x in f.refs}
     added = 0
     for f in (data or {}).get("findings", []) or []:
+        if not isinstance(f, dict):  # ответ модели не по схеме — пропускаем элемент
+            continue
         refs = []
-        for ref in f.get("refs", []) or []:
+        for ref in norm_refs(f.get("refs")):
             rid, q = str(ref.get("id", "")).strip(), str(ref.get("quote", "")).strip()
             src = by_id[rid].text if rid in by_id else doc.text
             if quote_in(q, src):
