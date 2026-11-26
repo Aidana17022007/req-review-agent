@@ -515,7 +515,8 @@ def test_deep_profile_runs_focused_passes_with_verified_quotes(tmp_path, monkeyp
 
     monkeypatch.setenv("RAG", "off")
     rv = review_document(REAL, MockLLM(), Options(profile="deep", domain="none"), log=lambda *a: None)
-    assert set(rv.focus) == {"focus_bounds", "focus_api_negative", "focus_acceptance", "focus_nfr"}
+    assert set(rv.focus) == {"focus_bounds", "focus_api_negative", "focus_acceptance", "focus_nfr", "focus_errors_ui",
+                             "focus_data", "focus_integration"}
     added = [f for f in rv.set_findings if f.source.startswith("LLM (узкий проход")]
     assert added and all(v >= 0 for v in rv.focus.values())
     assert any(d["problem"] == "[mock] выдуманный пропуск" for d in rv.dropped)
@@ -528,7 +529,9 @@ def test_focused_pass_skipped_when_not_applicable(tmp_path):
     from req_review.focus import applicable
 
     d, s = _doc(tmp_path, "# Д\n\n## Функциональные требования\n- **Ф-1.** Клиент видит список карт.\n")
-    assert not any(applicable(t, s, d) for t in ("focus_bounds", "focus_api_negative", "focus_acceptance", "focus_nfr"))
+    from req_review.focus import PASSES
+
+    assert not any(applicable(t, s, d) for t in PASSES)
 
 
 def test_self_consistency_keeps_only_confirmed_llm_findings(tmp_path):
@@ -562,3 +565,53 @@ def test_self_consistency_keeps_only_confirmed_llm_findings(tmp_path):
     assert [f.problem for f in rv.req_results[0].findings] == ["Непроверяемо.", "Правило."]
     assert a.source == "LLM ×2"
     assert rv.rejected[0]["problem"] == "Составное." and "самосогласованность" in rv.rejected[0]["reason"]
+
+
+def test_markdown_summary_30s_anchors_and_no_repeated_texts(tmp_path, monkeypatch):
+    """Markdown: блок «Итог за 30 секунд» сверху, каждая ссылка #r-…/#s-… ведёт на существующий якорь,
+    6 разделов ТЗ по порядку, полный текст требования не повторяется, отчёт меньше, чем у v5 (129 КБ без модели)."""
+    import re as _re
+
+    from req_review.cli import main
+
+    monkeypatch.setenv("LLM_PROVIDER", "rules")
+    monkeypatch.setenv("RAG", "off")
+    out = tmp_path / "r.md"
+    assert main([str(REAL), str(out), "--env", str(tmp_path / "x.env"), "--quiet", "--no-xlsx", "--no-jira", "--no-html"]) == 0
+    md = out.read_text(encoding="utf-8")
+    head = md.split("## 1. Паспорт прогона")[0]
+    assert "<!-- reqlens:summary:start -->" in head and "<!-- reqlens:summary:end -->" in head
+    assert "Итог за 30 секунд" in head and "| Разработка | Тестирование |" in head and "Что исправить первым" in head
+    assert 5 <= len(_re.findall(r"(?m)^\d+\. ", head.split("Что исправить первым")[1])) <= 8
+    anchors = set(_re.findall(r'<a id="([rs]-\d+)"></a>', md))
+    links = set(_re.findall(r"\]\(#([rs]-\d+)\)", md))
+    assert links and links <= anchors, links - anchors
+    pos = [md.index(f"## {i}. ") for i in range(1, 7)]
+    assert pos == sorted(pos)
+    d = json.loads(out.with_suffix(".json").read_text(encoding="utf-8"))
+    for r in d["requirements"]:
+        if len(r["text"]) > 140:
+            assert md.count(r["text"]) <= 1, r["rid"]
+    assert len(md.encode()) < 129_000
+
+
+def test_ref_with_requirement_id_only_gets_verbatim_quote(tmp_path):
+    """Модель указала требование без цитаты ("R-001") — цитатой становится начало его текста (дословно);
+    "DOC" без цитаты отбрасывается: место указать нельзя."""
+    from req_review.depth import llm_set_pass
+    from req_review.llm import BaseLLM
+
+    doc, s = _doc(tmp_path, API_DOC)
+    r = s.requirements[0]
+
+    class Fake(BaseLLM):
+        provider, model = "fake", "fake"
+
+        def generate_json(self, system, prompt, *, task="", context=None):
+            return {"findings": [{"refs": [r.rid], "problem": "Граница не определена.", "severity": "major", "fix": "—"},
+                                 {"refs": ["DOC"], "problem": "Без места.", "severity": "major", "fix": "—"}]}
+
+    found, dropped = [], []
+    n = llm_set_pass(s, doc, Fake(), dropped, found, log=lambda *a: None, system="x", task="focus_bounds", label="t", source="LLM")
+    assert n == 1 and found[0].refs[0].req_id == r.rid and quote_in(found[0].refs[0].quote, r.text)
+    assert len(dropped) == 1

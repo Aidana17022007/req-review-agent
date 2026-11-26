@@ -221,6 +221,8 @@ def norm_refs(refs) -> list[dict]:
     for ref in refs or []:
         if isinstance(ref, dict):
             out.append(ref)
+        elif isinstance(ref, str) and re.fullmatch(r"\s*(R-\d{3}|DOC)\s*", ref):  # только ID, без цитаты
+            out.append({"id": ref.strip(), "quote": ""})
         elif isinstance(ref, str) and ref.strip():
             m = re.match(r"^\s*(R-\d{3}|DOC)\s*[:—–-]\s*(.+)$", ref.strip())
             out.append({"id": m.group(1), "quote": m.group(2).strip().strip("«»\"")} if m else {"id": "DOC", "quote": ref.strip()})

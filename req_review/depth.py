@@ -856,8 +856,11 @@ def llm_set_pass(split, doc: Document, llm, dropped: list[dict], found: list[Set
         refs = []
         for ref in norm_refs(f.get("refs")):
             rid, q = str(ref.get("id", "")).strip(), str(ref.get("quote", "")).strip()
+            if rid in by_id and (not q or q == rid):
+                # модель указала требование без цитаты — цитата: начало его текста (дословно, место точное)
+                q = " ".join(by_id[rid].text.split()[:12])
             src = by_id[rid].text if rid in by_id else doc.text
-            if quote_in(q, src):
+            if q and quote_in(q, src):
                 refs.append(SetRef(rid if rid in by_id else "DOC", q))
             else:
                 dropped.append({"where": rid or "набор", "quote": q, "problem": f.get("problem", "")})

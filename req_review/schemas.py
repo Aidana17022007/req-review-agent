@@ -48,7 +48,8 @@ SCHEMAS = {
         "type": S, "criterion": S, "refs": arr(obj({"id": S, "quote": S}, ["id", "quote"])),
         "problem": S, "severity": SEVERITY, "fix": S, "check": S,
     }, ["refs", "problem", "severity", "fix"]))}, ["findings"])
-       for t in ("focus_bounds", "focus_api_negative", "focus_acceptance", "focus_nfr")},
+       for t in ("focus_bounds", "focus_api_negative", "focus_acceptance", "focus_nfr", "focus_errors_ui", "focus_data",
+                 "focus_integration")},
     "critic": obj({"verdicts": arr(obj({"n": N, "verdict": {"type": "STRING", "enum": ["keep", "downgrade", "drop", "merge"]},
                                         "into": N, "severity": SEVERITY, "reason": S}, ["n", "verdict"]))}, ["verdicts"]),
     "extras": obj({
