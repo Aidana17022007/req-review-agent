@@ -41,6 +41,9 @@ class Assistant:
         self.by_rid = {r["rid"]: r for r in self.reqs}
         self.by_doc = {r["doc_id"].lower(): r for r in self.reqs if r.get("doc_id")}
         self.sets = {f"S-{i:02d}": f for i, f in enumerate(data.get("set_findings", []), 1)}
+        # схема 2.2 (RAG): основания замечаний — дословные фрагменты базы знаний с источником
+        self.has_basis = any(f.get("basis") for r in self.reqs for f in r["findings"]) or any(f.get("basis") for f in self.sets.values())
+        self._extra: list[dict] = []  # дополнительные источники ответа (фрагменты документа и базы знаний)
 
     # ------------------------------------------------------------ разбор вопроса
     def refs_in(self, q: str) -> list[str]:
@@ -66,6 +69,11 @@ class Assistant:
         refs = self.refs_in(q)
         if not q or has("привет", "помощ", "что ты умеешь", "что умеешь", "help"):
             return self._reply(self.help())
+        if self.has_basis and has("норм", "основан", "стандарт", "пункт", "опира"):
+            if refs:
+                return self._reply("\n\n".join(self.basis_for(x) for x in refs[:3]))
+        if self.has_basis and has("закон", "персональн", "регулятор", "норматив"):
+            return self._reply(self.law_violations("персональн" if "персональн" in low else ""))
         if refs:
             parts = [self.explain_set(x) if x.startswith("S-") else self.explain_req(x, low) for x in refs[:3]]
             return self._reply("\n\n".join(parts))
@@ -98,6 +106,7 @@ class Assistant:
         return self._reply("Я пока не понял вопрос. " + self.help(), source="подсказка")
 
     def _reply(self, text: str, source: str = "отчёт") -> dict:
+        extra, self._extra = self._extra, []
         refs = []
         def keep(m):
             x = m.group(1)
@@ -106,7 +115,77 @@ class Assistant:
                 return f"[[{x}]]"
             return x
         text = re.sub(r"\[\[([^\]]{1,20})\]\]", keep, text)
-        return {"answer": text, "refs": list(dict.fromkeys(refs)), "source": source, "suggest": self.suggest()}
+        refs = list(dict.fromkeys(refs))
+        # источники ответа: требования (переход в отчёт), фрагменты документа (строка), фрагменты базы знаний (карточка с URL)
+        sources = [{"type": "req", "id": x, "label": (self.by_rid[x].get("doc_id") or x) if x in self.by_rid else x} for x in refs]
+        seen = set()
+        for x in extra:
+            key = (x["type"], x.get("line"), x.get("source"), x.get("clause"))
+            if key not in seen:
+                seen.add(key)
+                sources.append(x)
+        return {"answer": text, "refs": refs, "source": source, "suggest": self.suggest(), "sources": sources[:12]}
+
+    # ------------------------------------------------------------ источники (RAG 2.2)
+    def _cite_line(self, r: dict, f: dict | None = None) -> None:
+        span = (f or {}).get("span") or {}
+        line = span.get("line") or r.get("line_start")
+        if line:
+            self._extra.append({"type": "line", "line": int(line), "rid": r["rid"],
+                                "text": ((f or {}).get("quote") or r["text"])[:160]})
+
+    def _cite_basis(self, f: dict) -> None:
+        for b in f.get("basis") or []:
+            if b.get("quote") and b.get("source"):
+                self._extra.append({"type": "kb", "kind": b.get("kind", "standard"), "source": b["source"], "clause": b.get("clause", ""),
+                                    "quote": b["quote"][:300], "url": b.get("url", "") if str(b.get("url", "")).startswith("https://") else "",
+                                    "paraphrase": bool(b.get("paraphrase"))})
+
+    def basis_for(self, x: str) -> str:
+        """На какую норму опирается замечание к требованию (или к набору)."""
+        if x.startswith("S-"):
+            f = self.sets[x]
+            self._cite_basis(f)
+            bs = f.get("basis") or []
+            return (f"[[{x}]] опирается на: " + "; ".join(f"{b['source']}" + (f", {b['clause']}" if b.get("clause") else "") for b in bs) + "."
+                    if bs else f"Для [[{x}]] основание в базе знаний не найдено.")
+        r = self.by_rid[x]
+        if not r["findings"]:
+            return f"{_lbl(r)}: замечаний нет — ссылаться не на что."
+        lines = [f"{_lbl(r)} — основания замечаний:"]
+        for f in sorted(r["findings"], key=lambda f: ORDER[f["severity"]])[:4]:
+            self._cite_line(r, f)
+            bs = f.get("basis") or []
+            self._cite_basis(f)
+            src = "; ".join(f"{b['source']}" + (f", {b['clause']}" if b.get("clause") else "") for b in bs) or "основание в базе знаний не найдено"
+            lines.append(f"• {criterion_name(f['criterion'])} ({SEV_ADJ[f['severity']]}): «{f['quote'][:80]}» → {src}")
+        lines.append("Цитаты норм — в карточках источников ниже; дословный текст закона открывается по ссылке.")
+        return "\n".join(lines)
+
+    def law_violations(self, topic: str = "") -> str:
+        """Какие требования нарушают нормы закона (по основаниям вида «закон РК»)."""
+        hits = []
+        for r in self.reqs:
+            for f in r["findings"]:
+                laws = [b for b in f.get("basis") or [] if b.get("kind") == "law" and (not topic or topic in (b.get("source", "") + b.get("clause", "")).lower())]
+                if laws:
+                    hits.append((r, f, laws))
+        for sid, f in self.sets.items():
+            laws = [b for b in f.get("basis") or [] if b.get("kind") == "law" and (not topic or topic in (b.get("source", "") + b.get("clause", "")).lower())]
+            if laws:
+                hits.append((None, f | {"_sid": sid}, laws))
+        if not hits:
+            return "Замечаний с основанием в законах РК" + (" о персональных данных" if topic else "") + " не найдено."
+        lines = [f"Замечаний с опорой на закон{' о персональных данных' if topic else ''}: {len(hits)}."]
+        for r, f, laws in hits[:8]:
+            for b in laws:
+                self._cite_basis({"basis": [b]})
+            who = _lbl(r) if r else f"[[{f['_sid']}]] (набор)"
+            if r:
+                self._cite_line(r, f)
+            lines.append(f"• {who} — {criterion_name(f['criterion'])}: {f['problem'][:160]} → {laws[0]['source']}"
+                         + (f", {laws[0]['clause']}" if laws[0].get("clause") else ""))
+        return "\n".join(lines)
 
     # ------------------------------------------------------------ ответы по отчёту
     def help(self) -> str:
@@ -119,6 +198,10 @@ class Assistant:
         if worst and _worst(worst[0]) != "ok":
             out.append(f"Почему {worst[0]['rid']} {SEV[_worst(worst[0])]}?")
         out += ["Что исправить первым?", "Можно ли начинать разработку?"]
+        if self.has_basis and worst and worst[0]["findings"]:
+            out.insert(1, f"На какую норму опирается замечание к {worst[0]['rid']}?")
+            if any(b.get("kind") == "law" for r in self.reqs for f in r["findings"] for b in f.get("basis") or []):
+                out.insert(2, "Какие требования нарушают закон о персональных данных?")
         if any(f["kind"] == "contradiction" for f in self.sets.values()):
             out.append("Какие есть противоречия?")
         out.append("Сколько требований тестируемо?")
@@ -134,6 +217,8 @@ class Assistant:
         if r["findings"]:
             lines.append("Почему:")
             for f in sorted(r["findings"], key=lambda f: ORDER[f["severity"]])[:4]:
+                self._cite_line(r, f)
+                self._cite_basis(f)
                 lines.append(f"• {criterion_name(f['criterion'])} ({criterion_ref(f['criterion'])}) — {SEV_ADJ[f['severity']]}: "
                              f"«{f['quote'][:90]}» — {f['problem'][:220]}")
         t = r.get("test") or {}

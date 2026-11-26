@@ -500,3 +500,37 @@ pre.code{margin:0;padding:12px 14px;border-radius:12px;background:var(--surface-
 .pagehead.compact .caption,.pagehead.compact .meta{display:none}
 .pagehead.compact .btn{height:36px;padding:0 16px;font-size:13px}
 @media (max-width:640px){.hide-sm{display:none!important}}
+
+/* ============================== v6 (RAG): основание, база знаний, шаблоны, покрытие процесса, большие документы */
+.basis{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:14px;background:var(--surface-2);border:1px solid var(--border)}
+.basis .caption{display:flex;align-items:center;gap:6px}
+.basis-item{display:flex;gap:10px;align-items:flex-start}
+.basis-item .chip{flex:none}
+.basis-standard{background:var(--brand-soft);color:var(--brand)}
+.basis-law{background:var(--major-soft);color:var(--major)}
+.basis-template{background:var(--surface);color:var(--text-2);border-color:var(--border)}
+.hl-pop .basis{padding:10px 12px}
+.cat-chip{height:22px;font-size:11px}
+.pattern{display:flex;gap:12px;align-items:flex-start;margin-top:12px;padding:12px 14px;border-radius:14px;background:var(--brand-soft)}
+.pattern code{font-size:12px;background:var(--surface);padding:1px 6px;border-radius:6px}
+@media (max-width:640px){.pattern{flex-direction:column}}
+.kb-top{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.kb-row{display:flex;gap:14px;align-items:flex-start;padding:12px 0;border-top:1px dashed var(--border)}
+.kb-row:first-child{border-top:0}
+.kb-n{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--surface-2);font:700 12px/1 var(--font-sans);color:var(--text-2)}
+.kb-count{flex:none;font:700 20px/28px var(--font-sans);min-width:32px;text-align:right}
+.kb-reqs summary{cursor:pointer;color:var(--brand);margin-top:6px;list-style:none}
+.kb-reqs summary::-webkit-details-marker{display:none}
+.flowmap{display:flex;align-items:stretch;gap:8px;overflow-x:auto;padding:4px 2px 12px;scrollbar-width:thin}
+.flow-step{flex:0 0 200px;background:var(--surface);border:1px solid var(--border);border-top:4px solid var(--ok-accent);border-radius:16px;padding:14px}
+.flow-step.gap{border-top-color:var(--critical-accent);background:color-mix(in srgb,var(--critical-soft) 45%,var(--surface))}
+.flow-n{flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--brand);color:var(--on-brand);font:700 11px/1 var(--font-sans)}
+.flow-step.gap .flow-n{background:var(--critical-accent);color:#fff}
+.flow-arrow{flex:none;align-self:center;color:var(--text-3)}
+@media (max-width:760px){.flowmap{flex-direction:column;overflow:visible}.flow-step{flex:none}.flow-arrow{transform:rotate(90deg);align-self:center}}
+.doc-chunk{contain:content}
+.more-rows td{text-align:center;background:var(--surface-2)}
+@media print{.flowmap{flex-wrap:wrap;overflow:visible}.kb-reqs{display:block}.kb-reqs[open] summary,.kb-reqs summary{display:none}}
+#view-kb .chip{white-space:normal;height:auto;min-height:24px;padding-top:3px;padding-bottom:3px}
+.kb-row b,.kb-row .muted,.basis-item b{overflow-wrap:anywhere}
+@media (max-width:640px){.kb-row{gap:10px}.kb-count{font-size:16px;min-width:22px}}

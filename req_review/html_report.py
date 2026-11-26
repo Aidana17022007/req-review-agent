@@ -17,6 +17,44 @@ from .verify import locate as _locate  # общая логика позиций 
 ORDER = {"critical": 0, "major": 1, "minor": 2}
 
 
+# ---------------------------------------------------------------- поля схемы 2.2 (RAG): только чтение, всё необязательно
+
+BASIS_KINDS = {"standard", "law", "template"}
+
+
+def _basis(f) -> list[dict]:
+    """Основания замечания из базы знаний: [{kind, source, clause, quote, url, paraphrase}] — дословный фрагмент kb/."""
+    out = []
+    for b in getattr(f, "basis", None) or []:
+        b = b if isinstance(b, dict) else getattr(b, "__dict__", {})
+        quote = str(b.get("quote", "") or "").strip()
+        source = str(b.get("source", "") or "").strip()
+        if not (quote and source):
+            continue  # основание без цитаты или источника не показываем
+        url = str(b.get("url", "") or "").strip()
+        out.append({"kind": b.get("kind") if b.get("kind") in BASIS_KINDS else "standard", "source": source,
+                    "clause": str(b.get("clause", "") or "").strip(), "quote": quote,
+                    "url": url if url.startswith("https://") else "", "paraphrase": bool(b.get("paraphrase"))})
+    return out
+
+
+def _pattern(p) -> dict | None:
+    if not p:
+        return None
+    p = p if isinstance(p, dict) else getattr(p, "__dict__", {})
+    text = str(p.get("text", "") or "").strip()
+    return {"ears": str(p.get("ears", "") or ""), "template": str(p.get("template", "") or ""), "text": text} if text else None
+
+
+def _coverage(c) -> dict | None:
+    """Карта покрытия процесса: шаги «вход → операция → … → хранение» и покрывающие их требования."""
+    if not c:
+        return None
+    steps = [{"id": str(x.get("id", i)), "title": str(x.get("title", "")), "rids": [str(r) for r in x.get("rids", []) or []],
+              "question": str(x.get("question", "") or "")} for i, x in enumerate(c.get("steps", []) or []) if x.get("title")]
+    return {"process": str(c.get("process", "") or ""), "steps": steps} if steps else None
+
+
 def _verdict(ctx) -> dict:
     rv = ctx.rv
     crit = sum(1 for rr in rv.req_results for f in rr.findings if f.severity == "critical") + \
@@ -91,7 +129,7 @@ def build_data(ctx) -> dict:
                              "cname": criterion_name(f.criterion), "cref": criterion_ref(f.criterion), "quote": f.quote,
                              "problem": f.problem, "severity": f.severity, "fix": f.fix, "source": f.source,
                              "confidence": f.confidence, "critic": f.critic_note, "rewrite": rr.rewrite,
-                             "location": r.location}
+                             "location": r.location, "basis": _basis(f)}
             loc = _locate(f.quote, lines, r.line_start, r.line_end, r.text)
             if loc:
                 findings[fid]["line"] = loc[0]
@@ -102,7 +140,10 @@ def build_data(ctx) -> dict:
                      "llm_checked": rr.llm_checked, "note": rr.note, "worst": worst, "findings": fids,
                      "crit": sorted({f.criterion for f in rr.findings}),
                      "test": {"possible": rr.test_possible, "gherkin": rr.test_gherkin, "blocker": rr.test_blocker,
-                              "reason": rr.test_reason}})
+                              "reason": rr.test_reason},
+                     # 2.2 (RAG, человек 1): категория и шаблон EARS «плохо → хорошо»; нет данных — поля пустые
+                     "category": str(getattr(rr, "category", "") or ""),
+                     "rewrite_pattern": _pattern(getattr(rr, "rewrite_pattern", None))})
     by_rid = {r.rid: r for r in rv.split.requirements}
     set_list = []
     for i, f in enumerate(rv.set_findings, 1):
@@ -118,7 +159,7 @@ def build_data(ctx) -> dict:
         findings[fid] = {"fid": fid, "kind": "set", "set_kind": f.kind, "criterion": f.criterion,
                          "cname": criterion_name(f.criterion), "cref": criterion_ref(f.criterion), "problem": f.problem,
                          "severity": f.severity, "fix": f.fix, "source": f.source, "confidence": f.confidence,
-                         "critic": f.critic_note, "refs": refs, "quote": " / ".join(x["quote"] for x in refs),
+                         "critic": f.critic_note, "refs": refs, "quote": " / ".join(x["quote"] for x in refs), "basis": _basis(f),
                          "values": [{**v, "label": (by_rid[v["rid"]].doc_id or v["rid"]) if v["rid"] in by_rid else v["rid"]}
                                     for v in getattr(f, "values", []) or []]}
         set_list.append(fid)
@@ -168,6 +209,7 @@ def build_data(ctx) -> dict:
         "changes": [{**asdict(c), "diff": word_diff(c.before, c.after)} for c in ctx.changes],
         "fixed_text": ctx.fixed_text,
         "graph": ctx.graph,
+        "coverage": _coverage(getattr(ctx, "coverage", None)),
         "compare": ctx.compare,
         "rescore": ctx.rescore,
         "dropped": rv.dropped,
