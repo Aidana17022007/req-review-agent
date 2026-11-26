@@ -1,8 +1,10 @@
 """Критик-агент: второй проход модели по найденным замечаниям и расчёт уверенности.
 
 Модель получает пакет замечаний (с цитатами и текстом требований) и для каждого решает:
-keep — подтвердить, drop — отклонить (ложное срабатывание), downgrade — понизить серьёзность.
-Отклонённые замечания не удаляются бесследно: они уходят в приложение отчёта.
+keep — подтвердить, drop — отклонить (ложное срабатывание), downgrade — понизить серьёзность,
+merge — объединить с другим замечанием о той же проблеме (правило + LLM + проход полноты нашли одно и то же).
+При проверке всех замечаний (профили full/deep) критик также калибрует серьёзность по единой шкале.
+Отклонённые и объединённые замечания не удаляются бесследно: они уходят в приложение отчёта («дубль S-xx»).
 
 Уверенность:
 - high   — замечание подтверждено критиком и при этом найдено и моделью, и правилом (или тест-пробой);
@@ -21,13 +23,21 @@ CRITIC_BATCH = 40
 DOWN = {"critical": "major", "major": "minor", "minor": "minor"}
 
 SYSTEM_CRITIC = """Ты — независимый строгий рецензент (критик) результатов ревью требований.
-Тебе дают замечания, которые нашёл другой ревьюер, вместе с текстом требования и дословной цитатой.
-Для КАЖДОГО замечания реши:
+Тебе дают замечания, которые нашли другие проходы (правила, модель, проход полноты), вместе с текстом требования и
+дословной цитатой. Для КАЖДОГО замечания реши:
 - "keep" — замечание верное и важное;
 - "downgrade" — замечание верное, но серьёзность завышена;
-- "drop" — замечание ошибочное: проблемы в цитате нет, термин определён в документе, придирка без пользы.
+- "drop" — замечание ошибочное: проблемы в цитате нет, термин определён в документе, придирка без пользы;
+- "merge" — то же самое, что другое замечание из списка (та же проблема, пусть другими словами или с другими
+  цитатами): укажи "into" — номер n замечания, которое остаётся (более полное и точное). Не объединяй разные проблемы.
+Калибровка серьёзности ("severity", для keep и merge-цели): critical — функцию нельзя реализовать или проверить
+однозначно (противоречие правил, нет метода или контракта интеграции, ошибка под успешным кодом); major — нужно
+исправить до написания тест-кейсов (пропуск сценария, неизмеримость, неопределённый термин); minor — оформление.
 Не добавляй новых замечаний. Будь объективен: отклоняй только явно ложные.
-Пиши на русском. Верни ТОЛЬКО JSON: {"verdicts":[{"n":1,"verdict":"keep|downgrade|drop","reason":"кратко, почему"}]}"""
+Пиши на русском. Верни ТОЛЬКО JSON: {"verdicts":[{"n":1,"verdict":"keep|downgrade|drop|merge","into":null,
+"severity":"critical|major|minor","reason":"кратко, почему"}]}"""
+
+ORDER = {"critical": 0, "major": 1, "minor": 2}
 
 
 def _collect(rv: ReviewResult) -> list[tuple[str, object, object]]:
@@ -84,16 +94,42 @@ def run_critic(rv: ReviewResult, llm: BaseLLM, log=print, only_critical: bool = 
                 continue
 
     rv.critic_used = True
+    calibrate = not only_critical
+    sent = {id(it[1]): n for n, it in enumerate(items, start=1)}
+    by_n = {n: it for n, it in enumerate(items, start=1)}
+    # дубли: n → into (цель должна существовать, сама не объединяться и не отклоняться; объективные факты не поглощаются)
+    merges: dict[int, int] = {}
+    for n, v in verdicts.items():
+        if str(v.get("verdict", "")).lower() != "merge":
+            continue
+        try:
+            into = int(v.get("into"))
+        except (TypeError, ValueError):
+            continue
+        tv = str((verdicts.get(into) or {}).get("verdict", "")).lower()
+        if n in by_n and into in by_n and into != n and tv not in ("merge", "drop") and not _protected(by_n[n][1]):
+            merges[n] = into
     keep_req: dict[int, list] = {}
     keep_set = []
-    sent = {id(it[1]): n for n, it in enumerate(items, start=1)}
+    merged: list[tuple[object, object, str]] = []  # (поглощённое замечание, цель, причина)
     for kind, f, rr in all_items:
         if id(f) not in sent:  # не отправлялось критику (only_critical) — оставляем как есть
             (keep_req.setdefault(id(rr), []) if kind == "req" else keep_set).append(f)
             continue
-        v = verdicts.get(sent[id(f)])
+        n = sent[id(f)]
+        v = verdicts.get(n)
         verdict = str((v or {}).get("verdict", "")).lower()
         reason = str((v or {}).get("reason", "") or "").strip()
+        if n in merges:
+            tk, tf, trr = by_n[merges[n]]
+            if ORDER[f.severity] < ORDER[tf.severity]:
+                tf.severity = f.severity  # у объединённого — наибольшая серьёзность
+            if f.source not in tf.source:
+                tf.source = f"{tf.source}+{f.source}"  # независимые проходы подтвердили — уверенность выше
+            merged.append((kind, f, rr, tf, reason))
+            continue
+        if verdict == "merge":  # некорректная ссылка «into» — оставляем как keep
+            verdict = "keep"
         if verdict == "drop" and not _protected(f):
             where = rr.req.rid if kind == "req" else "набор"
             quote = f.quote if kind == "req" else " / ".join(r.quote for r in f.refs)
@@ -101,6 +137,11 @@ def run_critic(rv: ReviewResult, llm: BaseLLM, log=print, only_critical: bool = 
             continue
         if verdict == "downgrade":
             f.severity = DOWN[f.severity]
+        elif calibrate and verdict == "keep":
+            sev = str((v or {}).get("severity", "")).lower()
+            # правила выверены бенчмарком: калибровка может их повысить, но не понизить (понижение — только downgrade)
+            if sev in ORDER and not _protected(f) and (f.source != "правило" or ORDER[sev] < ORDER[f.severity]):
+                f.severity = sev
         f.critic_note = reason
         if not v:
             f.confidence = "low"
@@ -112,10 +153,21 @@ def run_critic(rv: ReviewResult, llm: BaseLLM, log=print, only_critical: bool = 
             keep_req.setdefault(id(rr), []).append(f)
         else:
             keep_set.append(f)
-    order = {"critical": 0, "major": 1, "minor": 2}
     for rr in rv.req_results:
-        rr.findings = sorted(keep_req.get(id(rr), []), key=lambda f: order[f.severity])
-    rv.set_findings = sorted(keep_set, key=lambda f: order[f.severity])
+        rr.findings = sorted(keep_req.get(id(rr), []), key=lambda f: ORDER[f.severity])
+    rv.set_findings = sorted(keep_set, key=lambda f: ORDER[f.severity])
+    # подписи целей — по итоговой нумерации (S-01… как в отчёте; у замечаний к требованию — R-xxx)
+    sid = {id(f): f"S-{i:02d}" for i, f in enumerate(rv.set_findings, 1)}
+    rid = {id(f): rr.req.rid for rr in rv.req_results for f in rr.findings}
+    for kind, f, rr, tf, reason in merged:
+        if "+" in tf.source:
+            tf.confidence = "high"
+        label = sid.get(id(tf)) or rid.get(id(tf)) or "?"
+        where = rr.req.rid if kind == "req" else "набор"
+        quote = f.quote if kind == "req" else " / ".join(r.quote for r in f.refs)
+        rv.rejected.append({"where": where, "quote": quote, "problem": f.problem,
+                            "reason": f"дубль {label}" + (f": {reason}" if reason else ""), "duplicate_of": label})
+    rv.critic_merged = len(merged)
 
 
 def default_confidence(rv: ReviewResult) -> None:

@@ -19,8 +19,9 @@ PROFILES = {
     "fast": {"critic": False, "rescore": False},
     "full": {"critic": True, "rescore": True},
     "offline": {"critic": True, "rescore": False},
-    # deep — для финального отчёта: критик на все замечания, повторная проверка исправленного документа
-    "deep": {"critic": True, "rescore": True},
+    # deep — для финального отчёта: малые пакеты (6 требований — модель внимательнее к каждому), критик на все
+    # замечания (дубли, калибровка), повторная проверка исправленного документа
+    "deep": {"critic": True, "rescore": True, "batch_size": 6},
 }
 
 STEPS = ["Чтение", "Нарезка", "Проверка требований", "Проверка набора", "Домен и глоссарий", "Критик", "Отчёты"]
@@ -108,8 +109,13 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
     if not split.requirements:
         raise ValueError("В документе не найдено ни одного требования.")
     log(f"выделено требований: {len(split.requirements)} (способ: {split.method})")
+    from .depth import recover_uncovered  # v5: «дорезка» строк, не вошедших в нарезку
+
+    recovered = recover_uncovered(doc, split, llm, log=log)
     step(2)
-    rv = run_review(doc, split, llm, batch_size=opts.batch_size, log=log, on_set=lambda: step(3))
+    # размер пакета: явный LLM_BATCH_SIZE важнее профиля; deep — 6 требований на запрос
+    batch = opts.batch_size if os.getenv("LLM_BATCH_SIZE") else PROFILES.get(opts.profile, {}).get("batch_size", opts.batch_size)
+    rv = run_review(doc, split, llm, batch_size=batch, log=log, on_set=lambda: step(3))
     if not opts.tests:
         for rr in rv.req_results:
             rr.test_possible, rr.test_gherkin, rr.test_blocker, rr.test_reason = None, "", "", ""
@@ -163,6 +169,8 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
         log(f"  свёрнуто замечаний об оформлении пунктов без ID: {folded}")
     default_confidence(rv)
     rv.depth = depth_summary(rv, acc)
+    rv.depth["line_coverage"]["recovered"] = recovered.get("recovered", 0)
+    rv.depth["line_coverage"]["uncovered_before_recovery"] = recovered.get("uncovered_before", 0)
     # RAG: основания замечаний из базы знаний (стандарты, нормы РК, шаблоны). RAG=off или нет kb/ — пропускаем
     try:
         from .rag.basis import attach_basis
@@ -175,6 +183,9 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
                       "embedder": kb.embedder.label if kb.embedder else "none", **st}
     except Exception as e:  # RAG никогда не ломает основной прогон
         log(f"база знаний недоступна: {e}")
+    from .depth import fix_plan  # после RAG: к пунктам плана подставляются шаблоны правок kb/patterns
+
+    rv.depth["fix_plan"] = fix_plan(rv)
     return rv
 
 

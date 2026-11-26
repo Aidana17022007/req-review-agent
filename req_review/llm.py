@@ -77,16 +77,22 @@ class BaseLLM:
             except RetryableError as e:
                 last_err = e
                 self.stats.retries += 1
-                # модель перегружена (503) или не отвечает — переходим на резервную, не дожидаясь всех повторов
-                if attempt >= 1 and self.fallback_models and ("503" in str(e) or "сетев" in str(e)):
+                # модель перегружена (503) или не отвечает — после LLM_FALLBACK_AFTER повторов переходим на резервную
+                if attempt >= int(os.getenv("LLM_FALLBACK_AFTER", "3")) and self.fallback_models and ("503" in str(e) or "сетев" in str(e)):
                     old, self.model = self.model, self.fallback_models.pop(0)
                     self.stats.switches.append(f"{old} → {self.model} ({e})")
                     print(f"  [llm] {old} перегружена — переключаюсь на резервную модель {self.model}", flush=True)
                     continue
-                if attempt >= self.max_retries:
-                    break
                 wait = e.retry_after if e.retry_after else min(60.0, 2.0 * (2 ** attempt))
                 max_wait = float(os.getenv("LLM_MAX_WAIT", "180"))
+                # квота модели исчерпана (429 с долгой задержкой или 429 подряд) — сразу на резервную модель
+                if self.fallback_models and "429" in str(e) and (wait > max_wait or attempt >= 2):
+                    old, self.model = self.model, self.fallback_models.pop(0)
+                    self.stats.switches.append(f"{old} → {self.model} (квота: {e})")
+                    print(f"  [llm] квота {old} исчерпана — переключаюсь на резервную модель {self.model}", flush=True)
+                    continue
+                if attempt >= self.max_retries:
+                    break
                 if wait > max_wait:
                     # 429 с задержкой в часы = исчерпана дневная квота: ждать бессмысленно
                     hours = wait / 3600
@@ -197,8 +203,34 @@ class GeminiLLM(BaseLLM):
         self.base_url = (base_url or "https://generativelanguage.googleapis.com/v1beta").rstrip("/")
         self.fallback_models = [m for m in (fallback or []) if m and m != model]
         self.schema_off: dict[str, bool] = {}  # модели, не принявшие responseSchema
+        # GEMINI_API=openai — OpenAI-совместимый эндпоинт Gemini (ключ в Authorization: Bearer): нужен, когда ключ
+        # подставляет прокси облачной среды, а заголовок x-goog-api-key недоступен. Модели и резервы — те же.
+        self.api_style = os.getenv("GEMINI_API", "native").strip().lower()
+
+    def _call_openai(self, system, prompt):
+        body = {"model": self.model, "temperature": self.temperature, "response_format": {"type": "json_object"},
+                "messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}]}
+        try:
+            r = requests.post(f"{self.base_url}/openai/chat/completions", json=body,
+                              headers={"Authorization": f"Bearer {self.api_key}"}, timeout=self.timeout)
+        except requests.RequestException as e:
+            raise RetryableError(f"сетевая ошибка: {e}")
+        if r.status_code in (429, 500, 502, 503, 504):
+            raise RetryableError(f"HTTP {r.status_code}", _retry_delay_from_body(r.text))
+        if r.status_code != 200:
+            raise LLMFatalError(f"Gemini HTTP {r.status_code}: {r.text[:500]}")
+        data = r.json()
+        u = data.get("usage", {})
+        self.stats.prompt_tokens += u.get("prompt_tokens", 0)
+        self.stats.output_tokens += u.get("completion_tokens", 0)
+        text = ((data.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+        if not text.strip():
+            raise RetryableError("пустой текст ответа")
+        return text
 
     def _call(self, system, prompt, *, task, context):
+        if self.api_style == "openai":
+            return self._call_openai(system, prompt)
         url = f"{self.base_url}/models/{self.model}:generateContent"
         gen = {"temperature": self.temperature, "responseMimeType": "application/json"}
         from .schemas import SCHEMAS

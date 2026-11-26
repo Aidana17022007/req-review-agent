@@ -82,6 +82,7 @@ class ReviewResult:
     glossary: object = None  # GlossaryResult
     critic_used: bool = False
     critic_scope: str = ""  # "all" | "critical" (self-consistency в профиле fast)
+    critic_merged: int = 0  # v5: дубли, объединённые критиком (ушли в rejected с причиной «дубль S-xx»)
     rag: dict = field(default_factory=dict)  # статистика базы знаний: число оснований, режим поиска
     categories: dict = field(default_factory=dict)  # {категория: число требований}
     coverage: list = field(default_factory=list)  # карта покрытия шагов процесса домена
@@ -147,7 +148,11 @@ ISO/IEC/IEEE 29148:2018 п. 5.2.6 и IEEE Std 830-1998 п. 4.3:
   параметры и их форматы в запросе и ответе, заявленный Content-Type и наличие тела, перечень кодов ответа и примеры
   (код, указанный в одном месте и отличающийся в другом; ошибка внутри успешного кода; описанный, но не используемый код);
 - единицы измерения одной величины в разных разделах (тенге/тиыны, секунды/минуты);
-- незаполненные места шаблона: «—» вместо значения, «заполняется позже/тестировщиками», пустые таблицы и версии документа.
+- незаполненные места шаблона: «—» вместо значения, «заполняется позже/тестировщиками», пустые таблицы и версии документа;
+- CRUD-полноту API: экран показывает текущие значения или интеграция «читает» данные, а в API описан только метод
+  изменения (save/update) — нет метода чтения; это critical gap (функцию нельзя реализовать целиком);
+- контракт интеграции: расчёт строится на событиях/сообщениях внешней системы (процессинг, шина, очередь), но нигде нет
+  состава полей события, перечня типов операций, гарантий доставки, порядка и обработки дублей — critical gap.
 
 Правила ответа:
 1. Каждое замечание содержит refs — список ссылок {{"id": "R-xxx", "quote": "дословный фрагмент текста этого требования"}}.
@@ -400,10 +405,11 @@ def deterministic_set_checks(split: SplitResult, doc: Document) -> list[SetFindi
                 "critical", "Использовать POST/PUT (например, PUT /alerts/limit), параметры передать в теле JSON; "
                 "GET оставить только для чтения настройки.", "правило"))
     out.extend(api_consistency(reqs, doc))
-    from .depth import integration_contract, missing_read_method  # v5: CRUD-полнота API и контракт интеграции
+    from .depth import completeness_rules, integration_contract, missing_read_method  # v5: глубина
 
     out.extend(missing_read_method(reqs, doc))
     out.extend(integration_contract(reqs, doc))
+    out.extend(completeness_rules(reqs, doc))
     # незаполненные значения для продуктивной среды («Prod: —»)
     for r in reqs:
         m = re.search(r"\b(?:prod|прод\w*|production)\s*:\s*[—–-](?=\s*(?:$|\.|\||;))", r.text, re.I)

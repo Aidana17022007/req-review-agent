@@ -360,6 +360,15 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     for i, p in enumerate(prio[:10], 1):
         w(f"{i}. {p}")
     w("")
+    plan = [it for it in (getattr(rv, "depth", None) or {}).get("fix_plan", []) if it.get("example")]
+    if plan:
+        w("**Как переписать (пример правильной формулировки):**")
+        w("")
+        w("| Пункт | Пример | Источник |")
+        w("|---|---|---|")
+        for it in plan:
+            w(f"| {_cell(', '.join(it['ids'][:4]))}: {_cell(it['title'][:90])} | {_cell(it['example'][:300])} | {it['example_source']} |")
+        w("")
     if ctx is not None:
         _extras_tail(w, ctx)
     lc = (getattr(rv, "depth", None) or {}).get("line_coverage")
@@ -367,6 +376,9 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
         w("### Приложение. Учёт строк документа")
         w("")
         w(f"Непустых строк: {lc['total']}; в требованиях: {lc['requirements']}; учтено всего: {lc['accounted']} ({lc['percent']} %).")
+        if lc.get("recovered"):
+            w(f"Дорезка: из {lc.get('uncovered_before_recovery', 0)} строк вне нарезки модель выделила требований — "
+              f"{lc['recovered']}; они проверены вместе с остальными.")
         w("")
         w("| Причина исключения | Строк |")
         w("|---|---|")
