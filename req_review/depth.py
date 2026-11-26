@@ -719,6 +719,12 @@ def acceptance_gap(rv, cov: dict) -> SetFinding | None:
 
 # ---------------------------------------------------------------- калибровка серьёзности (v8)
 
+def _russian(text: str) -> bool:
+    """Текст замечания написан по-русски: кириллица — не меньше трети букв (английские термины и коды допустимы)."""
+    letters = [c for c in text if c.isalpha()]
+    return not letters or sum("а" <= c.lower() <= "я" or c in "ёЁ" for c in letters) >= len(letters) / 3
+
+
 def _same_problem(f, r) -> bool:
     """Два замечания к набору — об одном, если совпадает не меньше половины ключевых слов (минимум 5).
     Порог строгий: при более низком склеиваются разные дефекты (пример 31 января и Ф-3/Ф-4).
@@ -744,11 +750,13 @@ def calibrate_severity(rv) -> dict:
     rules = [f for f in rv.set_findings if "правило" in f.source]
     keep_set, merged = [], []
     for f in rv.set_findings:
+        if "правило" not in f.source and not _russian(f.problem):  # отчёт — на русском (ТЗ)
+            rv.rejected.append({"where": "набор", "quote": " / ".join(x.quote for x in f.refs), "problem": f.problem,
+                                "reason": "ответ модели не на русском языке — отчёт по ТЗ на русском"})
+            continue
         if "правило" not in f.source:
             twin = next((r for r in rules if _same_problem(f, r)), None)
-            if twin is not None:
-                if order[f.severity] < order[twin.severity]:
-                    twin.severity = f.severity
+            if twin is not None:  # серьёзность правила выверена бенчмарком — дубль модели её не повышает
                 if "LLM" not in twin.source:
                     twin.source = f"{twin.source}+LLM"
                 from .critic import absorb
@@ -773,6 +781,10 @@ def calibrate_severity(rv) -> dict:
         kind = getattr(rr.req, "kind", "requirement")
         keep = []
         for f in rr.findings:
+            if "правило" not in f.source and not _russian(f.problem):
+                rv.rejected.append({"where": rr.req.rid, "quote": f.quote, "problem": f.problem,
+                                    "reason": "ответ модели не на русском языке — отчёт по ТЗ на русском"})
+                continue
             if kind != "requirement" and f.source == "тест-проба":
                 rv.rejected.append({"where": rr.req.rid, "quote": f.quote, "problem": f.problem,
                                     "reason": "тест-проба применяется к требованиям, а это "

@@ -987,3 +987,22 @@ def test_merge_keeps_specifics_of_duplicate():
     before = t.problem
     absorb(t, same)
     assert t.problem == before
+
+
+def test_calibration_drops_non_russian_model_findings_and_keeps_rule_severity(tmp_path):
+    """Замечание модели не на русском — в rejected (отчёт по ТЗ на русском); дубль модели не повышает серьёзность правила."""
+    from req_review.checker import ReviewResult, SetFinding, SetRef
+    from req_review.depth import _russian, calibrate_severity
+
+    assert _russian("Content-Type указан, а тело не используется") and not _russian("API specification defines Content-Type")
+    doc, s = _doc(tmp_path, API_DOC)
+    rule = SetFinding("gap", "set_complete", [SetRef("DOC", "a")], "В спецификации API описан только метод изменения данных "
+                      "saveLimit, метода чтения настроек и порога нет; приложение не покажет сохранённый порог.", "major", "—", "правило")
+    twin = SetFinding("gap", "set_complete", [SetRef("DOC", "b")], "В спецификации API только метод изменения данных saveLimit: "
+                      "нет метода чтения настроек и порога, приложение не покажет порог.", "critical", "—", "LLM")
+    eng = SetFinding("contradiction", "set_consistent", [SetRef("DOC", "c")], "API specification defines Content-Type as "
+                     "application/json, but the body is not used.", "critical", "—", "LLM")
+    rv = ReviewResult(doc=doc, split=s, req_results=[], set_findings=[rule, twin, eng], dropped=[])
+    calibrate_severity(rv)
+    assert rv.set_findings == [rule] and rule.severity == "major"
+    assert any("не на русском" in r["reason"] for r in rv.rejected)
