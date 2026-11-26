@@ -9,6 +9,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from markupsafe import Markup
+
 from . import build_tokens_css_file, env, load_tokens
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -62,9 +64,15 @@ def team(path: Path = ROOT / "docs" / "team.yaml") -> list[dict]:
 
 
 def build(out: Path = OUT) -> Path:
+    from .a11y import contrast_table
+    from .brand import OUT as BRAND_DIR
+    from .brand import logo_svg
+
     build_tokens_css_file()
     t = load_tokens()
-    html = env().get_template("styleguide.html.j2").render(tokens=t)
+    pngs = sorted(p.name for p in BRAND_DIR.glob("*.png")) if BRAND_DIR.exists() else []
+    html = env().get_template("styleguide.html.j2").render(tokens=t, contrast=contrast_table(t), pngs=pngs,
+                                                           logo={k: Markup(logo_svg(k)) for k in ("light", "dark")})
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(html, encoding="utf-8")
     slides = ROOT / "docs" / "slides.html"
