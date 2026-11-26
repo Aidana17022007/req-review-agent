@@ -262,7 +262,13 @@ def test_benchmark_has_40_plus_known_defects():
     from inject import build_all
 
     truth = build_all()
-    assert truth["total_defects"] >= 40 and len(truth["documents"]) == 3
+    assert truth["total_defects"] >= 60 and len(truth["documents"]) == 5
+    for name in ("deposit_kk", "cards"):  # v5: казахский документ и DOCX с таблицами — по 10–15 дефектов
+        assert 10 <= len(truth["documents"][name]["defects"]) <= 15
+    import docx
+
+    d = docx.Document(str(Path(__file__).parent.parent / truth["documents"]["cards"]["file"]))
+    assert len(d.tables) >= 3 and any(c.text == "CRD-15" for t in d.tables for r in t.rows for c in r.cells)
 
 
 def test_compare_cli(tmp_path, monkeypatch):

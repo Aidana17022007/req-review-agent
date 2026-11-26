@@ -1,13 +1,18 @@
-"""Бенчмарк точности агента на 3 документах с заранее известными дефектами (≥ 40).
+"""Бенчмарк точности агента на 5 документах с заранее известными дефектами (67): 3 на русском (Markdown),
+онлайн-депозит на казахском языке и перевыпуск карты в DOCX с таблицами Word.
 
 Запуск:  python bench/run.py                         (модель из .env — так получаются цифры для README и слайдов)
          LLM_PROVIDER=mock python bench/run.py       (офлайн: проверяет только словарный слой и пайплайн)
-Результат: bench/RESULTS.md и bench/results.html. Все числа вычисляются кодом по bench/ground_truth.json.
-Повторный прогон на той же модели берётся из кэша ответов (.cache/llm) и не тратит квоту.
+         python bench/run.py --save bench/baseline.json   (сохранить метрики как «было» для следующих прогонов)
+Результат: bench/RESULTS.md, bench/results.html и bench/results.json (метрики по каждому документу и итог).
+Если есть bench/baseline.json (или --baseline FILE), в RESULTS.md появляются колонки «было → стало».
+Все числа вычисляются кодом по bench/ground_truth.json. Повторный прогон на той же модели берётся из кэша
+ответов (.cache/llm) и не тратит квоту.
 """
 from __future__ import annotations
 
 import html
+import json
 import sys
 from collections import defaultdict
 from datetime import datetime
@@ -27,7 +32,14 @@ TYPE_RU = {"vague": "Размытые слова", "missing_units": "Нет зн
            "design": "Проектное решение", "compound": "Составное требование", "subjective": "Субъективная оценка",
            "absolute": "Абсолютная формулировка", "vague_goal": "Цель без механизма", "passive": "Пассив без субъекта",
            "contradiction": "Противоречие", "duplicate": "Дубль"}
-DOC_RU = {"payments": "Оплата услуг", "credit": "Онлайн-кредит", "onboarding": "Открытие счёта"}
+DOC_RU = {"payments": "Оплата услуг", "credit": "Онлайн-кредит", "onboarding": "Открытие счёта",
+          "deposit_kk": "Онлайн-депозит (қазақ тілі)", "cards": "Перевыпуск карты (DOCX, таблицы)"}
+
+
+def _prf(tp: int, total: int, tpf: int, fp: int) -> dict:
+    r = tp / total if total else 0
+    p = tpf / (tpf + fp) if (tpf + fp) else 1.0
+    return {"recall": r, "precision": p, "f1": 2 * p * r / (p + r) if p + r else 0, "tp": tp, "total": total, "fp": fp}
 
 
 def evaluate(rv, truth: dict, doc: str) -> dict:
@@ -50,7 +62,7 @@ def evaluate(rv, truth: dict, doc: str) -> dict:
     clean = set(truth["clean_ids"])
     fp = sum(1 for rr in rv.req_results if rr.req.doc_id in clean for f in rr.findings if f.severity != "minor")
     tp_f = sum(1 for rr in rv.req_results if rr.req.doc_id in seeded for f in rr.findings if id(f) in tp_ids)
-    return {"rows": rows, "fp": fp, "tp_findings": tp_f, "clean": len(clean)}
+    return {"rows": rows, "fp": fp, "tp_findings": tp_f, "clean": len(clean), "doc": doc}
 
 
 def summarize(parts: list[dict]) -> dict:
@@ -61,6 +73,7 @@ def summarize(parts: list[dict]) -> dict:
     recall = tp / len(rows) if rows else 0
     precision = tpf / (tpf + fp) if (tpf + fp) else 1.0
     f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0
+    cases = {p["doc"]: _prf(sum(r["found"] for r in p["rows"]), len(p["rows"]), p["tp_findings"], p["fp"]) for p in parts}
     by_type = defaultdict(lambda: [0, 0])
     by_doc = defaultdict(lambda: [0, 0])
     for r in rows:
@@ -69,15 +82,17 @@ def summarize(parts: list[dict]) -> dict:
         by_doc[r["doc"]][0] += r["found"]
         by_doc[r["doc"]][1] += 1
     return {"rows": rows, "tp": tp, "total": len(rows), "recall": recall, "precision": precision, "f1": f1,
-            "fp_on_clean": fp, "clean": sum(p["clean"] for p in parts), "by_type": dict(by_type), "by_doc": dict(by_doc)}
+            "fp_on_clean": fp, "clean": sum(p["clean"] for p in parts), "by_type": dict(by_type), "by_doc": dict(by_doc),
+            "cases": cases, "docs": len(parts)}
 
 
-def write_results(res: dict, label: str, version: str) -> None:
+def write_results(res: dict, label: str, version: str, base: dict | None = None) -> None:
     pct = lambda x: f"{round(100 * x)} %"  # noqa: E731
     lines = [
         "# Бенчмарк точности ReqLens", "",
         f"*Модель:* {label} · *агент:* {version} · *дата:* {datetime.now():%Y-%m-%d %H:%M}", "",
-        f"3 вымышленных документа (`bench/docs/`) с **{res['total']} заранее известными дефектами** (`bench/inject.py`). "
+        f"{res['docs']} вымышленных документов (`bench/docs/`: 3 на русском, 1 на казахском, 1 DOCX с таблицами) "
+        f"с **{res['total']} заранее известными дефектами** (`bench/inject.py`). "
         "Recall — доля внедрённых дефектов, найденных агентом по нужному критерию. Precision — доля верных замечаний среди",
         "существенных и критичных замечаний к дефектным и заведомо чистым требованиям (замечания к чистым требованиям считаются ложными).", "",
         "| Метрика | Значение |", "|---|---|",
@@ -89,9 +104,18 @@ def write_results(res: dict, label: str, version: str) -> None:
     ]
     for t, (f, n) in sorted(res["by_type"].items(), key=lambda x: -x[1][0] / x[1][1]):
         lines.append(f"| {TYPE_RU.get(t, t)} | {f} из {n} | {pct(f / n)} |")
-    lines += ["", "## По документам", "", "| Документ | Найдено |", "|---|---|"]
-    for d, (f, n) in res["by_doc"].items():
-        lines.append(f"| {DOC_RU.get(d, d)} | {f} из {n} |")
+    bc = (base or {}).get("cases", {})
+    was = (lambda d, k: f"{pct(bc[d][k])} → " if d in bc else "")  # noqa: E731
+    lines += ["", "## По документам", ""]
+    if base:
+        lines += [f"Было — {base.get('label', 'базовый прогон')} ({base.get('version', '')}); стало — этот прогон.", ""]
+    lines += ["| Документ | Найдено | Recall | Precision | Ложные к чистым |", "|---|---|---|---|---|"]
+    for d, c in res["cases"].items():
+        lines.append(f"| {DOC_RU.get(d, d)} | {c['tp']} из {c['total']} | {was(d, 'recall')}**{pct(c['recall'])}** | "
+                     f"{was(d, 'precision')}**{pct(c['precision'])}** | {c['fp']} |")
+    if base:
+        lines.append(f"| **Итого** | {res['tp']} из {res['total']} | {pct(base['recall'])} → **{pct(res['recall'])}** | "
+                     f"{pct(base['precision'])} → **{pct(res['precision'])}** | {res['fp_on_clean']} |")
     lines += ["", "## Все дефекты", "", "| Документ | Тип | Требования | Найден |", "|---|---|---|---|"]
     for r in res["rows"]:
         lines.append(f"| {DOC_RU.get(r['doc'], r['doc'])} | {TYPE_RU.get(r['type'], r['type'])} | {', '.join(r['ids'])} | "
@@ -116,7 +140,7 @@ HTML = """<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name=
 <header class="pagebar"><div class="logo"><span class="logo-mark">{{ icon("lens", 18) }}</span><span>ReqLens<small>Бенчмарк точности</small></span></div></header>
 <main class="wrap-b">
 <div class="caption">{{ label }} · {{ version }}</div><h1 class="display" style="margin:8px 0 6px">Насколько точен агент</h1>
-<p class="muted" style="margin-bottom:24px">3 документа · {{ res.total }} заранее известных дефектов · {{ res.clean }} заведомо чистых требований</p>
+<p class="muted" style="margin-bottom:24px">{{ res.docs }} документов · {{ res.total }} заранее известных дефектов · {{ res.clean }} заведомо чистых требований</p>
 <div class="grid g-4" style="margin-bottom:24px">
  <article class="kpi kpi-hero"><span class="lbl">Recall</span><div class="kpi-num">{{ pct(res.recall) }}</div><div class="sub">найдено {{ res.tp }} из {{ res.total }}</div></article>
  <article class="kpi"><span class="lbl">Precision</span><div class="kpi-num">{{ pct(res.precision) }}</div><div class="sub">доля верных существенных замечаний</div></article>
@@ -135,15 +159,17 @@ HTML = """<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name=
 </main></body></html>"""
 
 
-def run_once(truth: dict, llm, rag: str) -> dict:
+def run_once(truth: dict, llm, rag: str, profile: str = "fast", only: list[str] | None = None) -> dict:
     import os
 
     os.environ["RAG"] = rag
     parts = []
     for name, t in truth["documents"].items():
-        print(f"[{name}] RAG={rag}: проверка bench/out/{name}_seeded.md")
-        rv = review_document(HERE / "out" / f"{name}_seeded.md", llm, Options(profile="fast", domain="none"),
-                             log=lambda m: print("   " + m))
+        if only and name not in only:
+            continue
+        path = ROOT / t.get("file", f"bench/out/{name}_seeded.md")
+        print(f"[{name}] RAG={rag}: проверка {path.relative_to(ROOT)}")
+        rv = review_document(path, llm, Options(profile=profile, domain="none"), log=lambda m: print("   " + m))
         parts.append(evaluate(rv, t, name))
         parts[-1]["basis"] = sum(1 for rr in rv.req_results for f in rr.findings if getattr(f, "basis", None))
     res = summarize(parts)
@@ -162,6 +188,10 @@ def main(argv: list[str] | None = None):
     ap = argparse.ArgumentParser(prog="python bench/run.py")
     ap.add_argument("--rag", choices=["on", "off", "both"], default="on",
                     help="с базой знаний (on), без неё (off) или сравнить оба режима (both)")
+    ap.add_argument("--profile", default="fast", help="профиль проверки (fast — по умолчанию, deep — финальный)")
+    ap.add_argument("--only", nargs="*", help="проверить только эти документы (payments credit onboarding deposit_kk cards)")
+    ap.add_argument("--baseline", help="метрики «было» (по умолчанию bench/baseline.json, если есть)")
+    ap.add_argument("--save", help="сохранить метрики этого прогона как базовые (например, bench/baseline.json)")
     a = ap.parse_args(argv)
     load_dotenv(ROOT / ".env")
     from inject import build_all
@@ -169,9 +199,19 @@ def main(argv: list[str] | None = None):
     truth = build_all()
     llm = build_llm_from_env()
     modes = ["off", "on"] if a.rag == "both" else [a.rag]
-    results = {m: run_once(truth, llm, m) for m in modes}
+    results = {m: run_once(truth, llm, m, a.profile, a.only) for m in modes}
     res = results[modes[-1]]
-    write_results(res, llm.label + f" · RAG={modes[-1]}", agent_version())
+    label = llm.label + f" · RAG={modes[-1]} · профиль {a.profile}"
+    if llm.stats.switches:
+        label += " · переключения: " + "; ".join(llm.stats.switches)
+    bpath = Path(a.baseline) if a.baseline else HERE / "baseline.json"
+    base = json.loads(bpath.read_text(encoding="utf-8")) if bpath.exists() and not a.save else None
+    write_results(res, label, agent_version(), base)
+    summary = {"label": label, "version": agent_version(), "date": f"{datetime.now():%Y-%m-%d %H:%M}",
+               **{k: res[k] for k in ("recall", "precision", "f1", "tp", "total", "fp_on_clean", "clean", "cases")}}
+    (HERE / "results.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1), encoding="utf-8")
+    if a.save:
+        Path(a.save).write_text(json.dumps(summary, ensure_ascii=False, indent=1), encoding="utf-8")
     if a.rag == "both":
         off, on = results["off"], results["on"]
         pct = lambda x: f"{round(100 * x)} %"  # noqa: E731

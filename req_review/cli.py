@@ -26,6 +26,8 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--no-critic", dest="critic", action="store_false", help="выключить критик-агента")
     ap.add_argument("--rescore", dest="rescore", action="store_true", default=None,
                     help="повторно проверить исправленный документ («было → стало»)")
+    ap.add_argument("--no-rescore", dest="rescore", action="store_false",
+                    help="не перепроверять исправленный документ (экономит запросы к модели)")
     ap.add_argument("--no-tests", action="store_true", help="не включать тест-пробу (Gherkin) в отчёт")
     for name, what in (("html", "интерактивный HTML-отчёт"), ("fixed", "исправленный документ"), ("xlsx", "Excel-трассировку"),
                        ("jira", "CSV для Jira"), ("json", "report.json")):
