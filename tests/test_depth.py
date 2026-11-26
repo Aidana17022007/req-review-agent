@@ -344,7 +344,8 @@ def test_critic_merges_duplicates_and_calibrates(tmp_path):
                                  {"n": 5, "verdict": "keep", "severity": "minor"}]}
 
     run_critic(rv, Fake(), log=lambda *a: None)
-    assert [f.problem for f in rv.set_findings] == ["Нет метода чтения.", "НФТ без перцентиля.", "Шаблон."]
+    assert [f.problem for f in rv.set_findings][1:] == ["НФТ без перцентиля.", "Шаблон."]
+    assert rv.set_findings[0].problem == "Нет метода чтения. Также: API не позволяет прочитать порог."  # конкретика дубля
     assert rv.set_findings[0].source == "правило+LLM (проход полноты)" and rv.set_findings[0].confidence == "high"
     assert rv.set_findings[1].severity == "major"  # калибровка повысила LLM-замечание
     assert rv.set_findings[2].severity == "major"  # правило калибровкой не понижается
@@ -970,3 +971,19 @@ def test_site_build_uses_project_design_and_readme_features(tmp_path):
     assert home.count('class="card feat"') >= 10 and "Тест-проба" in home
     assert (out / "report" / "index.html").exists() and (out / "slides" / "index.html").exists()
     assert "<script>alert" not in (out / "report" / "index.html").read_text(encoding="utf-8")
+
+
+def test_merge_keeps_specifics_of_duplicate():
+    """При объединении дублей конкретика поглощённого замечания (31 января, февраль) остаётся в цели."""
+    from types import SimpleNamespace as NS
+
+    from req_review.critic import absorb
+
+    t = NS(problem="Пример демонстрирует стык месяцев по времени проведения, что противоречит Ф-2.")
+    d = NS(problem="Покупка совершена 31 января, проведена 1 февраля, а вырос февральский счётчик — противоречит правилу. Ещё.")
+    absorb(t, d)
+    assert "Также: Покупка совершена 31 января" in t.problem
+    same = NS(problem="Пример демонстрирует стык месяцев по времени проведения.")
+    before = t.problem
+    absorb(t, same)
+    assert t.problem == before

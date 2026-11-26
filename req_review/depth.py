@@ -751,6 +751,9 @@ def calibrate_severity(rv) -> dict:
                     twin.severity = f.severity
                 if "LLM" not in twin.source:
                     twin.source = f"{twin.source}+LLM"
+                from .critic import absorb
+
+                absorb(twin, f)
                 merged.append((f, twin))
                 continue
             if f.severity == "critical" and f.kind != "contradiction":

@@ -290,7 +290,8 @@ def _ctx_info(doc) -> dict:
             "avg_prompt_tokens": round(sum(pc) / len(pc) / 4) if pc else 0, "doc_chars": len(doc.text)}
 
 
-def build_context(rv, llm, opts: Options, started: datetime, t0: float, input_path: str) -> Context:
+def build_context(rv, llm, opts: Options, started: datetime, t0: float, input_path: str,
+                  code: dict | None = None, version: str | None = None) -> Context:
     from .fixer import build_fixed_document
     from .graph import build_graph
     from .questions import build_questions
@@ -305,7 +306,7 @@ def build_context(rv, llm, opts: Options, started: datetime, t0: float, input_pa
     ctx.passport = {
         "document": rv.doc.title, "file": str(input_path), "format": rv.doc.fmt.upper(), "pages": rv.doc.pages,
         "sha256": rv.doc.sha256, "started": started.strftime("%Y-%m-%d %H:%M:%S %Z").strip(),
-        "model": llm.label, "agent_version": agent_version(), "code": code_state(), "profile": opts.profile,
+        "model": llm.label, "agent_version": version or agent_version(), "code": code or code_state(), "profile": opts.profile,
         "mode": "офлайн: документ не передавался третьим лицам" if offline and llm.provider != "mock" else
                 ("тестовый (mock)" if llm.provider == "mock" else
                  "только правила: модель не вызывалась, смысловые противоречия не проверялись" if llm.provider == "rules"
@@ -332,6 +333,8 @@ def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda
     apply_profile_env(opts.profile)
     started = datetime.now().astimezone()
     t0 = time.monotonic()
+    # версия и состояние кода — на момент старта: правки во время долгого прогона не меняют паспорт задним числом
+    started_code, started_version = code_state(), agent_version()
     timeline: list[dict] = []
 
     def tstep(i, label=""):
@@ -368,7 +371,7 @@ def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda
     if rv.dropped:  # лог трассировки: замечания модели с цитатами, которых нет в документе
         log(f"отброшено замечаний с неподтверждёнными цитатами: {len(rv.dropped)} "
             + "; ".join(f"{d['where']}: «{str(d['quote'])[:40]}»" for d in rv.dropped[:3]))
-    ctx = build_context(rv, llm, opts, started, t0, input_path)
+    ctx = build_context(rv, llm, opts, started, t0, input_path, started_code, started_version)
     ctx.trace = timeline
     if ens_info:
         ctx.passport["ensemble"] = ens_info

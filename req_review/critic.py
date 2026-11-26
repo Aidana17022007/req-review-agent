@@ -41,6 +41,21 @@ SYSTEM_CRITIC = """Ты — независимый строгий рецензе
 ORDER = {"critical": 0, "major": 1, "minor": 2}
 
 
+def absorb(target, dup) -> None:
+    """Объединение дублей: если поглощаемое замечание конкретнее (новые числа, даты, ID, термины), его первое
+    предложение добавляется к цели — «Также: …». Читатель видит обе формулировки, ни одна деталь не теряется."""
+    import re as _re
+
+    from .textutil import first_sentence
+
+    def keys(t):
+        return {w[:5] for w in _re.findall(r"[\wёЁ-]{4,}|\d+", t.lower())}
+
+    new = keys(dup.problem) - keys(target.problem)
+    if len(new) >= 3 and "Также:" not in target.problem[-400:]:
+        target.problem = target.problem.rstrip() + f" Также: {first_sentence(dup.problem, 240).rstrip('.')}."
+
+
 def _collect(rv: ReviewResult) -> list[tuple[str, object, object]]:
     items = []
     for rr in rv.req_results:
@@ -133,6 +148,7 @@ def run_critic(rv: ReviewResult, llm: BaseLLM, log=print, only_critical: bool = 
                 tf.severity = f.severity  # у объединённого — наибольшая серьёзность
             if f.source not in tf.source:
                 tf.source = f"{tf.source}+{f.source}"  # независимые проходы подтвердили — уверенность выше
+            absorb(tf, f)  # конкретика дубля (даты, суммы, ID) не теряется
             merged.append((kind, f, rr, tf, reason))
             continue
         if verdict == "merge":  # некорректная ссылка «into» — оставляем как keep
