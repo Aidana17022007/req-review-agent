@@ -594,3 +594,12 @@ textarea.input{height:auto;min-height:96px;padding:12px 16px;border-radius:var(-
 .toast.is-static{display:inline-flex;left:auto;bottom:auto}
 .modal.is-static{padding:24px;border-radius:var(--r-hero)}
 @media print{.modal,.toast,.dropzone{display:none!important}}
+
+/* v7: тепловая карта «требование × критерий» */
+.mx{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:middle}
+.mx-a:focus-visible .mx{outline:2px solid var(--brand);outline-offset:2px}
+#matrix summary{list-style:none}
+#matrix summary::-webkit-details-marker{display:none}
+#trust .chip,#summary30 .chip{white-space:normal;max-width:100%;height:auto;text-align:left}
+#matrix,#acceptance{min-width:0}
+#matrix .table-wrap{overflow-x:auto;max-width:100%}

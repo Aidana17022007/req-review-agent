@@ -340,6 +340,60 @@
       ${errSteps.map((s) => esc(s.title) + ": " + esc(s.detail)).join(" · ")}
       <div class="small" style="margin-top:4px">Частые причины: исчерпан лимит API (429) или не задан ключ в .env. Повторный прогон возьмёт готовые ответы из кэша и дозапросит остальные.</div></div></div>`;
   }
+  // ------------------------------------------------------------ v7: поля 2.3 — итог за 30 секунд, доверие, приёмка, матрица
+  const DP = D.depth || null;
+  const VERD = { "нельзя": ["sev-critical", "x"], "с оговорками": ["sev-major", "alert"], "можно": ["sev-ok", "check"] };
+  function fidFor(id, sev) {  // S-xx — замечание набора; R-xxx — первое (самое серьёзное) замечание требования
+    if (D.findings[id]) return id;
+    const r = reqById[id]; if (!r || !r.findings.length) return "";
+    return r.findings.find((x) => D.findings[x].severity === sev) || r.findings[0];
+  }
+  function summary30HTML() {
+    if (!DP || !DP.verdict) return "";
+    const v = DP.verdict, vc = (x) => VERD[x] || VERD["с оговорками"];
+    const plan = (DP.fix_plan || []).slice(0, 8);
+    return `<div class="card" id="summary30" data-block="summary30"><div class="card-title">${ic("check")}<span class="h2 grow">Итог за 30 секунд</span></div>
+      <div class="row wrap" style="gap:10px">
+        <span class="chip ${vc(v.development)[0]}">${ic(vc(v.development)[1], 13)}Разработка: ${esc(v.development)}</span>
+        <span class="chip ${vc(v.testing)[0]}">${ic(vc(v.testing)[1], 13)}Тестирование: ${esc(v.testing)}</span>
+        ${["critical", "major", "minor"].map((s) => (D.counts[s] ? chip(s, `${SEV[s].label}: ${D.counts[s]}`) : "")).join("")}</div>
+      ${plan.length ? `<div class="caption" style="margin:16px 0 6px">Что исправить первым</div>
+        <ol class="small" style="margin:0;padding-left:20px">${plan.map((p) => { const f = fidFor((p.ids || [])[0], p.severity);
+          return `<li style="margin:8px 0">${chip(p.severity === "critical" ? "critical" : "major", (p.ids || []).slice(0, 4).join(", "))}
+            ${f ? `<a href="#" data-open="${esc(f)}"><b>${esc(short(p.title || "", 160))}</b></a>` : `<b>${esc(short(p.title || "", 160))}</b>`}
+            ${p.example ? `<div class="faint" style="margin-top:3px">Пример: «${esc(short(p.example, 220))}»</div>` : ""}</li>`; }).join("")}</ol>` : ""}
+      <p class="small faint" style="margin-top:10px">${esc(v.rule || "")}</p></div>`;
+  }
+  function trustHTML() {
+    if (!DP) return "";
+    const ca = DP.citation_audit, ln = DP.lines, st = DP.review_stats, ens = P.ensemble;
+    const items = [];
+    if (ca) items.push(`<span class="chip chip-outline" title="Цитаты подтверждённых замечаний сверены с текстом документа кодом">${ic("shield", 13)}Аудит цитат: ${ca.verified} из ${ca.total} подтверждены · отброшено выдуманных: ${ca.dropped}</span>`);
+    if (ln && ln.total) items.push(`<span class="chip chip-outline">${ic("file", 13)}Учтено строк документа: ${ln.accounted} из ${ln.total}</span>`);
+    if (st) items.push(`<span class="chip chip-outline">${ic("layers", 13)}Предложено ${st.proposed} · подтверждено ${st.confirmed} · отклонено критиком ${st.rejected}</span>`);
+    if (ens) items.push(`<span class="chip chip-outline">${ic("cpu", 13)}Ансамбль моделей: обе — ${ens.both}, только A — ${ens.only_a}, только B — ${ens.only_b}</span>`);
+    return items.length ? `<div class="row wrap" id="trust" data-block="trust" style="gap:8px;margin:0 0 16px">${items.join("")}</div>` : "";
+  }
+  function acceptanceHTML() {
+    const a = DP && DP.acceptance; if (!a || a.percent == null) return "";
+    const unc = a.uncovered || [];
+    return `<div class="card" id="acceptance" data-block="acceptance"><div class="card-title">${ic("flask")}<span class="h2 grow">Покрытие правил критериями приёмки</span>
+        <span class="chip ${a.percent >= 80 ? "sev-ok" : a.percent >= 50 ? "sev-major" : "sev-critical"}">${a.percent}%</span></div>
+      <div style="height:8px;border-radius:8px;background:var(--neutral-bar);overflow:hidden"><i style="display:block;height:100%;width:${Math.max(0, Math.min(100, a.percent))}%;background:${a.percent >= 80 ? "var(--ok)" : a.percent >= 50 ? SEV.major.color : SEV.critical.color}"></i></div>
+      <p class="small muted" style="margin-top:8px">${(a.covered || []).length} из ${(a.covered || []).length + unc.length} правил имеют пример «условия → действие → результат».</p>
+      ${unc.length ? `<div class="caption" style="margin:10px 0 6px">Без примеров приёмки</div><div class="row wrap" style="gap:6px">${unc.slice(0, 20).map((u) => `<a href="#" class="chip chip-outline" data-go-req="${esc(u.rid)}">${esc(u.doc_id || u.rid)}</a>`).join("")}</div>` : ""}</div>`;
+  }
+  function matrixHTML() {
+    const rows = DP && DP.matrix; if (!rows || !rows.length) return "";
+    const cs = D.criteria;
+    const cell = (r, c) => { const s = r.cells[c.key]; if (!s) return `<td><i class="mx" style="background:var(--neutral-bar)"></i></td>`;
+      const f = (reqById[r.rid] ? reqById[r.rid].findings : []).find((x) => D.findings[x].criterion === c.key) || "";
+      return `<td><a href="#" class="mx-a" data-open="${esc(f)}" title="${esc(r.rid)} · ${esc(c.name)}: ${esc(SEV[s].label)}"><i class="mx" style="background:${SEV[s].color}"></i></a></td>`; };
+    return `<details class="card" id="matrix" data-block="matrix"><summary class="card-title" style="cursor:pointer">${ic("layers")}<span class="h2 grow">Матрица «требование × критерий»</span><span class="chip chip-outline">${rows.length} треб.</span></summary>
+      <div class="table-wrap"><table class="tbl" style="font-size:12px"><thead><tr><th scope="col">Требование</th>${cs.map((c, i) => `<th scope="col" title="${esc(c.name)}">${i + 1}</th>`).join("")}</tr></thead>
+      <tbody>${rows.map((r) => `<tr><td><a href="#" data-go-req="${esc(r.rid)}">${esc(reqById[r.rid] ? label(reqById[r.rid]) : r.rid)}</a></td>${cs.map((c) => cell(r, c)).join("")}</tr>`).join("")}</tbody></table></div>
+      <p class="small faint" style="margin-top:8px">${cs.map((c, i) => `${i + 1}. ${esc(c.name.replace(/\s*\(.*\)/, ""))}`).join(" · ")}. Клик по клетке — замечание.</p></details>`;
+  }
   function renderOverview(el) {
     const s = D.scores;
     const failedSteps = D.trace.filter((t) => t.status === "err").length;
@@ -347,7 +401,7 @@
     const setCrit = D.set.filter((f) => D.findings[f].severity === "critical").length;
     const tPct = s.tests_total ? Math.round((100 * s.tests_ok) / s.tests_total) : 0;
     const crit = D.counts.critical;
-    el.innerHTML = `${errorBanner()}
+    el.innerHTML = `${errorBanner()}${trustHTML()}${summary30HTML() ? `<div style="margin-bottom:16px">${summary30HTML()}</div>` : ""}
       <div class="grid g-4">
         ${kpi("Всего требований", num(D.reqs.length), `<b>${D.split_method === "ids" ? "ID" : "R"}</b>нарезка ${D.split_method === "ids" ? "по ID документа" : "с номерами агента"}`, true, "reqs")}
         ${kpi("Нарушений", num(totalFindings), `<b>${reqFindings}</b>по требованиям · <b>${D.set.length}</b>по набору`, false, "doc")}
@@ -397,7 +451,8 @@
       <div class="section-title"><h2 class="h1">Требования</h2><div class="row"><span class="small muted hide-sm">${D.reqs.length} шт.</span>
         <button class="btn btn-sm btn-outline" data-go-view="reqs">Все фильтры ${ic("arrow-right", 14)}</button></div></div>
       ${D.reqs.length > 50 ? `<p class="small muted" style="margin-bottom:8px">Показаны 20 требований с наименьшим баллом из ${D.reqs.length} — полный список в разделе «Требования».</p>${reqTable(D.reqs.slice().sort((a, b) => a.score - b.score).slice(0, 20), "ov")}` : reqTable(D.reqs, "ov")}
-      <div style="margin-top:16px">${verdictHTML(true)}</div>`;
+      <div style="margin-top:16px">${verdictHTML(true)}</div>
+      ${acceptanceHTML() || matrixHTML() ? `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px;margin-top:16px;align-items:start">${acceptanceHTML()}${matrixHTML()}</div>` : ""}`;
     wireTable(el);
   }
 

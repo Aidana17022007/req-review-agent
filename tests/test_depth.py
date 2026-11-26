@@ -782,3 +782,21 @@ def test_ensemble_cli_passport(tmp_path, monkeypatch):
     assert len(ens["models"]) == 2 and ens["both"] >= 1 and ens["only_b"] == 0  # одинаковые mock-модели
     assert "Ансамбль моделей" in out.read_text(encoding="utf-8") and "ансамбль" in d["passport"]["model"]
     assert all(f.get("ensemble") for r in d["requirements"] for f in r["findings"])
+
+
+def test_html_report_has_v7_blocks_and_hides_them_for_old_reports(tmp_path, monkeypatch):
+    from req_review.html_report import build_data
+    from req_review.pipeline import Options, run
+
+    monkeypatch.setenv("LLM_PROVIDER", "rules")
+    ctx = run(str(ROOT / "bench" / "real" / "notifications.md"), str(tmp_path / "r.md"),
+              Options(xlsx=False, jira=False), log=lambda m: None)
+    html = (tmp_path / "r.html").read_text(encoding="utf-8")
+    assert html.encode("utf-8").__len__() < 1024 * 1024
+    for marker in ("summary30HTML", "trustHTML", "acceptanceHTML", "matrixHTML", "Итог за 30 секунд", "30 секундтағы қорытынды"):
+        assert marker in html, marker
+    d = build_data(ctx)["depth"]
+    assert d["verdict"]["development"] and d["fix_plan"] and d["citation_audit"]["total"] > 0
+    assert d["lines"]["accounted"] == d["lines"]["total"] and d["matrix"] and d["acceptance"]["percent"] is not None
+    ctx.rv.depth = {}  # отчёт 2.2 без полей глубины — блоки не рисуются (D.depth = null)
+    assert build_data(ctx)["depth"] is None
