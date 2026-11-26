@@ -110,6 +110,11 @@ ISO/IEC/IEEE 29148:2018 п. 5.2.5 и IEEE Std 830-1998 п. 4.3:
 8. ears — тип требования по EARS: ubiquitous («Система должна …»), event («Когда <событие>, система должна …»),
    state («Пока <состояние>, система должна …»), unwanted («Если <нежелательное событие>, то система должна …»),
    optional («Там, где <функция включена>, система должна …»), complex.
+8a. Строки критериев приёмки (раздел «Критерии приёмки») и строки таблиц параметров API — это примеры и описание
+   интерфейса, а не формулировки требований: не делай к ним замечаний по шаблону EARS («conforming»). Проверяй их
+   содержательно: результат примера должен следовать из правил документа (период/дата, порог, исключения), формат и
+   единицы параметра — совпадать с другими разделами. Пример, дающий результат не по правилу, — замечание «correct»
+   (критичное) с цитатой примера; в problem назови правило, которому он противоречит.
 9. test — Testability Probe: попробуй написать приёмочный тест для требования В ТЕКУЩЕЙ формулировке
    (Gherkin на русском: «Дано / Когда / Тогда», с конкретными значениями ИЗ ТЕКСТА требования, не выдумывай чисел).
    Если тест составить можно — possible=true и scenarios: 1–3 сценария (основной позитивный; негативный и/или
@@ -132,7 +137,11 @@ ISO/IEC/IEEE 29148:2018 п. 5.2.6 и IEEE Std 830-1998 п. 4.3:
 Обязательно сверь между собой (это самые частые критичные дефекты):
 - каждое правило с критериями приёмки и примерами: пример, дающий другой результат, чем правило (дата/период, порог,
   округление, часовой пояс), — противоречие с цитатами правила и примера;
-- правила между собой: ограничение (например, «не более одного … за период») и исключение из него в другом пункте;
+- правила между собой: ограничение (например, «не более одного … за период») и исключение из него в другом пункте
+  (что произойдёт, если оба условия выполняются одновременно — какое правило победит?);
+- для каждого примера/критерия приёмки «пройди» его по правилам шаг за шагом (какая дата, какой период, какая сумма)
+  и сравни с ожидаемым результатом примера; расхождение — противоречие (contradiction) с цитатами правила и примера;
+- успешный код ответа, внутри которого возвращается ошибка, и ошибка валидации, описанная в разных местах разными кодами;
 - спецификацию API саму с собой: назначение метода в описании, тип запроса (GET для изменения данных), URL всех сред,
   параметры и их форматы в запросе и ответе, заявленный Content-Type и наличие тела, перечень кодов ответа и примеры
   (код, указанный в одном месте и отличающийся в другом; ошибка внутри успешного кода; описанный, но не используемый код);
@@ -370,6 +379,35 @@ def deterministic_set_checks(split: SplitResult, doc: Document) -> list[SetFindi
                                   "но не имеет идентификатора — оно выпадает из трассировки и проверки.",
                                   "minor", "Присвоить идентификатор и оформить как требование, либо переформулировать как пояснение.",
                                   "правило"))
+    # REST: метод GET у операции, меняющей данные (сохранение/изменение/удаление) — небезопасный и неидемпотентный по смыслу
+    get_req = next((r for r in reqs if re.search(r"\b(?:rest type|http[- ]?метод|метод|method)\b[^|]*\|\s*GET\b", r.text, re.I)), None)
+    if get_req:
+        mut = re.compile(r"\b(?:save|update|create|delete|remove|set)[A-Z]\w*|/(?:save|update|create|delete|set)\w*|"
+                         r"сохранени\w*|сохран\w+ настройк\w*|замени\w* настройк\w*|изменени\w* (?:порог|настройк)\w*|удалени\w*", re.I)
+        # ближайшее к объявлению метода упоминание изменения данных (описание метода, URL, логика работы)
+        near = sorted((r for r in reqs if r is not get_req and mut.search(r.text)),
+                      key=lambda r: abs(r.line_start - get_req.line_start))
+        mreq = near[0] if near and abs(near[0].line_start - get_req.line_start) <= 40 else None
+        if mreq:
+            mq = mut.search(mreq.text).group(0)
+            out.append(SetFinding(
+                "contradiction", "set_consistent",
+                [SetRef(get_req.rid, get_req.text[:60]), SetRef(mreq.rid, _ctx(mreq.text, mq))],
+                f"Метод объявлен как GET («{get_req.text[:40]}»), но выполняет изменение данных («{mq}»). GET по смыслу "
+                "безопасен и не меняет состояние: такие запросы кэшируются, повторяются браузером и прокси, параметры "
+                "попадают в логи и историю — сохранение порога через GET приведёт к непредсказуемым изменениям.",
+                "critical", "Использовать POST/PUT (например, PUT /alerts/limit), параметры передать в теле JSON; "
+                "GET оставить только для чтения настройки.", "правило"))
+    out.extend(api_consistency(reqs, doc))
+    # незаполненные значения для продуктивной среды («Prod: —»)
+    for r in reqs:
+        m = re.search(r"\b(?:prod|прод\w*|production)\s*:\s*[—–-](?=\s*(?:$|\.|\||;))", r.text, re.I)
+        if m:
+            out.append(SetFinding(
+                "gap", "set_complete", [SetRef(r.rid, _ctx(r.text, m.group(0)))],
+                f"Для продуктивной среды не указано значение («{m.group(0)}») — реализацию нельзя развернуть и проверить в Prod.",
+                "critical", "Указать значение для Prod (URL/параметр) или явно зафиксировать, когда и кем оно будет определено.",
+                "правило"))
     # ранжирование
     has_priority = any(
         any(re.search(r"приоритет|priority|важност", k, re.I) for k in r.extra) or
@@ -425,6 +463,7 @@ def check_set(split: SplitResult, doc: Document, llm: BaseLLM, dropped: list[dic
                                 str(f.get("problem", "")).strip(), _norm_sev(f.get("severity")),
                                 str(f.get("fix", "")).strip(), "LLM"))
     add_numeric_conflicts(found, reqs, log)
+    crosscheck(split, doc, llm, dropped, found, log)
     found.sort(key=lambda f: {"critical": 0, "major": 1, "minor": 2}[f.severity])
     return found, True
 
@@ -468,3 +507,146 @@ def run_review(doc: Document, split: SplitResult, llm: BaseLLM, batch_size: int 
     set_findings, set_ok = check_set(split, doc, llm, dropped, log=log)
     return ReviewResult(doc=doc, split=split, req_results=req_results, set_findings=set_findings,
                         dropped=dropped, set_llm_checked=set_ok)
+
+
+def _ctx(text: str, frag: str, width: int = 30) -> str:
+    """Дословная цитата вокруг фрагмента (для ссылок замечаний набора)."""
+    i = text.find(frag)
+    if i < 0:
+        return frag
+    s, e = max(0, i - width), min(len(text), i + len(frag) + width)
+    if s > 0 and " " in text[s:i]:  # цитата начинается с целого слова
+        s = text.index(" ", s) + 1
+    if e < len(text) and " " in text[i + len(frag):e]:
+        e = text.rindex(" ", i + len(frag), e)
+    return text[s:e].strip()
+
+
+# ---------------------------------------------------------------- перекрёстная проверка: примеры ↔ правила, правило ↔ правило
+
+SYSTEM_CROSS = """Ты — тест-аналитик. Тебе даны ПРАВИЛА (требования) и ПРИМЕРЫ (критерии приёмки) одного документа.
+Для КАЖДОГО примера выполни его по правилам шаг за шагом: какая дата/период, какие операции учитываются, какая сумма,
+сработает ли порог, сколько уведомлений. Сравни с ожидаемым результатом примера. Если результат по правилам другой —
+это противоречие: укажи правило и пример. Только реальные противоречия; в refs — дословные цитаты (3–15 слов, символ
+в символ) из правила и примера с их id; в problem — пошаговое объяснение. Пиши по-русски. Верни ТОЛЬКО JSON:
+{"findings":[{"type":"contradiction","criterion":"set_consistent","refs":[{"id":"R-001","quote":"..."},{"id":"R-002","quote":"..."}],"problem":"...","severity":"critical|major","fix":"..."}]}"""
+
+SYSTEM_RULES = """Ты — аналитик требований. Тебе даны ПРАВИЛА одного документа. Ищи КОНФЛИКТЫ МЕЖДУ ПРАВИЛАМИ:
+для каждой пары правил придумай конкретную ситуацию (последовательность событий), в которой оба правила применимы.
+Дают ли они разный результат? Типичные случаи: ограничение «не более N раз за период» и правило, которое требует
+действия ещё раз в том же периоде («независимо от истории», «после изменения настройки»); правило «сохраняется» и
+правило «сбрасывается»; разные пороги/единицы одной величины. Опиши ситуацию по шагам и какое правило что требует.
+Только реальные конфликты; в refs — дословные цитаты (3–15 слов, символ в символ) обоих правил с их id.
+Пиши по-русски. Верни ТОЛЬКО JSON:
+{"findings":[{"type":"contradiction","criterion":"set_consistent","refs":[{"id":"R-001","quote":"..."},{"id":"R-002","quote":"..."}],"problem":"...","severity":"critical|major","fix":"..."}]}"""
+
+_RULE_SECTION = re.compile(r"функциональн|правил|логика|бизнес", re.I)
+_EXAMPLE_SECTION = re.compile(r"критери\w* при[её]мк|пример|сценари", re.I)
+
+
+def crosscheck(split: SplitResult, doc: Document, llm: BaseLLM, dropped: list[dict], found: list[SetFinding], log=print) -> None:
+    reqs = split.requirements
+    rules = [r for r in reqs if r.doc_id or _RULE_SECTION.search(r.section or "")]
+    examples = [r for r in reqs if _EXAMPLE_SECTION.search(r.section or "")]
+    rules = [r for r in rules if r not in examples]
+    if len(rules) < 2 and not examples:
+        return
+    log(f"  перекрёстная проверка: {len(examples)} примеров × {len(rules)} правил")
+    by_id = {r.rid: r for r in reqs}
+    rule_payload = [{"id": r.rid, "doc_id": r.doc_id, "text": r.text} for r in rules]
+    tasks = []
+    if examples:
+        tasks.append((SYSTEM_CROSS, {"ПРАВИЛА": rule_payload, "ПРИМЕРЫ": [{"id": r.rid, "text": r.text, "columns": r.extra}
+                                                                       for r in examples]}))
+    if len(rules) >= 2:
+        tasks.append((SYSTEM_RULES, {"ПРАВИЛА": rule_payload}))
+    results = []
+    for system, payload in tasks:
+        try:
+            results.append(llm.generate_json(system, json.dumps(payload, ensure_ascii=False, indent=1), task="crosscheck",
+                                             context={"rules": rules, "examples": examples}))
+        except LLMFatalError:
+            raise
+        except LLMError as e:
+            log(f"  перекрёстная проверка: часть пропущена ({e})")
+    data = {"findings": [f for d in results for f in (d.get("findings") or [])]}
+    have = {frozenset(r.req_id for r in f.refs) for f in found if f.kind == "contradiction"}
+    for f in data.get("findings", []) or []:
+        refs = []
+        for ref in f.get("refs", []) or []:
+            rid, q = str(ref.get("id", "")).strip(), str(ref.get("quote", "")).strip()
+            if rid in by_id and quote_in(q, by_id[rid].text):
+                refs.append(SetRef(rid, q))
+            else:
+                dropped.append({"where": rid or "набор", "quote": q, "problem": f.get("problem", "")})
+        if len({r.req_id for r in refs}) < 2 or frozenset(r.req_id for r in refs) in have:
+            continue
+        have.add(frozenset(r.req_id for r in refs))
+        found.append(SetFinding("contradiction", "set_consistent", refs, str(f.get("problem", "")).strip(),
+                                "critical" if _norm_sev(f.get("severity")) == "critical" else "major",
+                                str(f.get("fix", "")).strip(), "LLM (перекрёстная проверка)"))
+
+
+def api_consistency(reqs: list[Requirement], doc: Document) -> list[SetFinding]:
+    """Детерминированная сверка API-спецификации: типы одного параметра в разных таблицах, коды ответа,
+    описанные под одним заголовком, но возвращаемые другие, и ошибка внутри успешного кода ответа."""
+    out: list[SetFinding] = []
+    # 1) один параметр — разные форматы (запрос vs ответ)
+    fmt_key = lambda e: next((e[k] for k in e if k.lower() in ("format", "формат", "тип", "type")), "")  # noqa: E731
+    name_key = lambda e: next((e[k] for k in e if k.lower() in ("parameter", "параметр", "поле", "field", "name")), "")  # noqa: E731
+    params: dict[str, list[Requirement]] = {}
+    for r in reqs:
+        n, f = name_key(r.extra).strip("`"), fmt_key(r.extra)
+        if n and f:
+            params.setdefault(n, []).append(r)
+    for n, rs in params.items():
+        fmts = {fmt_key(r.extra).lower() for r in rs}
+        if len(fmts) > 1:
+            a, b = rs[0], next(r for r in rs[1:] if fmt_key(r.extra).lower() != fmt_key(rs[0].extra).lower())
+            out.append(SetFinding(
+                "terminology", "set_consistent", [SetRef(a.rid, a.text[:60]), SetRef(b.rid, b.text[:60])],
+                f"Параметр «{n}» описан с разными форматами: {fmt_key(a.extra)} ({a.section}) и {fmt_key(b.extra)} "
+                f"({b.section}). Клиент и сервер по-разному сериализуют значение — ошибки разбора и сравнения.",
+                "major", f"Задать единый формат «{n}» во всех таблицах (например, integer) и пример ответа в том же формате.",
+                "правило"))
+    # 2) коды ответа: объявленные и фактически возвращаемые
+    declared = {m.group(1) for line in doc.lines for m in [re.match(r"^\s*(?:\*\*|#+\s*)(\d{3})\.", line.text)] if m}
+    for r in reqs:
+        for m in re.finditer(r"возвраща\w+\s+(\d{3})", r.text):
+            code = m.group(1)
+            sec = re.match(r"^(\d{3})\.", r.section or "")
+            q = _ctx(r.text, m.group(0))
+            if sec and sec.group(1) != code:
+                out.append(SetFinding(
+                    "contradiction", "set_consistent", [SetRef(r.rid, q)],
+                    f"Раздел ответа {sec.group(1)} («{r.section}») сообщает, что на самом деле возвращается {code}. Описанный "
+                    f"код {sec.group(1)} не используется, клиент не узнает, какой код обрабатывать.",
+                    "major", f"Оставить один код для этого случая и описать его в перечне статусов (например, только {code} "
+                             f"или только {sec.group(1)}), убрать противоречивый раздел.", "правило"))
+            elif declared and code not in declared:
+                out.append(SetFinding(
+                    "gap", "set_complete", [SetRef(r.rid, q)],
+                    f"Код {code} упоминается в логике, но отсутствует в перечне статусов ответа ({', '.join(sorted(declared))}).",
+                    "major", f"Добавить код {code} в перечень статусов с описанием и примером тела ответа.", "правило"))
+    # 3) ошибка внутри успешного кода ответа (пример «ERROR» в разделе 2xx)
+    code, in_fence = "", False
+    for ln in doc.lines:
+        t = ln.text.strip()
+        h = re.match(r"^#+\s*(\d{3})\b", t)
+        if h:
+            code = h.group(1)
+            continue
+        if t.startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence and code.startswith("2") and re.search(r'"result"\s*:\s*"(?:ERROR|FAIL\w*)"|"error"\s*:', t, re.I):
+            bad = next((r for r in reqs if re.match(r"^400\.", r.text)), None)
+            refs = [SetRef("DOC", t)] + ([SetRef(bad.rid, bad.text[:60])] if bad else [])
+            out.append(SetFinding(
+                "contradiction", "set_consistent", refs,
+                f"В разделе успешного ответа {code} приведён пример с ошибкой ({t[:60]}), а для неверных параметров "
+                "описан код 400. Непонятно, каким кодом сервис сообщает об отклонённой сумме — клиент может принять ошибку за успех.",
+                "critical", "Возвращать ошибку валидации суммы только кодом 400 с телом {\"message\": …}; в разделе 200 "
+                            "оставить только успешный ответ.", "правило"))
+            break
+    return out

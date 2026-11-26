@@ -137,6 +137,22 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
             f.severity == "critical" for rr in rv.req_results for f in rr.findings):
         # self-consistency: даже в fast критичные замечания перепроверяются вторым проходом (1 запрос)
         run_critic(rv, llm, log=log, only_critical=True)
+    # Шум: «не по шаблону / нет субъекта» к пунктам без ID (шаги логики, строки таблиц, критерии приёмки) — это одно
+    # системное свойство документа, а не дефект каждого пункта; оставляем существенные замечания, мелкие сворачиваем.
+    folded = 0
+    for rr in rv.req_results:
+        if rr.req.doc_id is None:
+            keep = []
+            for f in rr.findings:
+                if f.criterion == "conforming" and f.severity == "minor":
+                    rv.rejected.append({"where": rr.req.rid, "quote": f.quote, "problem": f.problem,
+                                        "reason": "свёрнуто: оформление пунктов без ID оценивается на уровне набора (трассируемость)"})
+                    folded += 1
+                else:
+                    keep.append(f)
+            rr.findings = keep
+    if folded:
+        log(f"  свёрнуто замечаний об оформлении пунктов без ID: {folded}")
     default_confidence(rv)
     # RAG: основания замечаний из базы знаний (стандарты, нормы РК, шаблоны). RAG=off или нет kb/ — пропускаем
     try:

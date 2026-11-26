@@ -27,6 +27,8 @@ class MockLLM(BaseLLM):
             return json.dumps(self._check(context), ensure_ascii=False)
         if task == "set":
             return json.dumps(self._set(context), ensure_ascii=False)
+        if task == "crosscheck":
+            return json.dumps({"findings": []}, ensure_ascii=False)
         if task == "critic":
             items = context["items"]
             return json.dumps({"verdicts": [{"n": it["n"], "verdict": "drop" if "[mock]" in it["problem"] and it["severity"] == "minor" else "keep",

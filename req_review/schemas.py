@@ -36,6 +36,10 @@ SCHEMAS = {
         "type": S, "criterion": S, "refs": arr(obj({"id": S, "quote": S}, ["id", "quote"])),
         "problem": S, "severity": SEVERITY, "fix": S,
     }, ["type", "criterion", "refs", "problem", "severity", "fix"]))}, ["findings"]),
+    "crosscheck": obj({"findings": arr(obj({
+        "type": S, "criterion": S, "refs": arr(obj({"id": S, "quote": S}, ["id", "quote"])),
+        "problem": S, "severity": SEVERITY, "fix": S,
+    }, ["refs", "problem", "severity"]))}, ["findings"]),
     "critic": obj({"verdicts": arr(obj({"n": N, "verdict": {"type": "STRING", "enum": ["keep", "downgrade", "drop"]},
                                         "reason": S}, ["n", "verdict"]))}, ["verdicts"]),
     "extras": obj({
