@@ -14,18 +14,23 @@ import tempfile
 import threading
 import time
 import uuid
+from collections.abc import Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, StreamingResponse
+from fastapi import Body, FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, StreamingResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from ..pipeline import PROFILES, ROOT, STEPS, Options, run
 from ..reader import SUPPORTED
 from .live import ObservedLLM, classify_error, demo_delay, provider_status
 
-MAX_BYTES = 20 * 1024 * 1024
+MAX_BYTES = 10 * 1024 * 1024  # лимит загрузки: 10 МБ
+STATIC = Path(__file__).parent / "static"
 JOBS_DIR = Path(tempfile.gettempdir()) / "reqlens-studio"
 SAMPLE = ROOT / "tests" / "fixtures" / "sample_requirements.md"
 ORDER = {"critical": 0, "major": 1, "minor": 2}
@@ -44,13 +49,18 @@ class Job:
     error: str = ""
     artifacts: dict = field(default_factory=dict)
     summary: dict = field(default_factory=dict)
+    mode: str = "llm"  # llm — модель из .env; rules — только детерминированные правила, без модели
+    base: Path | None = None  # папка прогона ReqLens App (история в data/); None — временная папка Studio
+    cancelled: bool = False
+    status: str = "queued"  # queued | running | done | error | cancelled
+    on_finish: Callable | None = field(default=None, repr=False)
 
     def push(self, kind: str, **data):
         self.events.append({"kind": kind, "t": time.time(), **data})
 
     @property
     def dir(self) -> Path:
-        return JOBS_DIR / self.id
+        return (self.base or JOBS_DIR) / self.id
 
     @property
     def json_path(self) -> Path:
@@ -58,6 +68,30 @@ class Job:
 
 
 JOBS: dict[str, Job] = {}
+
+
+class JobCancelled(Exception):
+    pass
+
+
+_SLOTS: threading.BoundedSemaphore | None = None
+_SLOTS_N = 0
+_SLOTS_LOCK = threading.Lock()
+
+
+def _slots() -> threading.BoundedSemaphore:
+    """Очередь прогонов: одновременно не больше MAX_JOBS (по умолчанию 2), остальные ждут «в очереди»."""
+    global _SLOTS, _SLOTS_N
+    n = max(1, int(os.getenv("MAX_JOBS", "2") or 2))
+    with _SLOTS_LOCK:
+        if _SLOTS is None or n != _SLOTS_N:
+            _SLOTS, _SLOTS_N = threading.BoundedSemaphore(n), n
+        return _SLOTS
+
+
+def queue_position(job: Job) -> int:
+    waiting = [j for j in JOBS.values() if j.status == "queued" and not j.done]
+    return next((i for i, j in enumerate(waiting, 1) if j.id == job.id), 0)
 DEMO = None  # DemoRun — режим «Демо» (python -m req_review.web --demo reports/report.json)
 
 
@@ -85,14 +119,80 @@ async def lifespan(_app):
     shutil.rmtree(JOBS_DIR, ignore_errors=True)  # загруженные документы не остаются на диске
 
 
-app = FastAPI(title="ReqLens Studio", docs_url=None, redoc_url=None, lifespan=lifespan)
+app = FastAPI(title="ReqLens App", version="1.0", lifespan=lifespan, docs_url="/docs", redoc_url=None,
+              description="ИИ-ревью требований по ISO/IEC/IEEE 29148 и IEEE 830: проекты, история проверок, "
+                          "сравнение версий документа, ассистент с источниками. Контракт — docs/API.md.")
+
+
+def _v1(request: Request) -> bool:
+    return request.url.path.startswith("/api/v1/")
+
+
+ERROR_CODES = {400: "bad_request", 404: "not_found", 409: "conflict", 413: "too_large", 415: "unsupported", 422: "invalid"}
+
+
+@app.exception_handler(StarletteHTTPException)
+async def _http_error(request: Request, exc: StarletteHTTPException):
+    """API v1 — единый формат ошибок {"error": {"code", "message"}}; старые /api/… — как раньше ({"detail"})."""
+    if not _v1(request):
+        if isinstance(exc.detail, dict) and "message" in exc.detail:  # старый формат: detail — строка
+            exc = StarletteHTTPException(exc.status_code, exc.detail["message"])
+        return await http_exception_handler(request, exc)
+    detail = exc.detail if isinstance(exc.detail, dict) else {"message": str(exc.detail or "Ошибка")}
+    body = {"code": detail.get("code") or ERROR_CODES.get(exc.status_code, "error"), "message": detail.get("message", "")}
+    body.update({k: v for k, v in detail.items() if k not in body})
+    return JSONResponse({"error": body}, status_code=exc.status_code)
+
+
+@app.exception_handler(RequestValidationError)
+async def _validation_error(request: Request, exc: RequestValidationError):
+    if not _v1(request):
+        return await request_validation_exception_handler(request, exc)
+    fields = [".".join(str(x) for x in e.get("loc", [])[1:]) for e in exc.errors()]
+    return JSONResponse({"error": {"code": "invalid", "message": "Неверные параметры запроса: " + ", ".join(fields)}},
+                        status_code=422)
 
 
 def _page() -> str:
     from ..ui import env
 
-    return env().get_template("studio.html.j2").render(steps=STEPS, profiles=list(PROFILES),
+    html = env().get_template("studio.html.j2").render(steps=STEPS, profiles=list(PROFILES),
                                                      formats=", ".join(sorted(SUPPORTED)))
+    # PWA: манифест и service worker подключаются здесь, чтобы не трогать шаблон дизайна (зона человека 2);
+    # когда теги появятся в studio.html.j2, вставка не повторится
+    if 'rel="manifest"' not in html:
+        html = html.replace("</head>", PWA_HEAD + "</head>", 1)
+    return html
+
+
+PWA_HEAD = ('<link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#1F6B45">'
+            '<link rel="icon" href="/static/icon.svg" type="image/svg+xml">'
+            '<script>if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("/sw.js")'
+            '.catch(()=>{}));</script>')
+
+
+@app.get("/manifest.webmanifest", include_in_schema=False)
+def manifest():
+    return FileResponse(STATIC / "manifest.webmanifest", media_type="application/manifest+json")
+
+
+@app.get("/sw.js", include_in_schema=False)
+def service_worker():
+    # service worker отдаётся из корня, чтобы его область действия охватывала всё приложение
+    return FileResponse(STATIC / "sw.js", media_type="text/javascript", headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/static/{name}", include_in_schema=False)
+def static(name: str):
+    allowed = {p.name for p in STATIC.iterdir() if p.is_file()} if STATIC.exists() else set()
+    if name not in allowed:
+        raise HTTPException(404)
+    return FileResponse(STATIC / name)
+
+
+@app.get("/offline", response_class=HTMLResponse, include_in_schema=False)
+def offline_page():
+    return (STATIC / "offline.html").read_text(encoding="utf-8")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -153,22 +253,44 @@ def _start(job: Job, src: Path, compare_with: Path | None = None) -> None:
             return observer["o"]
 
         def step(i, label=""):
+            if job.cancelled:
+                raise JobCancelled()
             if "o" in observer:
                 observer["o"].phase = i
-            job.push("step", i=i)
+            job.push("step", i=i, name=STEPS[i] if 0 <= i < len(STEPS) else label,
+                     pct=round(100 * i / len(STEPS)))
 
         def log(m):
+            if job.cancelled:
+                raise JobCancelled()
             job.push("log", msg=m)
             mm = re.search(r"выделено требований: (\d+)", m)
             if mm:
                 job.push("split", total=int(mm.group(1)))
 
+        slots = _slots()
+        acquired = False
         try:
-            batch = 4 if provider_status()["mock"] else int(os.getenv("LLM_BATCH_SIZE", "20"))
+            if not slots.acquire(blocking=False):
+                job.push("queued", position=queue_position(job))
+                while not slots.acquire(timeout=0.2):
+                    if job.cancelled:
+                        raise JobCancelled()
+            acquired = True
+            if job.cancelled:
+                raise JobCancelled()
+            job.status = "running"
+            job.push("started")
+            make_llm = None
+            if job.mode == "rules":
+                from ..rules_llm import RulesOnlyLLM
+
+                make_llm = RulesOnlyLLM
+            batch = 4 if provider_status()["mock"] or job.mode == "rules" else int(os.getenv("LLM_BATCH_SIZE", "20"))
             ctx = run(str(src), str(job.dir / "report.md"),
                       Options(profile=job.profile, domain=job.domain, batch_size=batch,
                               compare=str(compare_with) if compare_with else None),
-                      log=log, step=step, llm_wrap=wrap)
+                      log=log, step=step, llm_wrap=wrap, make_llm=make_llm)
             job.artifacts = {name: p.name for name, p in ctx.artifacts.items()}
             sc = ctx.scores
             crit = sum(1 for rr in ctx.rv.req_results for f in rr.findings if f.severity == "critical") + \
@@ -181,25 +303,87 @@ def _start(job: Job, src: Path, compare_with: Path | None = None) -> None:
 
                 job.summary["compare"] = diff_reports(json.loads(compare_with.read_text(encoding="utf-8")),
                                                       json.loads(job.json_path.read_text(encoding="utf-8")))
-            job.push("done", artifacts=job.artifacts, summary=job.summary)
+            job.status = "done"
+            if job.on_finish:
+                _finish(job)
+            job.push("done", artifacts=job.artifacts, summary=job.summary, pct=100)
+        except JobCancelled:
+            job.status, job.error = "cancelled", "Прогон отменён"
+            _finish(job)
+            job.push("cancelled", msg=job.error)
         except Exception as e:  # ошибка показывается пользователю, ключ в сообщения не попадает
-            job.error = str(e)[:500]
-            job.push("error", msg=job.error, code=classify_error(job.error))
+            job.status, job.error = "error", str(e)[:500]
+            _finish(job)
+            code = classify_error(job.error)
+            extra = {"fallback": "rules", "hint": "Квота модели исчерпана — можно запустить проверку без модели "
+                     "(только правила): размытые формулировки, плейсхолдеры, числа, правила API."} if code == "quota" else {}
+            job.push("error", msg=job.error, code=code, **extra)
         finally:
+            if acquired:
+                slots.release()
             job.done = True
 
     threading.Thread(target=work, daemon=True).start()
 
 
-async def _save_upload(file: UploadFile, d: Path) -> Path:
+def _finish(job: Job) -> None:
+    """Сохранить итог прогона в историю (ReqLens App) до события done/error — клиент сразу видит запись."""
+    if not job.on_finish:
+        return
+    try:
+        job.on_finish(job)
+    except Exception as e:  # история не должна ронять прогон
+        job.push("log", msg=f"история: не удалось сохранить результат ({e})")
+
+
+def sniff(ext: str, data: bytes) -> str | None:
+    """Проверка содержимого, а не только расширения: None — файл похож на заявленный формат, иначе причина отказа."""
+    if ext == ".pdf":
+        return None if data[:5] == b"%PDF-" else "Файл с расширением .pdf не является PDF"
+    if ext == ".docx":
+        import io
+        import zipfile
+
+        try:
+            with zipfile.ZipFile(io.BytesIO(data)) as z:
+                ok = "word/document.xml" in z.namelist()
+        except zipfile.BadZipFile:
+            ok = False
+        return None if ok else "Файл с расширением .docx не является документом Word"
+    # .md / .markdown / .txt — текст: без нулевых байтов, не исполняемый файл, архив или PDF под другим именем
+    if data.startswith((b"MZ", b"PK\x03\x04", b"%PDF", b"\x7fELF")) or b"\x00" in data[:65536]:
+        return "Файл не похож на текстовый документ"
+    chunk = data[:65536]
+    try:
+        chunk.decode("utf-8")
+        return None
+    except UnicodeDecodeError as e:
+        if e.start >= len(chunk) - 3:  # обрезали посреди символа UTF-8
+            return None
+    try:
+        chunk.decode("cp1251")
+        return None
+    except UnicodeDecodeError:
+        return "Не удалось прочитать текст: кодировка не UTF-8 и не Windows-1251"
+
+
+async def read_upload(file: UploadFile) -> tuple[str, bytes]:
     ext = Path(file.filename or "").suffix.lower()
     if ext not in SUPPORTED:
-        raise HTTPException(400, f"Формат {ext or '?'} не поддерживается. Допустимо: {', '.join(sorted(SUPPORTED))}")
-    data = await file.read()
+        raise HTTPException(400, {"code": "unsupported", "message": f"Формат {ext or '?'} не поддерживается. "
+                                  f"Допустимо: {', '.join(sorted(SUPPORTED))}"})
+    data = await file.read(MAX_BYTES + 1)
     if len(data) > MAX_BYTES:
-        raise HTTPException(413, "Файл больше 20 МБ")
+        raise HTTPException(413, {"code": "too_large", "message": f"Файл больше {MAX_BYTES // (1024 * 1024)} МБ"})
     if not data.strip():
-        raise HTTPException(400, "Файл пустой")
+        raise HTTPException(400, {"code": "empty", "message": "Файл пустой"})
+    if why := sniff(ext, data):
+        raise HTTPException(415, {"code": "unsupported", "message": why})
+    return ext, data
+
+
+async def _save_upload(file: UploadFile, d: Path) -> Path:
+    ext, data = await read_upload(file)
     d.mkdir(parents=True, exist_ok=True)
     src = d / ("input" + ext)
     src.write_bytes(data)
@@ -285,6 +469,18 @@ async def events(job_id: str):
     return StreamingResponse(gen(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
+@app.post("/api/jobs/{job_id}/cancel")
+def cancel(job_id: str):
+    """Отменить прогон: в очереди — сразу, в работе — на ближайшей границе шага (запрос к модели не прерывается)."""
+    job = JOBS.get(job_id)
+    if not job:
+        raise HTTPException(404, {"code": "not_found", "message": "Прогон не найден"})
+    if job.done:
+        raise HTTPException(409, {"code": "finished", "message": "Прогон уже завершён"})
+    job.cancelled = True
+    return {"job": job.id, "cancelling": True}
+
+
 @app.get("/jobs/{job_id}/{name}")
 def artifact(job_id: str, name: str):
     job = JOBS.get(job_id)
@@ -311,3 +507,8 @@ def main(argv: list[str] | None = None):
     port = int(os.getenv("STUDIO_PORT", "8000"))
     print(f"ReqLens Studio: http://{'localhost' if host in ('127.0.0.1', '0.0.0.0') else host}:{port}")
     uvicorn.run(app, host=host, port=port, log_level="warning")
+
+
+from .api_v1 import router as _v1_router  # noqa: E402 — API v1 использует Job и _start из этого модуля
+
+app.include_router(_v1_router)

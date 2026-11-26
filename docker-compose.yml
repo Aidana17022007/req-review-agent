@@ -8,7 +8,7 @@ services:
       - ./:/work
     working_dir: /work
 
-  # Веб-интерфейс:  docker compose up studio  →  http://localhost:8000
+  # Приложение (Studio + история):  docker compose up studio  →  http://localhost:8000
   studio:
     build: .
     image: reqlens
@@ -18,5 +18,8 @@ services:
     environment:
       STUDIO_HOST: 0.0.0.0
       STUDIO_PORT: "8000"
+      REQLENS_DATA: /data          # история проверок ReqLens App переживает перезапуск контейнера
+    volumes:
+      - ./data:/data
     ports:
       - "127.0.0.1:8000:8000"

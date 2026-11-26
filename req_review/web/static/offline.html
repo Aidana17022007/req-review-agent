@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ReqLens — нет интернета</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#1F6B45">
+<style>
+  :root { color-scheme: light dark; --brand: #1F6B45; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+         background: #F6F8F7; color: #14231B; }
+  @media (prefers-color-scheme: dark) { body { background: #0F1713; color: #E6EFEA; } }
+  main { max-width: 420px; padding: 32px 24px; text-align: center; }
+  img { width: 64px; height: 64px; }
+  h1 { font-size: 22px; margin: 16px 0 8px; }
+  p { margin: 0 0 20px; opacity: .8; }
+  a { display: inline-block; padding: 10px 18px; border-radius: 10px; background: var(--brand); color: #fff; text-decoration: none; }
+  a:focus-visible { outline: 3px solid #3FA06B; outline-offset: 2px; }
+</style>
+</head>
+<body>
+<main>
+  <img src="/static/icon.svg" alt="">
+  <h1>Нет интернета</h1>
+  <p>Новая проверка обращается к модели и требует сети. Уже открытые проверки и отчёты доступны из истории.</p>
+  <a href="/">Повторить</a>
+</main>
+</body>
+</html>
