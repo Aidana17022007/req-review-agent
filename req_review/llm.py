@@ -196,13 +196,20 @@ class GeminiLLM(BaseLLM):
         self.temperature = temperature
         self.base_url = (base_url or "https://generativelanguage.googleapis.com/v1beta").rstrip("/")
         self.fallback_models = [m for m in (fallback or []) if m and m != model]
+        self.schema_off: dict[str, bool] = {}  # модели, не принявшие responseSchema
 
     def _call(self, system, prompt, *, task, context):
         url = f"{self.base_url}/models/{self.model}:generateContent"
+        gen = {"temperature": self.temperature, "responseMimeType": "application/json"}
+        from .schemas import SCHEMAS
+
+        use_schema = task in SCHEMAS and os.getenv("GEMINI_RESPONSE_SCHEMA", "1") != "0" and not self.schema_off.get(self.model)
+        if use_schema:
+            gen["responseSchema"] = SCHEMAS[task]  # официальная схема ответа (R3)
         body = {
             "systemInstruction": {"parts": [{"text": system}]},
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": self.temperature, "responseMimeType": "application/json"},
+            "generationConfig": gen,
         }
         try:
             r = requests.post(url, json=body, headers={"x-goog-api-key": self.api_key}, timeout=self.timeout)
@@ -210,6 +217,10 @@ class GeminiLLM(BaseLLM):
             raise RetryableError(f"сетевая ошибка: {e}")
         if r.status_code in (429, 500, 502, 503, 504):
             raise RetryableError(f"HTTP {r.status_code}", _retry_delay_from_body(r.text))
+        if r.status_code == 400 and use_schema and "schema" in r.text.lower():
+            # модель не принимает схему — откат на обычный JSON-режим (+ ремонт), повтор без задержки
+            self.schema_off[self.model] = True
+            raise RetryableError("схема ответа не поддерживается моделью — повтор в JSON-режиме", 0.01)
         if r.status_code != 200:
             raise LLMFatalError(f"Gemini HTTP {r.status_code}: {r.text[:500]}")
         data = r.json()

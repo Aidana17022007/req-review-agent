@@ -135,25 +135,55 @@ HTML = """<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name=
 </main></body></html>"""
 
 
-def main():
+def run_once(truth: dict, llm, rag: str) -> dict:
+    import os
+
+    os.environ["RAG"] = rag
+    parts = []
+    for name, t in truth["documents"].items():
+        print(f"[{name}] RAG={rag}: проверка bench/out/{name}_seeded.md")
+        rv = review_document(HERE / "out" / f"{name}_seeded.md", llm, Options(profile="fast", domain="none"),
+                             log=lambda m: print("   " + m))
+        parts.append(evaluate(rv, t, name))
+        parts[-1]["basis"] = sum(1 for rr in rv.req_results for f in rr.findings if getattr(f, "basis", None))
+    res = summarize(parts)
+    res["basis"] = sum(p["basis"] for p in parts)
+    return res
+
+
+def main(argv: list[str] | None = None):
+    import argparse
+
     for s in (sys.stdout, sys.stderr):
         try:
             s.reconfigure(encoding="utf-8")
         except Exception:
             pass
+    ap = argparse.ArgumentParser(prog="python bench/run.py")
+    ap.add_argument("--rag", choices=["on", "off", "both"], default="on",
+                    help="с базой знаний (on), без неё (off) или сравнить оба режима (both)")
+    a = ap.parse_args(argv)
     load_dotenv(ROOT / ".env")
     from inject import build_all
 
     truth = build_all()
     llm = build_llm_from_env()
-    parts = []
-    for name, t in truth["documents"].items():
-        print(f"[{name}] проверка bench/out/{name}_seeded.md")
-        rv = review_document(HERE / "out" / f"{name}_seeded.md", llm, Options(profile="fast", domain="none"),
-                             log=lambda m: print("   " + m))
-        parts.append(evaluate(rv, t, name))
-    res = summarize(parts)
-    write_results(res, llm.label, agent_version())
+    modes = ["off", "on"] if a.rag == "both" else [a.rag]
+    results = {m: run_once(truth, llm, m) for m in modes}
+    res = results[modes[-1]]
+    write_results(res, llm.label + f" · RAG={modes[-1]}", agent_version())
+    if a.rag == "both":
+        off, on = results["off"], results["on"]
+        pct = lambda x: f"{round(100 * x)} %"  # noqa: E731
+        extra = ["", "## С базой знаний и без", "", "| Метрика | Без RAG | С базой знаний (RAG) |", "|---|---|---|",
+                 f"| Recall | {pct(off['recall'])} | {pct(on['recall'])} |",
+                 f"| Precision | {pct(off['precision'])} | {pct(on['precision'])} |",
+                 f"| F1 | {pct(off['f1'])} | {pct(on['f1'])} |",
+                 f"| Замечаний с основанием из kb/ | {off['basis']} | {on['basis']} |", "",
+                 "RAG не меняет сами замечания на коротких документах (контекст — полный текст); он добавляет основания "
+                 "(пункт стандарта / норма РК) и шаблоны правок, а на длинных документах сокращает запросы."]
+        with open(HERE / "RESULTS.md", "a", encoding="utf-8") as fh:
+            fh.write("\n".join(extra) + "\n")
     print(f"Recall {res['recall']:.0%} ({res['tp']}/{res['total']}) · Precision {res['precision']:.0%} · F1 {res['f1']:.0%} "
           f"→ bench/RESULTS.md, bench/results.html · обращений к модели: {llm.stats.calls}, из кэша: {llm.stats.cached}")
 

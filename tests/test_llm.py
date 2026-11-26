@@ -87,3 +87,21 @@ def test_overloaded_model_falls_back(monkeypatch):
     assert g.generate_json("s", "p") == {"ok": 1}
     assert used[-1] == "lite-model" and g.model == "lite-model"
     assert g.stats.switches and "main-model → lite-model" in g.stats.switches[0]
+
+
+def test_response_schema_sent_and_fallback_on_rejection(monkeypatch):
+    """responseSchema уходит для известных задач; если модель её отвергает (400 …schema…) — повтор в JSON-режиме."""
+    bodies = []
+
+    def fake_post(url, json=None, headers=None, timeout=None):
+        bodies.append(json)
+        if "responseSchema" in json["generationConfig"]:
+            return Resp(400, {"error": {"message": "Invalid JSON payload: responseSchema not supported"}})
+        return Resp(200, {"candidates": [{"content": {"parts": [{"text": '{"verdicts": []}'}]}}]})
+
+    monkeypatch.setattr(llm_mod.requests, "post", fake_post)
+    monkeypatch.setattr(llm_mod.time, "sleep", lambda s: None)
+    g = GeminiLLM(api_key="k", model="m")
+    assert g.generate_json("s", "p", task="critic") == {"verdicts": []}
+    assert "responseSchema" in bodies[0]["generationConfig"] and "responseSchema" not in bodies[-1]["generationConfig"]
+    assert g.schema_off.get("m") is True

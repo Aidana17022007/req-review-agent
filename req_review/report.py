@@ -68,6 +68,11 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
       + (f", из кэша: {cached}" if cached else "") + ") |")
     if ctx is not None:
         w(f"| Профиль / режим | {ctx.passport['profile']} / {ctx.passport['mode']} |")
+        cx, rg = ctx.passport.get("context") or {}, ctx.passport.get("rag") or {}
+        if cx:
+            w(f"| Контекст запросов | {cx['mode']} · ≈{cx['avg_prompt_tokens']} токенов на запрос (документ {cx['doc_chars']} симв.) |")
+        if rg.get("kb_chunks"):
+            w(f"| База знаний (RAG) | {rg['kb_chunks']} фрагментов · поиск: {rg['search']} · основания у {rg['basis']} замечаний |")
         w(f"| Критик-агент | {'включён' if rv.critic_used else 'выключен (профиль fast)'} |")
         w(f"| **Балл документа** | **{sc.doc_score} / 100** `{bar(sc.doc_score)}` |")
         w(f"| **Готовность к разработке** | **{sc.readiness} %** `{bar(sc.readiness)}` |")
@@ -255,6 +260,20 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
         w("|---|---|")
         for k, v in sc.radar_req.items():
             w(f"| {INDIVIDUAL[k][0]} | `{bar(v)}` |")
+        w("")
+    if getattr(rv, "categories", None):
+        from .categories import CATEGORIES
+
+        w("**Требования по категориям:** " + " · ".join(f"{CATEGORIES.get(k, k)} — {v}" for k, v in
+                                                       sorted(rv.categories.items(), key=lambda x: -x[1])))
+        w("")
+    if getattr(rv, "coverage", None):
+        w("**Покрытие типового процесса:**")
+        w("")
+        w("| Шаг процесса | Покрыт | Требования |")
+        w("|---|---|---|")
+        for s in rv.coverage:
+            w(f"| {s['title']} | {'✅ да' if s['covered'] else '🔴 нет'} | {', '.join(s['reqs'][:8]) or '—'} |")
         w("")
     w("**Нарушения по критериям:**")
     w("")

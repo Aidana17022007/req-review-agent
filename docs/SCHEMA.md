@@ -1,6 +1,20 @@
 # Формат report.json (контракт backend ↔ UI)
 
-Версия схемы: **2.1**. Правило: изменения только добавляющие — поля 2.0 не переименовываются и не удаляются.
+Версия схемы: **2.2**. Правило: изменения только добавляющие — поля 2.0 не переименовываются и не удаляются.
+
+## Что добавлено в 2.2 (RAG и аналитика)
+
+| Поле | Где | Описание |
+|---|---|---|
+| `requirements[].findings[].basis[]` | замечание | основания из базы знаний `kb/`: `{"source","section","quote","url","kind","license","file"}`; `quote` — дословный фрагмент файла `kb/` (проверяется кодом) |
+| `set_findings[].basis[]` | замечание набора | то же для замечаний к набору |
+| `requirements[].rewrite_pattern` | требование | шаблон хорошего требования из `kb/patterns`, на который опирается правка: `{"id","title","template","file"}` |
+| `requirements[].category` | требование | functional / performance / availability / security / data / interface / integration / regulatory / acceptance / other |
+| `categories` | корень | число требований по категориям |
+| `coverage_map[]` | корень | шаги типового процесса домена: `{"id","title","reqs","covered","question"}` |
+| `passport.rag` | паспорт | `{"kb_chunks","search","embedder","basis","law","patterns"}` или `{"enabled": false}` |
+| `passport.context` | паспорт | `{"mode": "полный текст" \| "RAG-выборка", "avg_prompt_tokens", "doc_chars"}` |
+| `passport.model_switches[]` | паспорт | переключения на резервную модель при 503 |
 
 ## Что добавлено в 2.1
 

@@ -83,6 +83,8 @@ class ReviewResult:
     critic_used: bool = False
     critic_scope: str = ""  # "all" | "critical" (self-consistency в профиле fast)
     rag: dict = field(default_factory=dict)  # статистика базы знаний: число оснований, режим поиска
+    categories: dict = field(default_factory=dict)  # {категория: число требований}
+    coverage: list = field(default_factory=list)  # карта покрытия шагов процесса домена
 
 
 # ---------------------------------------------------------------- промпты
@@ -114,7 +116,8 @@ ISO/IEC/IEEE 29148:2018 п. 5.2.5 и IEEE Std 830-1998 п. 4.3:
    граничный — если в тексте есть порог, лимит или условие ошибки), у каждого title и gherkin. Если нельзя (нет измеримого критерия, открытый список, TBD,
    субъективная оценка) — possible=false, reason (почему) и blocker_quote — ДОСЛОВНЫЙ фрагмент, который мешает.
 10. Пиши на русском языке. Верни ТОЛЬКО JSON по схеме:
-{{"results":[{{"id":"R-001","ears":"event","findings":[{{"criterion":"<ключ критерия>","quote":"...","problem":"...","severity":"critical|major|minor","fix":"..."}}],"dismissed_hints":["..."],"suggested_rewrite":"...","test":{{"possible":true,"scenarios":[{{"title":"...","gherkin":"Дано ...\\nКогда ...\\nТогда ..."}}],"reason":"","blocker_quote":""}}}}]}}
+category — тип требования: functional | performance | availability | security | data | interface | integration | regulatory | acceptance | other.
+{{"results":[{{"id":"R-001","ears":"event","category":"functional","findings":[{{"criterion":"<ключ критерия>","quote":"...","problem":"...","severity":"critical|major|minor","fix":"..."}}],"dismissed_hints":["..."],"suggested_rewrite":"...","test":{{"possible":true,"scenarios":[{{"title":"...","gherkin":"Дано ...\\nКогда ...\\nТогда ..."}}],"reason":"","blocker_quote":""}}}}]}}
 Ключи критериев: {", ".join(INDIVIDUAL)}."""
 
 SYSTEM_SET = f"""Ты — опытный аналитик требований. Проведи статическое ревью НАБОРА требований целиком по критериям
@@ -263,6 +266,7 @@ def check_requirements(reqs: list[Requirement], doc: Document, llm: BaseLLM, bat
         if item:
             res.rewrite = str(item.get("suggested_rewrite", "") or "").strip()
             res.ears = str(item.get("ears", "") or "").strip().lower()
+            res.category = str(item.get("category", "") or "").strip().lower()
             _apply_test_probe(res, item.get("test") or {}, dropped)
         # срабатывания правил, которые модель не покрыла и не отклонила
         for h in hints_by_req[r.rid]:
@@ -348,7 +352,10 @@ def deterministic_set_checks(split: SplitResult, doc: Document) -> list[SetFindi
             a, b = norm(reqs[i].text), norm(reqs[j].text)
             if min(len(a), len(b)) < 25:
                 continue
-            ratio = difflib.SequenceMatcher(None, a, b).ratio()
+            sm = difflib.SequenceMatcher(None, a, b)
+            if sm.real_quick_ratio() < 0.85 or sm.quick_ratio() < 0.85:  # дешёвые верхние оценки — для длинных документов
+                continue
+            ratio = sm.ratio()
             if ratio >= 0.85:
                 out.append(SetFinding("duplicate", "set_consistent",
                                       [SetRef(reqs[i].rid, reqs[i].text[:100]), SetRef(reqs[j].rid, reqs[j].text[:100])],

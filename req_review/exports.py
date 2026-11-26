@@ -76,6 +76,8 @@ def to_json(ctx) -> dict:
         } for rr in rv.req_results],
         "set_findings": [_set_json(f, rv.doc, by_rid, offsets) for f in rv.set_findings],
         "domain": asdict(rv.domain) if rv.domain else None,
+        "categories": getattr(rv, "categories", {}),
+        "coverage_map": getattr(rv, "coverage", []),
         "glossary": asdict(rv.glossary) if rv.glossary else None,
         "questions": [asdict(q) for q in ctx.questions],
         "changes": [asdict(c) for c in ctx.changes],

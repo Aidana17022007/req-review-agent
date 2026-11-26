@@ -11,8 +11,12 @@ the a an of to in for and or is are be""".split())
 
 
 def tokens(text: str) -> list[str]:
-    """Токены с грубым стеммингом (первые 6 букв) — устойчиво к русским окончаниям без внешних библиотек."""
-    return [w[:6] for w in re.findall(r"[а-яёa-z0-9]+", text.lower().replace("ё", "е")) if w not in STOP and len(w) > 1]
+    """Токены с грубым стеммингом (отрезаем окончание, оставляя 4–6 букв) — «аудит/аудита», «порог/порога» совпадают."""
+    return [_stem(w) for w in re.findall(r"[а-яёa-z0-9]+", text.lower().replace("ё", "е")) if w not in STOP and len(w) > 1]
+
+
+def _stem(w: str) -> str:
+    return w if len(w) <= 4 or w.isdigit() else w[:max(4, min(6, len(w) - 2))]
 
 
 class BM25:
