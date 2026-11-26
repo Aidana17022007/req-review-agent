@@ -443,10 +443,34 @@ def missing_default(reqs: list[Requirement], doc: Document) -> list[SetFinding]:
         "чтения возвращает amount = null» — или конкретное значение по умолчанию.", "правило")]
 
 
+_REFUND = re.compile(r"возврат\w*[^.\n]{0,80}(?:уменьша\w*|вычита\w*|учитыва\w*|снижа\w*|корректиру\w*)", re.I)
+_REFUND_EDGE = re.compile(r"частичн\w* возврат|возврат\w*[^.\n]{0,60}(?:частичн|друг\w* месяц|следующ\w* месяц|после отправ|"
+                          r"уже отправ|ниже порог)", re.I)
+_TRIGGER = re.compile(r"порог\w*|лимит\w*|\bpush\b|уведомлени\w*", re.I)
+
+
+def refund_edges(reqs: list[Requirement], doc: Document) -> list[SetFinding]:
+    """Возврат меняет накопленную сумму, от которой зависит срабатывание (порог, уведомление), но граничные случаи
+    не описаны: частичный возврат, возврат в другом месяце, возврат после отправленного уведомления."""
+    r = next((r for r in reqs if _REFUND.search(r.text)), None)
+    if r is None or not any(_TRIGGER.search(x.text) for x in reqs if x is not r) or any(_REFUND_EDGE.search(ln.text) for ln in doc.lines):
+        return []
+    q = _REFUND.search(r.text).group(0)
+    return [SetFinding(
+        "gap", "set_complete", [SetRef(r.rid, _ctx(r.text, q))],
+        f"Возврат меняет сумму, от которой зависит срабатывание порога («{q}»), но граничные случаи возвратов не "
+        "описаны: частичный возврат, возврат в другом месяце (прошлый месяц уже закрыт?), возврат после отправленного "
+        "уведомления — отзывается ли push, отправляется ли он снова, если сумма опустилась ниже порога и снова его "
+        "достигла. Разработчик и тестировщик решат эти случаи по-разному.", "major",
+        "Добавить правила и примеры приёмки: «Частичный возврат уменьшает расходы на сумму возврата; push, уже "
+        "отправленный в этом месяце, не отзывается и повторно не отправляется; возврат по покупке прошлого месяца "
+        "меняет только счётчик того месяца».", "правило")]
+
+
 def completeness_rules(reqs: list[Requirement], doc: Document) -> list[SetFinding]:
     """Детерминированные проверки полноты v5 (подключаются в checker.deterministic_set_checks)."""
     out: list[SetFinding] = []
-    for fn in (limit_vs_exception, api_codes_and_body, session_lifecycle, missing_default, unit_mix, nfr_metric,
+    for fn in (limit_vs_exception, api_codes_and_body, session_lifecycle, missing_default, refund_edges, unit_mix, nfr_metric,
                state_after_error, message_texts, acceptance_preconditions, template_unfilled):
         out.extend(fn(reqs, doc))
     return out

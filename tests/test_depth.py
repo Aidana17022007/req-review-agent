@@ -16,6 +16,7 @@ from req_review.depth import (
     missing_default,
     missing_read_method,
     nfr_metric,
+    refund_edges,
     session_lifecycle,
     state_after_error,
     template_unfilled,
@@ -230,7 +231,7 @@ def test_completeness_rules_on_organizers_document():
     doc = read_document(REAL)
     s = split_requirements(doc)
     for fn in (nfr_metric, state_after_error, message_texts, acceptance_preconditions, template_unfilled, unit_mix,
-               limit_vs_exception, session_lifecycle, missing_default):
+               limit_vs_exception, session_lifecycle, missing_default, refund_edges):
         found = fn(s.requirements, doc)
         assert len(found) == 1, fn.__name__
         assert _quotes_ok(found, s, doc), fn.__name__
@@ -449,3 +450,12 @@ def test_real_eval_counts_and_writes_results_section(tmp_path, monkeypatch):
     real_eval.write_section([("v5", res)])
     text = (tmp_path / "RESULTS.md").read_text(encoding="utf-8")
     assert text.startswith("# Бенчмарк") and text.count(real_eval.SECTION) == 1 and "| **Найдено** |" in text
+
+
+def test_refund_edges_described_is_not_flagged(tmp_path):
+    base = ("# Д\n\n## Функциональные требования\n- **Ф-1.** Возврат уменьшает расходы месяца исходной покупки.\n"
+            "- **Ф-2.** При достижении порога клиент получает push.\n")
+    d1, s1 = _doc(tmp_path, base, "a.md")
+    d2, s2 = _doc(tmp_path, base + "- **Ф-3.** Частичный возврат уменьшает расходы на сумму возврата; push не отзывается.\n", "b.md")
+    assert len(refund_edges(s1.requirements, d1)) == 1 and _quotes_ok(refund_edges(s1.requirements, d1), s1, d1)
+    assert refund_edges(s2.requirements, d2) == []
