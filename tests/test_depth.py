@@ -911,3 +911,25 @@ def test_fix_plan_titles_are_not_cut_mid_word(tmp_path, monkeypatch):
         assert "\ufffd" not in t and (len(t) <= 140 or t.endswith("…")), t
     assert d["passport"]["code"]["commit"] and "cached" in d["passport"]
     assert "Подлинность прогона" in out.read_text(encoding="utf-8")
+
+
+def test_external_annotation_scoring_by_location_and_class():
+    """Внешняя разметка: дефект найден, если цитата замечания в отмеченных строках (±1) и критерий совместим с классом;
+    замечания агента вне разметки выводятся для ручной оценки precision. Формулировки не сравниваются."""
+    import sys
+
+    sys.path.insert(0, str(ROOT / "bench" / "external"))
+    import score
+
+    rep = {"requirements": [], "set_findings": [
+        {"criterion": "set_consistent", "severity": "critical", "problem": "Ф-3 и Ф-4 противоречат.",
+         "refs": [{"quote": "максимум один такой push за календарный месяц"}, {"quote": "независимо от истории"}]},
+        {"criterion": "set_complete", "severity": "major", "problem": "Нет метода чтения.", "refs": [{"quote": "Сохранение порога"}]}]}
+    ann = {"document": "bench/real/notifications.md", "annotator": "тест", "defects": [
+        {"lines": [39, 40], "class": "contradiction", "severity": "critical"},
+        {"lines": [39], "class": "compound", "severity": "minor"},
+        {"lines": [57], "class": "structure", "severity": "major"}]}
+    res = score.score(ann, rep)
+    assert [r["found"] for r in res["rows"]] == [True, False, False]
+    assert res["found"] == 1 and [f["id"] for f in res["agent_only"]] == ["S-02"]
+    assert "Пропуски агента" in score.to_md(res)

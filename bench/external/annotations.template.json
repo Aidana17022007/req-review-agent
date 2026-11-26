@@ -1,0 +1,8 @@
+{
+  "document": "bench/real/notifications.md",
+  "annotator": "",
+  "date": "",
+  "defects": [
+    {"lines": [39, 40], "class": "contradiction", "severity": "critical", "note": "пример: своими словами, что не так"}
+  ]
+}
