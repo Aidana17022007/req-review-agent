@@ -2,6 +2,8 @@
 
 Запуск:  python bench/real_eval.py reports/report.json [ещё.json …]
          python bench/real_eval.py --run                — прогнать агента (модель из .env) и оценить результат
+         python bench/real_eval.py v4.json v5.json --results   — дописать таблицу в bench/RESULTS.md
+Подпись колонки — имя файла; «имя=путь.json» задаёт свою подпись (например, v4=reports/v4.json).
 Совпадение ищется регулярными выражениями по тексту проблемы и рекомендации замечаний (не по цитате документа):
 «нашёл ли агент эту проблему». Список дефектов составлен командой своими словами — см. поле note в JSON.
 """
@@ -71,14 +73,37 @@ def main(argv: list[str]) -> int:
         return 2
     results = []
     for p in paths:
+        name, _, p = p.rpartition("=") if "=" in p else ("", "", p)
         rep = json.loads(Path(p).read_text(encoding="utf-8"))
         res = evaluate(rep)
-        results.append((Path(p).stem if len(paths) > 1 else "отчёт", res))
+        results.append((name or (Path(p).stem if len(paths) > 1 else "отчёт"), res))
         print(f"{p}: {res['found']}/{res['total']} ({round(100 * res['recall'])} %), критичных {res['critical_found']}/"
               f"{res['critical_total']}, замечаний {res['findings']} · {res['model']}")
     print()
     print(table(results))
+    if "--results" in argv:
+        write_section(results)
     return 0
+
+
+SECTION = "## Реальный документ организаторов (bench/real_eval.py)"
+
+
+def write_section(results: list[tuple[str, dict]]) -> None:
+    """Раздел в bench/RESULTS.md: какие из 26 ожидаемых дефектов документа организаторов найдены каждой версией."""
+    from datetime import datetime
+
+    out = HERE / "RESULTS.md"
+    text = out.read_text(encoding="utf-8") if out.exists() else ""
+    if SECTION in text:
+        text = text[:text.index(SECTION)].rstrip() + "\n"
+    lines = ["", SECTION, "", f"*Дата:* {datetime.now():%Y-%m-%d %H:%M}. Документ — `bench/real/notifications.md`; 26 ожидаемых "
+             "дефектов составлены командой своими словами (`bench/real/notifications.json`), совпадение ищется по тексту "
+             "проблемы и рекомендации замечания.", ""]
+    for name, r in results:
+        lines.append(f"- **{name}**: {r['model']} · агент {r['version']} · замечаний {r['findings']}")
+    lines += ["", table(results), ""]
+    out.write_text(text + "\n".join(lines) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

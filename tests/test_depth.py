@@ -323,23 +323,30 @@ def test_critic_merges_duplicates_and_calibrates(tmp_path):
                      "Добавить метод.", "LLM (проход полноты)")
     other = SetFinding("gap", "set_validatable", [SetRef("DOC", "в течение минуты")], "НФТ без перцентиля.", "minor", "—", "LLM")
     low = SetFinding("structure", "set_complete", [SetRef("DOC", "Сохранение порога")], "Шаблон.", "major", "—", "правило")
-    rv = ReviewResult(doc=doc, split=s, req_results=[], set_findings=[rule, dup, other, low], dropped=[])
+    from req_review.checker import Finding, ReqResult
+
+    r0 = s.requirements[0]
+    req_f = Finding(r0.rid, "complete", r0.text[:10], "Нет метода чтения (к требованию).", "major", "—", "LLM")
+    rv = ReviewResult(doc=doc, split=s, req_results=[ReqResult(r0, [req_f])], set_findings=[rule, dup, other, low], dropped=[])
 
     class Fake(BaseLLM):
         provider, model = "fake", "fake"
 
         def generate_json(self, system, prompt, *, task="", context=None):
             assert "merge" in system
-            return {"verdicts": [{"n": 1, "verdict": "keep", "severity": "critical"},
-                                 {"n": 2, "verdict": "merge", "into": 1, "reason": "та же проблема"},
-                                 {"n": 3, "verdict": "keep", "severity": "major"},
-                                 {"n": 4, "verdict": "keep", "severity": "minor"}]}
+            # n=1 — замечание к требованию (идёт первым), n=2..5 — замечания набора
+            return {"verdicts": [{"n": 1, "verdict": "merge", "into": 2, "reason": "к требованию — не объединяется"},
+                                 {"n": 2, "verdict": "keep", "severity": "critical"},
+                                 {"n": 3, "verdict": "merge", "into": 2, "reason": "та же проблема"},
+                                 {"n": 4, "verdict": "keep", "severity": "major"},
+                                 {"n": 5, "verdict": "keep", "severity": "minor"}]}
 
     run_critic(rv, Fake(), log=lambda *a: None)
     assert [f.problem for f in rv.set_findings] == ["Нет метода чтения.", "НФТ без перцентиля.", "Шаблон."]
     assert rv.set_findings[0].source == "правило+LLM (проход полноты)" and rv.set_findings[0].confidence == "high"
     assert rv.set_findings[1].severity == "major"  # калибровка повысила LLM-замечание
     assert rv.set_findings[2].severity == "major"  # правило калибровкой не понижается
+    assert rv.req_results[0].findings == [req_f]  # замечание к требованию осталось на месте
     rej = [r for r in rv.rejected if r.get("duplicate_of")]
     assert len(rej) == 1 and rej[0]["reason"].startswith("дубль S-01") and rv.critic_merged == 1
 
@@ -421,3 +428,24 @@ def test_missing_default_described_is_not_flagged(tmp_path):
     d2, s2 = _doc(tmp_path, base + "- **Ф-2.** По умолчанию порог равен 50 000 ₸.\n", "b.md")
     assert len(missing_default(s1.requirements, d1)) == 1
     assert missing_default(s2.requirements, d2) == []
+
+
+def test_real_eval_counts_and_writes_results_section(tmp_path, monkeypatch):
+    """real_eval: дефект засчитывается по тексту проблемы; раздел в RESULTS.md заменяется, а не дублируется."""
+    import sys
+
+    sys.path.insert(0, str(ROOT / "bench"))
+    import real_eval
+
+    rep = {"passport": {"model": "m", "agent_version": "v"}, "requirements": [],
+           "set_findings": [{"problem": "В API нет метода чтения настроек", "fix": ""},
+                            {"problem": "Не описан контракт события процессинга", "fix": ""}]}
+    res = real_eval.evaluate(rep)
+    found = {r["id"] for r in res["rows"] if r["found"]}
+    assert {"N14", "N15"} <= found and res["total"] == 26
+    monkeypatch.setattr(real_eval, "HERE", tmp_path)
+    (tmp_path / "RESULTS.md").write_text("# Бенчмарк\n", encoding="utf-8")
+    real_eval.write_section([("v5", res)])
+    real_eval.write_section([("v5", res)])
+    text = (tmp_path / "RESULTS.md").read_text(encoding="utf-8")
+    assert text.startswith("# Бенчмарк") and text.count(real_eval.SECTION) == 1 and "| **Найдено** |" in text
