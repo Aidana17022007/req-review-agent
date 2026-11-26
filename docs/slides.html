@@ -775,12 +775,12 @@ html,body{height:100%;overflow:hidden}
     <div class="caption">Метрики · бенчмарк на документе с известными дефектами</div>
     <h2 class="k2">Точность измеряется, а не обещается</h2>
     <div class="cols c4">
-      <div class="card hero"><div class="caption" style="color:rgba(255,255,255,.85)">Recall</div><div class="metric-big" style="color:#fff">—</div><p class="small muted">появится после прогона на модели</p></div>
-      <div class="card"><div class="caption">Precision</div><div class="metric-big">—</div><p class="small muted">доля верных существенных замечаний</p></div>
-      <div class="card"><div class="caption">F1</div><div class="metric-big">—</div><p class="small muted">гармоническое среднее</p></div>
-      <div class="card"><div class="caption">Ложные срабатывания</div><div class="metric-big">—</div><p class="small muted">появится после прогона на модели</p></div>
+      <div class="card hero"><div class="caption" style="color:rgba(255,255,255,.85)">Recall</div><div class="metric-big" style="color:#fff">93%</div><p class="small muted">найдено 38 из 41 внедрённых дефектов</p></div>
+      <div class="card"><div class="caption">Precision</div><div class="metric-big">97%</div><p class="small muted">доля верных существенных замечаний</p></div>
+      <div class="card"><div class="caption">F1</div><div class="metric-big">95%</div><p class="small muted">гармоническое среднее</p></div>
+      <div class="card"><div class="caption">Ложные срабатывания</div><div class="metric-big">1</div><p class="small muted">существенных замечаний к 15 заведомо чистым требованиям</p></div>
     </div>
-    <p class="lead small">Бенчмарк на модели ещё не запускался (есть только mock-прогон словарных правил). Источник: <code class="mono">bench/RESULTS.md</code>, воспроизводится командой <code class="mono">python bench/run.py</code>.</p>
+    <p class="lead small">Модель: gemini / gemini-3.5-flash-lite. Источник: <code class="mono">bench/RESULTS.md</code>, воспроизводится командой <code class="mono">python bench/run.py</code>.</p>
   </section>
 
   <!-- 8. Отличие от конкурентов -->
