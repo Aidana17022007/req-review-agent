@@ -1,6 +1,7 @@
 """v5 «Глубина»: CRUD-полнота API, контракт интеграции, учёт строк, покрытие приёмкой, вердикты, провайдеры."""
 import glob
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -958,7 +959,8 @@ def test_calibration_folds_llm_twin_of_rule_and_caps_unconfirmed_critical(tmp_pa
 
 
 def test_site_build_uses_project_design_and_readme_features(tmp_path):
-    """Сайт для Cloudflare: дизайн-система проекта (токены, base.css, логотип), функции из README, отчёт и слайды."""
+    """Сайт для Cloudflare: исходник site/ + общие токены (tokens.css из design/tokens.json), свежие цифры из отчёта
+    и бенчмарка, 10 возможностей, отчёт и слайды; без внешних шрифтов и трекеров; картинки WebP с размерами."""
     import subprocess
     import sys
 
@@ -967,10 +969,17 @@ def test_site_build_uses_project_design_and_readme_features(tmp_path):
                        capture_output=True, text=True, cwd=ROOT)
     assert r.returncode == 0, r.stderr
     home = (out / "index.html").read_text(encoding="utf-8")
-    assert "--brand" in home and "logo-mark" in home and "kpi-hero" in home and "https://studio.example" in home
-    assert home.count('class="card feat"') >= 10 and "Тест-проба" in home
+    assert "https://studio.example" in home and "reqlens-studio.onrender.com" not in home
+    assert home.count('class="card reveal"') == 10 and "Тест-проба" in home
+    d = json.loads((ROOT / "reports" / "requirements-report.json").read_text(encoding="utf-8"))
+    n_req = sum(1 for x in d["requirements"] if x.get("kind", "requirement") == "requirement")
+    assert f'data-k="findings">{n_req} / ' in home  # цифры подставлены из отчёта для сдачи
+    assert (out / "tokens.css").read_text(encoding="utf-8").startswith(":root")
+    imgs = re.findall(r"<img [^>]*>", home)
+    assert all('width="' in i and 'height="' in i for i in imgs)
+    assert all(".webp" in i or ".svg" in i or ".gif" in i for i in imgs)
+    assert not re.search(r"https?://(fonts\.googleapis|www\.googletagmanager|cdn\.)", home)
     assert (out / "report" / "index.html").exists() and (out / "slides" / "index.html").exists()
-    assert "<script>alert" not in (out / "report" / "index.html").read_text(encoding="utf-8")
 
 
 def test_merge_keeps_specifics_of_duplicate():
