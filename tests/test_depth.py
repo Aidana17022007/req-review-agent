@@ -815,3 +815,56 @@ def test_tz_self_check_passes_on_submission_report():
     failed = [r["what"] for r in rows if r["required"] and not r["ok"]]
     assert failed == [], failed
     assert all(r["evidence"] for r in rows)
+
+
+def test_split_kinds_on_organizers_document():
+    """v8: строки таблиц API, описания кодов ответа и заглушки не считаются требованиями; пункты с номером,
+    НФТ, данные, логика метода — требования; строки приёмки — отдельно."""
+    from collections import Counter
+
+    s = split_requirements(read_document(REAL))
+    by = {r.text[:30]: r.kind for r in s.requirements}
+    c = Counter(r.kind for r in s.requirements)
+    assert c["requirement"] == 16 and c["acceptance"] == 3 and c["placeholder"] == 1 and c["spec"] == 23
+    assert all(r.kind == "requirement" for r in s.requirements if r.doc_id)
+    assert by["REST type | GET"] == "spec" and by["заполняются тестировщиками"] == "placeholder"
+    assert by["Тело не используется."] == "spec" and by["Не используются."] == "spec"
+    for p in CLEAN:  # в бенчмарке и фикстурах — только требования
+        assert {r.kind for r in split_requirements(read_document(p)).requirements} == {"requirement"}, p
+
+
+def test_calibration_drops_test_probe_on_spec_and_folds_duplicates(tmp_path):
+    """v8: тест-проба к строке таблицы API снимается; критичное замечание к ней понижается до существенного;
+    замечание, повторяющее критичное замечание набора про то же место, сворачивается в «дубль S-01»."""
+    from req_review.checker import Finding, ReqResult, ReviewResult, SetFinding, SetRef
+    from req_review.depth import calibrate_severity
+
+    doc = read_document(REAL)
+    s = split_requirements(doc)
+    get = next(r for r in s.requirements if r.text.startswith("REST type"))
+    prod = next(r for r in s.requirements if r.text.startswith("Request URL"))
+    rule = SetFinding("contradiction", "set_consistent", [SetRef(get.rid, "GET")],
+                      "Метод объявлен как GET, но выполняет изменение данных (сохранение порога).", "critical", "—", "правило")
+    probe = Finding(get.rid, "verifiable", "GET", "Тест составить невозможно.", "critical", "—", "тест-проба")
+    dup = Finding(get.rid, "correct", "GET", "Метод GET выполняет изменение данных — сохранение порога.", "critical", "—", "LLM ×2")
+    other = Finding(prod.rid, "complete", "Prod: —", "Не указан адрес Prod.", "critical", "—", "LLM")
+    rv = ReviewResult(doc=doc, split=s, req_results=[ReqResult(get, [probe, dup]), ReqResult(prod, [other])],
+                      set_findings=[rule], dropped=[])
+    st = calibrate_severity(rv)
+    assert st == {"test_probe_dropped": 1, "capped": 1, "folded": 1}
+    assert rv.req_results[0].findings == [] and other.severity == "major"
+    reasons = [r["reason"] for r in rv.rejected]
+    assert any("тест-проба применяется к требованиям" in x for x in reasons) and any(x.startswith("дубль S-01") for x in reasons)
+
+
+def test_report_counts_only_requirements(tmp_path, monkeypatch):
+    from req_review.cli import main
+
+    monkeypatch.setenv("LLM_PROVIDER", "rules")
+    monkeypatch.setenv("RAG", "off")
+    out = tmp_path / "r.md"
+    assert main([str(REAL), str(out), "--env", str(tmp_path / "x.env"), "--quiet", "--no-xlsx", "--no-jira", "--no-html"]) == 0
+    md = out.read_text(encoding="utf-8")
+    assert "Всего выделено требований: **16**" in md and "23 элемента спецификации API" in md
+    d = json.loads(out.with_suffix(".json").read_text(encoding="utf-8"))
+    assert {r["kind"] for r in d["requirements"]} == {"requirement", "spec", "acceptance", "placeholder"}

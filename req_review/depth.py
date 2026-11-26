@@ -716,6 +716,50 @@ def acceptance_gap(rv, cov: dict) -> SetFinding | None:
         "включая граничные значения и отрицательные сценарии.", "правило")
 
 
+# ---------------------------------------------------------------- калибровка серьёзности (v8)
+
+def calibrate_severity(rv) -> dict:
+    """Меньше шума в критичных:
+    1) тест-проба применяется к требованиям: строка таблицы API, строка приёмки или заглушка — не требование,
+       «тест составить невозможно» к ним не относится (замечание уходит в rejected с причиной);
+    2) замечание к элементу, который не является требованием (спецификация API, приёмка, заглушка), не выше
+       существенного: критичный дефект такого места — это дефект набора, и он описан замечанием S-xx;
+    3) замечание к требованию, повторяющее критичное замечание к набору про то же место, сворачивается в «дубль S-xx».
+    Возвращает статистику {"test_probe_dropped", "capped", "folded"}."""
+    sid = {id(f): f"S-{i:02d}" for i, f in enumerate(rv.set_findings, 1)}
+    crit_set = [f for f in rv.set_findings if f.severity == "critical"]
+    st = {"test_probe_dropped": 0, "capped": 0, "folded": 0}
+    for rr in rv.req_results:
+        kind = getattr(rr.req, "kind", "requirement")
+        keep = []
+        for f in rr.findings:
+            if kind != "requirement" and f.source == "тест-проба":
+                rv.rejected.append({"where": rr.req.rid, "quote": f.quote, "problem": f.problem,
+                                    "reason": "тест-проба применяется к требованиям, а это "
+                                              + {"spec": "элемент спецификации API", "acceptance": "критерий приёмки",
+                                                 "placeholder": "незаполненное место"}.get(kind, kind)})
+                st["test_probe_dropped"] += 1
+                continue
+            dup = next((s for s in crit_set if any(x.req_id == rr.req.rid for x in s.refs)
+                        and f.severity == "critical" and len(_stems(f.problem) & _stems(s.problem)) >= 3), None)
+            if dup is not None:
+                rv.rejected.append({"where": rr.req.rid, "quote": f.quote, "problem": f.problem,
+                                    "reason": f"дубль {sid[id(dup)]}: то же место и та же проблема описаны замечанием к набору",
+                                    "duplicate_of": sid[id(dup)]})
+                st["folded"] += 1
+                continue
+            if kind != "requirement" and f.severity == "critical":
+                f.severity = "major"
+                f.critic_note = (f.critic_note + " " if f.critic_note else "") + \
+                    "Серьёзность: не выше существенной — место не является требованием (дефект набора описан отдельно)."
+                st["capped"] += 1
+            keep.append(f)
+        rr.findings = keep
+        if kind != "requirement":  # тест-проба к этому элементу не применялась
+            rr.test_possible, rr.test_gherkin, rr.test_blocker, rr.test_reason = None, "", "", ""
+    return st
+
+
 # ---------------------------------------------------------------- вердикты и план исправлений
 
 _TEST_BLOCK = {"verifiable", "unambiguous", "set_consistent", "set_verifiable", "correct"}

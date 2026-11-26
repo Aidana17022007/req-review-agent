@@ -181,8 +181,15 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
             rr.findings = keep
     if folded:
         log(f"  свёрнуто замечаний об оформлении пунктов без ID: {folded}")
+    from .depth import calibrate_severity  # v8: тест-проба только к требованиям, дубли с S-xx, потолок серьёзности
+
+    rv.calibration = calibrate_severity(rv)
+    if any(rv.calibration.values()):
+        log(f"  калибровка серьёзности: тест-проб снято {rv.calibration['test_probe_dropped']}, понижено "
+            f"{rv.calibration['capped']}, дублей S-xx свёрнуто {rv.calibration['folded']}")
     default_confidence(rv)
     rv.depth = depth_summary(rv, acc)
+    rv.depth["review_stats"]["calibration"] = rv.calibration  # v8: калибровка серьёзности
     rv.depth["review_stats"]["self_check"] = rv.self_check or None  # v6: самосогласованность
     rv.depth["review_stats"]["focused"] = rv.focus or None  # v6: узкие проходы {task: добавлено}
     rv.depth["line_coverage"]["recovered"] = recovered.get("recovered", 0)

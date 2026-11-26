@@ -8,6 +8,7 @@ from datetime import datetime
 from .checker import ReviewResult
 from .criteria import INDIVIDUAL, SET, SEVERITY, criterion_name, criterion_ref
 from .scoring import METHOD_MD, bar
+from .splitter import KIND_RU
 
 EARS = {"ubiquitous": "постоянное", "event": "по событию", "state": "по состоянию", "unwanted": "нежелательное поведение",
         "optional": "опциональная функция", "complex": "составное"}
@@ -42,6 +43,9 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     sev_counts = Counter(f.severity for f in all_f) + Counter(f.severity for f in rv.set_findings)
     total_viol = len(all_f) + len(rv.set_findings)
     reqs_with_issues = [rr for rr in rv.req_results if rr.findings]
+    n_req = sum(1 for r in reqs if r.kind == "requirement") or len(reqs)  # v8: только требования, без строк таблиц API
+    only_req = any(r.kind == "requirement" for r in reqs)
+    n_req_issues = sum(1 for rr in reqs_with_issues if rr.req.kind == "requirement") if only_req else len(reqs_with_issues)
     critical_items = [f for f in all_f if f.severity == "critical"]
     set_critical = [f for f in rv.set_findings if f.severity == "critical"]
 
@@ -127,13 +131,16 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     if split.method != "ids":
         w("В документе нет идентификаторов требований — агент присвоил свои номера; в таблице сохранена полная цитата.")
         w("")
-    w("| ID в отчёте | ID в документе | Место в документе | Краткая формулировка |")
-    w("|---|---|---|---|")
+    w("| ID в отчёте | ID в документе | Вид | Место в документе | Краткая формулировка |")
+    w("|---|---|---|---|---|")
     for r in reqs:
         text = _cell(r.short)  # полный текст — один раз, в разборе требования (раздел 3)
-        w(f"| {r.rid} | {_cell(r.doc_id) if r.doc_id else '— (присвоен агентом)'} | {_cell(r.location)} | {text} |")
+        w(f"| {r.rid} | {_cell(r.doc_id) if r.doc_id else '— (присвоен агентом)'} | {KIND_RU.get(r.kind, r.kind)} | "
+          f"{_cell(r.location)} | {text} |")
     w("")
-    w(f"Всего выделено требований: **{len(reqs)}**.")
+    w(f"Всего выделено требований: **{n_req}**." + (f" Кроме них проверены {_kinds_tail(reqs)} — они не считаются "
+                                                       "требованиями (не входят в число требований и готовность), "
+                                                       "но замечания к ним в отчёте есть." if n_req != len(reqs) else ""))
     w("")
 
     # ------------------------------------------------------------------ 3
@@ -282,16 +289,16 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     w("")
     w("| Показатель | Значение |")
     w("|---|---|")
-    w(f"| Требований выделено | {len(reqs)} |")
-    w(f"| Требований без замечаний | {len(reqs) - len(reqs_with_issues)} |")
-    w(f"| Требований с замечаниями | {len(reqs_with_issues)} |")
+    w(f"| Требований выделено | {n_req}" + (f" (и ещё {_kinds_tail(reqs)})" if n_req != len(reqs) else "") + " |")
+    w(f"| Требований без замечаний | {n_req - n_req_issues} |")
+    w(f"| Требований с замечаниями | {n_req_issues} |")
     w(f"| Нарушений всего | {total_viol} (по требованиям: {len(all_f)}, по набору: {len(rv.set_findings)}) |")
     for s in ("critical", "major", "minor"):
         w(f"| — {SEVERITY[s].lower()} | {sev_counts.get(s, 0)} |")
     w("")
     if sc is not None:
         w(f"| **Балл документа** | **{sc.doc_score} / 100** (балл набора — {sc.set_score}) |")
-        w(f"| **Готовность к разработке** | **{sc.readiness} %** ({len(sc.ready_ids)} из {len(reqs)} требований без критичных и существенных замечаний, "
+        w(f"| **Готовность к разработке** | **{sc.readiness} %** ({len(sc.ready_ids)} из {n_req} требований без критичных и существенных замечаний, "
           "в том числе к набору) |")
         if sc.tests_total:
             w(f"| Покрыто тест-пробой | {sc.tests_ok} из {sc.tests_total} требований ({round(100 * sc.tests_ok / sc.tests_total)} %) |")
@@ -463,6 +470,19 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
         w("")
     w(f"*Отчёт сформирован автоматически агентом ReqLens / req-review ({_cell(agent_version)}).*")
     return "\n".join(L) + "\n"
+
+
+def _kinds_tail(reqs) -> str:
+    from collections import Counter as _C
+
+    c = _C(r.kind for r in reqs if r.kind != "requirement")
+    forms = {"spec": ("элемент спецификации API", "элемента спецификации API", "элементов спецификации API"),
+             "acceptance": ("строка критериев приёмки", "строки критериев приёмки", "строк критериев приёмки"),
+             "placeholder": ("незаполненное место", "незаполненных места", "незаполненных мест")}
+
+    def plural(n, f):
+        return f[0] if n % 10 == 1 and n % 100 != 11 else f[1] if 2 <= n % 10 <= 4 and not 12 <= n % 100 <= 14 else f[2]
+    return ", ".join(f"{n} {plural(n, forms[k])}" for k, n in c.items() if k in forms)
 
 
 SUMMARY_START, SUMMARY_END = "<!-- reqlens:summary:start -->", "<!-- reqlens:summary:end -->"

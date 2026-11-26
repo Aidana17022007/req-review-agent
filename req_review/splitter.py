@@ -50,6 +50,10 @@ class Requirement:
     line_end: int
     page: int | None = None
     extra: dict = field(default_factory=dict)
+    # вид элемента нарезки: requirement (требование), spec (элемент спецификации API: строки таблиц параметров,
+    # общих параметров, ответа, описания кодов), acceptance (строка критериев приёмки), placeholder (незаполненное
+    # место: «заполняются тестировщиками», TBD). Счёт требований и готовность — только по requirement.
+    kind: str = "requirement"
 
     @property
     def location(self) -> str:
@@ -166,6 +170,30 @@ def _section_units(lines: list[Line], taken: set[int], id_sections: set[str] = f
             continue
         units.append(dict(doc_id=None, text=text, section=section, start=ln.lineno, end=ln.lineno, page=ln.page, extra={}))
     return units
+
+
+KIND_RU = {"requirement": "требование", "spec": "элемент спецификации API", "acceptance": "критерий приёмки",
+           "placeholder": "незаполненное место"}
+_SPEC_SECTION = re.compile(r"общие параметры|параметр|request body|тело запроса|^ответ\b|response|статус|^\d{3}\b|"
+                           r"path-|query-|header|заголовки запроса|коды ответа", re.I)
+_ACC_SECTION = re.compile(r"критери\w* при[её]мк|acceptance|сценари\w* приёмк", re.I)
+_PLACEHOLDER = re.compile(r"^(?:заполня\w+|tbd|tbc|будет (?:определ|уточн)\w*|уточня\w+|определяется позже)\b", re.I)
+
+
+def classify_kind(doc_id: str | None, text: str, section: str) -> str:
+    """Вид элемента нарезки. Пункт с идентификатором документа — всегда требование. Без ID: строка приёмки,
+    элемент спецификации API (таблицы параметров, общих параметров, ответа; описание кода ответа), незаполненное
+    место или требование (правила, логика работы метода, НФТ, данные, интеграция)."""
+    t = text.strip()
+    if _PLACEHOLDER.match(t):
+        return "placeholder"
+    if doc_id:
+        return "requirement"
+    if _ACC_SECTION.search(section or ""):
+        return "acceptance"
+    if _SPEC_SECTION.search(section or "") or re.match(r"^\d{3}\.\s", t):
+        return "spec"
+    return "requirement"
 
 
 def split_requirements(doc: Document) -> SplitResult:
@@ -296,8 +324,10 @@ def split_requirements(doc: Document) -> SplitResult:
     seen: dict[str, list[int]] = {}
     for i, r in enumerate(reqs, start=1):
         rid = f"R-{i:03d}"
-        out.append(Requirement(rid=rid, doc_id=r["doc_id"], text=_clean(r["text"]), section=r["section"],
-                               line_start=r["start"], line_end=r["end"], page=r["page"], extra=r["extra"]))
+        text = _clean(r["text"])
+        out.append(Requirement(rid=rid, doc_id=r["doc_id"], text=text, section=r["section"],
+                               line_start=r["start"], line_end=r["end"], page=r["page"], extra=r["extra"],
+                               kind=classify_kind(r["doc_id"], text, r["section"])))
         if r["doc_id"]:
             seen.setdefault(r["doc_id"], []).append(r["start"])
     dups = {k: v for k, v in seen.items() if len(v) > 1}
