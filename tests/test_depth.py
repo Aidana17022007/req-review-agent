@@ -868,3 +868,46 @@ def test_report_counts_only_requirements(tmp_path, monkeypatch):
     assert "Всего выделено требований: **16**" in md and "23 элемента спецификации API" in md
     d = json.loads(out.with_suffix(".json").read_text(encoding="utf-8"))
     assert {r["kind"] for r in d["requirements"]} == {"requirement", "spec", "acceptance", "placeholder"}
+
+
+def test_clip_cuts_on_word_boundary_and_quotes_stay_verbatim():
+    from req_review.textutil import clip, clip_quote, first_sentence
+
+    s = "Метод объявлен как GET («REST type | GET»), но выполняет изменение данных («Сохранение») 🔴 и ещё текст"
+    for n in range(10, len(s)):
+        c = clip(s, n)
+        assert len(c) <= n and "�" not in c
+        if c != s:
+            assert c.endswith("…") and s.startswith(c[:-1].rstrip()) and (s[len(c[:-1].rstrip())] in " ,;:—-(«\"")
+        q = clip_quote(s, n)
+        assert quote_in(q, s) and len(q) <= n
+    assert first_sentence("Первое предложение. Второе.", 100) == "Первое предложение"
+
+
+def test_passport_authenticity_line():
+    from types import SimpleNamespace as NS
+
+    from req_review.report import _authenticity
+
+    ctx = NS(passport={"code": {"commit": "abc1234", "clean": True}})
+    fresh = _authenticity(NS(calls=12, cached=0), ctx, "gemini / m")
+    assert "✅ свежий прогон: все 12" in fresh and "✅ код агента — чистый коммит `abc1234`" in fresh
+    old = _authenticity(NS(calls=0, cached=31), NS(passport={"code": {"commit": "abc", "clean": False}}), "gemini / m")
+    assert "⚠️ повторный прогон: 31" in old and "--no-cache" in old and "⚠️ код агента с незакоммиченными" in old
+    assert "модель не вызывалась" in _authenticity(NS(calls=0, cached=0), ctx, "без модели / только правила")
+
+
+def test_fix_plan_titles_are_not_cut_mid_word(tmp_path, monkeypatch):
+    from req_review.cli import main
+
+    monkeypatch.setenv("LLM_PROVIDER", "rules")
+    monkeypatch.setenv("RAG", "off")
+    out = tmp_path / "r.md"
+    assert main([str(REAL), str(out), "--env", str(tmp_path / "x.env"), "--quiet", "--no-xlsx", "--no-jira", "--no-html",
+                 "--no-cache"]) == 0
+    d = json.loads(out.with_suffix(".json").read_text(encoding="utf-8"))
+    for it in d["fix_plan"]:
+        t = it["title"]
+        assert "\ufffd" not in t and (len(t) <= 140 or t.endswith("…")), t
+    assert d["passport"]["code"]["commit"] and "cached" in d["passport"]
+    assert "Подлинность прогона" in out.read_text(encoding="utf-8")

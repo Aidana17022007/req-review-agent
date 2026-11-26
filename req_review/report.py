@@ -9,6 +9,7 @@ from .checker import ReviewResult
 from .criteria import INDIVIDUAL, SET, SEVERITY, criterion_name, criterion_ref
 from .scoring import METHOD_MD, bar
 from .splitter import KIND_RU
+from .textutil import clip
 
 EARS = {"ubiquitous": "постоянное", "event": "по событию", "state": "по состоянию", "unwanted": "нежелательное поведение",
         "optional": "опциональная функция", "complex": "составное"}
@@ -86,6 +87,7 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     cached = getattr(llm_stats, "cached", 0)
     w(f"| Обращений к модели | {llm_stats.calls} (повторов: {llm_stats.retries}"
       + (f", из кэша: {cached}" if cached else "") + ") |")
+    w(f"| Подлинность прогона | {_authenticity(llm_stats, ctx, model_label)} |")
     if ctx is not None:
         w(f"| Профиль / режим | {ctx.passport['profile']} / {ctx.passport['mode']} |")
         cx, rg = ctx.passport.get("context") or {}, ctx.passport.get("rag") or {}
@@ -428,9 +430,9 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
             w(f"| {e['reason']} | {e['lines']} |")
         w("")
         for u in lc.get("unnumbered", []):
-            w(f"- строка {u['line']}: утверждение без идентификатора — «{_cell(u['text'][:120])}»")
+            w(f"- строка {u['line']}: утверждение без идентификатора — «{_cell(clip(u['text'], 120))}»")
         for u in lc["uncovered"]:
-            w(f"- ⚠️ строка {u['line']} не учтена: «{_cell(u['text'][:120])}»")
+            w(f"- ⚠️ строка {u['line']} не учтена: «{_cell(clip(u['text'], 120))}»")
         if lc.get("unnumbered") or lc["uncovered"]:
             w("")
     w("---")
@@ -452,7 +454,7 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
         w("| Где | Цитата модели | Суть |")
         w("|---|---|---|")
         for d in rv.dropped[:50]:
-            w(f"| {_cell(d['where'])} | {_q(d['quote']) if d['quote'] else '—'} | {_cell(d['problem'])[:200]} |")
+            w(f"| {_cell(d['where'])} | {_q(d['quote']) if d['quote'] else '—'} | {_cell(clip(d['problem'], 200))} |")
         w("")
     if rv.rejected:
         w(f"### Приложение. Замечания, отклонённые критиком ({len(rv.rejected)})")
@@ -461,7 +463,7 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
         w("|---|---|---|---|")
         for d in rv.rejected[:50]:
             qq = _q(d["quote"]) if d["quote"] else "—"
-            w(f"| {_cell(d['where'])} | {qq} | {_cell(d['problem'])[:160]} | {_cell(d['reason'])[:160]} |")
+            w(f"| {_cell(d['where'])} | {qq} | {_cell(clip(d['problem'], 160))} | {_cell(clip(d['reason'], 160))} |")
         w("")
     if ctx is not None:
         w("### Приложение. Методика оценки")
@@ -470,6 +472,26 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
         w("")
     w(f"*Отчёт сформирован автоматически агентом ReqLens / req-review ({_cell(agent_version)}).*")
     return "\n".join(L) + "\n"
+
+
+def _authenticity(llm_stats, ctx, model_label: str) -> str:
+    """Свежий ли прогон и чистый ли код агента — видно сразу, без расшифровки строки версии."""
+    parts = []
+    cached = getattr(llm_stats, "cached", 0)
+    if "без модели" in model_label or "mock" in model_label:
+        parts.append("модель не вызывалась (режим без модели)")
+    elif cached == 0 and llm_stats.calls:
+        parts.append(f"✅ свежий прогон: все {llm_stats.calls} ответов модели получены сейчас")
+    elif cached:
+        parts.append(f"⚠️ повторный прогон: {cached} ответов модели взяты из кэша предыдущего прогона того же документа"
+                     + (f", {llm_stats.calls} получены сейчас" if llm_stats.calls else "")
+                     + " (для свежего прогона — `--no-cache`)")
+    code = (ctx.passport.get("code") if ctx is not None else None) or {}
+    if code.get("clean") is True:
+        parts.append(f"✅ код агента — чистый коммит `{code['commit']}`")
+    elif code.get("clean") is False:
+        parts.append(f"⚠️ код агента с незакоммиченными изменениями (коммит `{code['commit']}`)")
+    return "; ".join(parts) or "—"
 
 
 def _kinds_tail(reqs) -> str:
@@ -521,7 +543,7 @@ def _summary_30s(w, rv: ReviewResult, sev_counts, by_rid) -> None:
             title = re.sub(rf"^{re.escape(it['ids'][0])}:\s*", "", it["title"]) if it["ids"] else it["title"]
             line = f"{n}. {ICON[it['severity']]} {ids} — {_cell(title)}"
             if it.get("example"):
-                line += f" *Пример:* «{_cell(it['example'][:220])}»"
+                line += f" *Пример:* «{_cell(clip(it['example'], 220))}»"
             w(line)
         w("")
     w("Подробности: разделы 3–4 (разбор по каждому требованию и набору), раздел 6 (итог и план), приложения.")

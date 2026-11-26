@@ -28,6 +28,8 @@ def build_parser() -> argparse.ArgumentParser:
                     help="повторно проверить исправленный документ («было → стало»)")
     ap.add_argument("--no-rescore", dest="rescore", action="store_false",
                     help="не перепроверять исправленный документ (экономит запросы к модели)")
+    ap.add_argument("--no-cache", action="store_true",
+                    help="не брать ответы модели из кэша: свежий прогон (для отчёта, который сдаётся)")
     ap.add_argument("--no-tests", action="store_true", help="не включать тест-пробу (Gherkin) в отчёт")
     ap.add_argument("--pdf", dest="pdf", action="store_true", default=None,
                     help="записать PDF-версию отчёта рядом с .md (в профиле deep — по умолчанию)")
@@ -58,6 +60,8 @@ def main(argv: list[str] | None = None) -> int:
     from dotenv import load_dotenv
 
     load_dotenv(args.env or ROOT / ".env")
+    if args.no_cache:
+        os.environ["LLM_CACHE"] = "0"
 
     from .console import Console
     from .llm import LLMError

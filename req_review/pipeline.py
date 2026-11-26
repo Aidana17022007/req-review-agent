@@ -81,6 +81,19 @@ def agent_version() -> str:
     return f"v{__version__} (вне git-репозитория)"
 
 
+def code_state() -> dict:
+    """Состояние кода агента для паспорта: коммит и есть ли незакоммиченные изменения в отслеживаемых файлах."""
+    try:
+        c = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True, text=True, timeout=5)
+        st = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=ROOT, capture_output=True,
+                            text=True, timeout=5)
+        if c.returncode == 0 and st.returncode == 0:
+            return {"commit": c.stdout.strip(), "clean": not st.stdout.strip()}
+    except Exception:
+        pass
+    return {"commit": "", "clean": None}
+
+
 def apply_profile_env(profile: str) -> None:
     """Профиль offline: локальная модель через OpenAI-совместимый API (Ollama)."""
     if profile == "offline":
@@ -292,12 +305,12 @@ def build_context(rv, llm, opts: Options, started: datetime, t0: float, input_pa
     ctx.passport = {
         "document": rv.doc.title, "file": str(input_path), "format": rv.doc.fmt.upper(), "pages": rv.doc.pages,
         "sha256": rv.doc.sha256, "started": started.strftime("%Y-%m-%d %H:%M:%S %Z").strip(),
-        "model": llm.label, "agent_version": agent_version(), "profile": opts.profile,
+        "model": llm.label, "agent_version": agent_version(), "code": code_state(), "profile": opts.profile,
         "mode": "офлайн: документ не передавался третьим лицам" if offline and llm.provider != "mock" else
                 ("тестовый (mock)" if llm.provider == "mock" else
                  "только правила: модель не вызывалась, смысловые противоречия не проверялись" if llm.provider == "rules"
                  else "облачная модель"),
-        "calls": llm.stats.calls, "retries": llm.stats.retries, "tokens_in": llm.stats.prompt_tokens,
+        "calls": llm.stats.calls, "cached": llm.stats.cached, "retries": llm.stats.retries, "tokens_in": llm.stats.prompt_tokens,
         "tokens_out": llm.stats.output_tokens, "duration_s": round(time.monotonic() - t0),
         "model_switches": list(getattr(llm.stats, "switches", [])),
         "rag": getattr(rv, "rag", None) or {"enabled": False},
@@ -378,6 +391,7 @@ def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda
                 ctx2 = build_context(rv2, llm, o2, started, t0, str(p))
                 ctx.rescore.update(_before_after(rv, rv2, ctx, ctx2))
         ctx.passport["calls"] = llm.stats.calls
+        ctx.passport["cached"] = llm.stats.cached
 
     if opts.compare:
         log(f"сравнение с предыдущей версией: {opts.compare}")
@@ -391,6 +405,7 @@ def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda
             old = summarize_for_compare(to_json(ctx_old))
         ctx.compare = compare(old, summarize_for_compare(to_json(ctx)))
         ctx.passport["calls"] = llm.stats.calls
+        ctx.passport["cached"] = llm.stats.cached
 
     tstep(6)
     ctx.passport["duration_s"] = round(time.monotonic() - t0)

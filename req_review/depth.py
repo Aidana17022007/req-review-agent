@@ -20,6 +20,7 @@ from .checker import SetFinding, SetRef, _ctx
 from .criteria import INDIVIDUAL, criterion_name
 from .reader import Document
 from .splitter import EXCLUDED_SECTION_RE, MODAL_RE, Requirement
+from .textutil import clip, clip_quote, first_sentence
 
 ORDER = {"critical": 0, "major": 1, "minor": 2}
 
@@ -191,7 +192,7 @@ def state_after_error(reqs: list[Requirement], doc: Document) -> list[SetFinding
     by_line = {r.line_start: r for r in reqs}
     refs = [_ref(by_line, s500[0], re.search(r"500", s500[0].text).group(0))]
     if mut_line:
-        refs.append(_ref(by_line, mut_line, mut_line.text.strip().split(" ", 1)[-1][:60]))
+        refs.append(_ref(by_line, mut_line, clip_quote(mut_line.text.strip().split(" ", 1)[-1], 60)))
     refs[0] = SetRef(refs[0].req_id, _ctx(s500[0].text.strip(), "500"))
     return [SetFinding(
         "gap", "set_complete", refs,
@@ -439,7 +440,7 @@ def missing_default(reqs: list[Requirement], doc: Document) -> list[SetFinding]:
     name = r.doc_id or r.rid
     return [SetFinding(
         "gap", "set_complete", [SetRef(r.rid, _ctx(r.text, q))],
-        f"Не задано значение по умолчанию для параметра, который настраивается в {name} («{q[:70]}»): неизвестно, что хранится и "
+        f"Не задано значение по умолчанию для параметра, который настраивается в {name} («{clip_quote(q, 70)}»): неизвестно, что хранится и "
         "что показывает экран до первого сохранения, и чем первое сохранение отличается от изменения. Разработчик "
         "выберет сам (0, пусто или минимум диапазона), тестировщику не с чем сравнивать.", "major",
         "Дописать: «До первого сохранения порог не задан: экран показывает пустое поле, уведомление выключено, метод "
@@ -587,7 +588,7 @@ def line_coverage(doc: Document, reqs: list[Requirement]) -> dict:
             skip("метаданные")
         elif MODAL_RE.search(t) and not EXCLUDED_SECTION_RE.search(section) and not t.startswith(">"):
             skip("утверждение без идентификатора — см. замечания к набору")
-            out.setdefault("unnumbered", []).append({"line": ln.lineno, "section": section, "text": t[:160]})
+            out.setdefault("unnumbered", []).append({"line": ln.lineno, "section": section, "text": clip(t, 160)})
         elif EXCLUDED_SECTION_RE.search(section):
             skip(f"раздел шаблона «{section[:40]}»")
         elif _DESCRIPTIVE.search(section):
@@ -599,7 +600,7 @@ def line_coverage(doc: Document, reqs: list[Requirement]) -> dict:
         elif re.fullmatch(r"(?:или|либо|or)\W*", t, re.I):
             skip("разметка")
         else:
-            out["uncovered"].append({"line": ln.lineno, "section": section, "text": t[:160]})
+            out["uncovered"].append({"line": ln.lineno, "section": section, "text": clip(t, 160)})
     out["accounted"] = out["total"] - len(out["uncovered"])
     out["percent"] = round(100 * out["accounted"] / out["total"]) if out["total"] else 100
     out["excluded"] = [{"reason": k, "lines": v} for k, v in sorted(reasons.items(), key=lambda kv: -kv[1])]
@@ -697,7 +698,7 @@ def acceptance_coverage(rv) -> dict:
     for r in rules:
         rs = _stems(r.text)
         ok = r.rid in linked or any(len(rs & _stems(a.text)) >= 3 for a in acc)
-        (covered if ok else uncovered).append({"rid": r.rid, "doc_id": r.doc_id, "text": r.text[:120]})
+        (covered if ok else uncovered).append({"rid": r.rid, "doc_id": r.doc_id, "text": clip(r.text, 120)})
     pct = round(100 * len(covered) / len(rules))
     return {"percent": pct, "covered": covered, "uncovered": uncovered, "acceptance_rows": len(acc),
             "method": "оценка: общие термины правила и строки приёмки (≥ 3) или связь, найденная перекрёстной проверкой"}
@@ -708,7 +709,7 @@ def acceptance_gap(rv, cov: dict) -> SetFinding | None:
         return None
     unc = cov["uncovered"][:4]
     return SetFinding(
-        "gap", "set_validatable", [SetRef(u["rid"], u["text"][:60]) for u in unc],
+        "gap", "set_validatable", [SetRef(u["rid"], clip_quote(next(rr.req.text for rr in rv.req_results if rr.req.rid == u["rid"]), 60)) for u in unc],
         f"Критерии приёмки покрывают {cov['percent']} % правил ({len(cov['covered'])} из {len(cov['covered']) + len(cov['uncovered'])}). "
         f"Без примеров остаются: {', '.join(u['doc_id'] or u['rid'] for u in cov['uncovered'][:8])}. "
         "Приёмку нельзя провести по документу — каждый тестировщик придумает свои ожидаемые результаты.",
@@ -806,12 +807,12 @@ def fix_plan(rv, limit: int = 8) -> list[dict]:
     for f in sorted(rv.set_findings, key=lambda f: ORDER[f.severity]):
         if f.severity == "critical":
             items.append({"severity": "critical", "ids": [sid[id(f)]], "reqs": [r.req_id for r in f.refs if r.req_id != "DOC"],
-                          "title": f.problem.split(". ")[0][:140], "action": f.fix})
+                          "title": first_sentence(f.problem, 140), "action": f.fix})
     for rr in rv.req_results:
         for f in rr.findings:
             if f.severity == "critical":
                 items.append({"severity": "critical", "ids": [rr.req.rid], "reqs": [rr.req.rid],
-                              "title": f"{rr.req.doc_id or rr.req.rid}: {f.problem.split('. ')[0][:120]}", "action": f.fix})
+                              "title": f"{rr.req.doc_id or rr.req.rid}: {first_sentence(f.problem, 120)}", "action": f.fix})
     groups: dict[str, list] = {}
     for rr in rv.req_results:
         for f in rr.findings:
