@@ -373,11 +373,81 @@ def unit_mix(reqs: list[Requirement], doc: Document) -> list[SetFinding]:
     return []
 
 
+_LIMIT = re.compile(r"(?:максимум|не более|не чаще|только) (?:один|одного|одно|1)\b[^.\n]{0,60}?(?:за|в)\s+(?:календарн\w+\s+)?"
+                    r"(?:месяц|сутки|день|недел\w*|период|час)", re.I)
+_REGARDLESS = re.compile(r"независимо от (?:истори\w*|предыдущ\w*|ранее\w*|прошл\w*|того,? (?:был|отправ)\w*)", re.I)
+_NOTIFY = re.compile(r"\bpush\b|уведомлени\w*|сообщени\w*|\bsms\b|\bсмс\b", re.I)
+
+
+def limit_vs_exception(reqs: list[Requirement], doc: Document) -> list[SetFinding]:
+    """Ограничение частоты («не более одного … за месяц») и правило «независимо от истории» в другом требовании:
+    какое правило главнее, не сказано — разработчик и тестировщик выберут разное."""
+    lim = next((r for r in reqs if _LIMIT.search(r.text) and _NOTIFY.search(r.text)), None)
+    exc = next((r for r in reqs if r is not lim and _REGARDLESS.search(r.text) and (_NOTIFY.search(r.text) or "вызыва" in r.text)), None)
+    if not lim or not exc:
+        return []
+    a, b = lim.doc_id or lim.rid, exc.doc_id or exc.rid
+    qa, qb = _LIMIT.search(lim.text).group(0), _REGARDLESS.search(exc.text).group(0)
+    return [SetFinding(
+        "contradiction", "set_consistent", [SetRef(lim.rid, _ctx(lim.text, qa)), SetRef(exc.rid, _ctx(exc.text, qb))],
+        f"{a} ограничивает частоту («{qa}»), а {b} требует отправки «{qb}». Если оба условия выполняются в одном периоде "
+        f"(уведомление уже отправлено, затем изменён порог и он снова достигнут), {a} запрещает второе уведомление, а {b} "
+        "его требует — какое правило главнее, не сказано. Реализация и ожидаемый результат теста зависят от толкования.",
+        "critical",
+        f"Явно задать приоритет: например, «При изменении порога признак отправки в текущем месяце сбрасывается; лимит "
+        f"{a} считается от последнего изменения порога» — и добавить критерий приёмки на этот случай.", "правило")]
+
+
+_AUTH = re.compile(r"\bbearer\b|\bтокен\w*|\btoken\b|\bсесси\w*", re.I)
+_AUTH_LIFE = re.compile(r"срок\w* (?:действия|жизни) (?:токен|сесси)\w*|(?:токен|сесси)\w*[^.\n]{0,40}(?:истек|истёк|просроч|действителен|"
+                        r"живёт|живет|ttl)|refresh|expire|обновлени\w* токен\w*", re.I)
+
+
+def session_lifecycle(reqs: list[Requirement], doc: Document) -> list[SetFinding]:
+    """API требует авторизации (Bearer, сессия), но не определено, что это за токен, сколько он живёт и что
+    происходит при истёкшей или чужой сессии."""
+    if not _api_lines(doc):
+        return []
+    auth = next((ln for ln in doc.lines if re.search(r"authorization|авторизац", ln.text, re.I) and _AUTH.search(ln.text)), None)
+    if not auth or any(_AUTH_LIFE.search(ln.text) for ln in doc.lines):
+        return []
+    by_line = {r.line_start: r for r in reqs}
+    return [SetFinding(
+        "gap", "set_complete", [_ref(by_line, auth, _AUTH.search(auth.text).group(0))],
+        "Токен и сессия не определены: не указано, какой токен ожидается (кем выдан, что в нём), сколько живёт сессия и "
+        "что возвращает метод при истёкшей, отозванной или чужой сессии. Без этого нельзя реализовать проверку доступа "
+        "и написать негативные тесты авторизации.", "major",
+        "Описать: тип токена и издателя, срок жизни сессии, ответ при истёкшем токене (401 с телом {\"message\": …}), "
+        "поведение приложения (повторный вход) и пример заголовка Authorization.", "правило")]
+
+
+_RANGE_SET = re.compile(r"(?:зада\w*|устанавлива\w*|указыва\w*|выбира\w*|настраива\w*)[^.\n]{0,60}?\bот\s+[\d\s ]+\s+до\s+[\d\s ]+",
+                        re.I)
+_DEFAULT_VAL = re.compile(r"по умолчанию[^.\n]{0,60}(?:\d|порог|значени|сумм|лимит|равн)|(?:начальн|исходн)\w* значени", re.I)
+
+
+def missing_default(reqs: list[Requirement], doc: Document) -> list[SetFinding]:
+    """Пользователь задаёт значение из диапазона, но не определено значение до первого сохранения
+    (что возвращает чтение и что показывает экран)."""
+    r = next((r for r in reqs if _RANGE_SET.search(r.text)), None)
+    if r is None or any(_DEFAULT_VAL.search(ln.text) for ln in doc.lines):
+        return []
+    q = _RANGE_SET.search(r.text).group(0).strip()
+    name = r.doc_id or r.rid
+    return [SetFinding(
+        "gap", "set_complete", [SetRef(r.rid, _ctx(r.text, q))],
+        f"Не задано значение по умолчанию для параметра, который настраивается в {name} («{q[:70]}»): неизвестно, что хранится и "
+        "что показывает экран до первого сохранения, и чем первое сохранение отличается от изменения. Разработчик "
+        "выберет сам (0, пусто или минимум диапазона), тестировщику не с чем сравнивать.", "major",
+        "Дописать: «До первого сохранения порог не задан: экран показывает пустое поле, уведомление выключено, метод "
+        "чтения возвращает amount = null» — или конкретное значение по умолчанию.", "правило")]
+
+
 def completeness_rules(reqs: list[Requirement], doc: Document) -> list[SetFinding]:
     """Детерминированные проверки полноты v5 (подключаются в checker.deterministic_set_checks)."""
     out: list[SetFinding] = []
-    for fn in (api_codes_and_body, unit_mix, nfr_metric, state_after_error, message_texts, acceptance_preconditions,
-               template_unfilled):
+    for fn in (limit_vs_exception, api_codes_and_body, session_lifecycle, missing_default, unit_mix, nfr_metric,
+               state_after_error, message_texts, acceptance_preconditions, template_unfilled):
         out.extend(fn(reqs, doc))
     return out
 

@@ -10,10 +10,13 @@ from req_review.depth import (
     api_codes_and_body,
     completeness_rules,
     integration_contract,
+    limit_vs_exception,
     line_coverage,
     message_texts,
+    missing_default,
     missing_read_method,
     nfr_metric,
+    session_lifecycle,
     state_after_error,
     template_unfilled,
     unit_mix,
@@ -24,7 +27,7 @@ from req_review.verify import quote_in
 
 ROOT = Path(__file__).parent.parent
 CLEAN = [str(ROOT / "tests" / "fixtures" / "sample_requirements.md")] + sorted(glob.glob(str(ROOT / "bench" / "docs" / "*.md"))) + \
-    sorted(glob.glob(str(ROOT / "bench" / "out" / "*.md")))
+    sorted(glob.glob(str(ROOT / "bench" / "out" / "*.md"))) + sorted(glob.glob(str(ROOT / "bench" / "out" / "*.docx")))
 
 API_DOC = """# Уведомления
 
@@ -226,7 +229,8 @@ def test_completeness_rules_on_organizers_document():
     """Документ организаторов: каждое правило полноты срабатывает ровно один раз, цитаты дословные."""
     doc = read_document(REAL)
     s = split_requirements(doc)
-    for fn in (nfr_metric, state_after_error, message_texts, acceptance_preconditions, template_unfilled, unit_mix):
+    for fn in (nfr_metric, state_after_error, message_texts, acceptance_preconditions, template_unfilled, unit_mix,
+               limit_vs_exception, session_lifecycle, missing_default):
         found = fn(s.requirements, doc)
         assert len(found) == 1, fn.__name__
         assert _quotes_ok(found, s, doc), fn.__name__
@@ -385,3 +389,35 @@ def test_fix_plan_items_have_example_formulation(tmp_path):
     assert plan[("S-01",)]["example"] == "GET /alerts/limit?cardId=…" and plan[("S-01",)]["example_source"] == "из рекомендации"
     assert plan[(r1.rid,)]["example"].startswith("Клиент задаёт") and plan[(r1.rid,)]["example_source"] == f"переписанное {r1.rid}"
     assert plan[(r2.rid,)]["example_source"].startswith("шаблон kb/patterns")
+
+
+def test_limit_vs_exception_names_both_rules():
+    doc = read_document(REAL)
+    s = split_requirements(doc)
+    f = limit_vs_exception(s.requirements, doc)[0]
+    assert f.severity == "critical" and f.kind == "contradiction" and "Ф-3" in f.problem and "Ф-4" in f.problem
+    assert len({r.req_id for r in f.refs}) == 2
+
+
+def test_limit_with_explicit_precedence_or_without_exception(tmp_path):
+    base = "# Д\n\n## Функциональные требования\n- **Ф-1.** Клиент получает не более одного push за месяц.\n"
+    d1, s1 = _doc(tmp_path, base + "- **Ф-2.** Смена порога вызывает push независимо от истории.\n", "a.md")
+    d2, s2 = _doc(tmp_path, base + "- **Ф-2.** Клиент задаёт порог.\n", "b.md")
+    assert len(limit_vs_exception(s1.requirements, d1)) == 1
+    assert limit_vs_exception(s2.requirements, d2) == []
+
+
+def test_session_lifecycle_described_is_not_flagged(tmp_path):
+    text = API_DOC + "| **Authorization** | Bearer, сессия владельца карты |\n"
+    d1, s1 = _doc(tmp_path, text, "a.md")
+    d2, s2 = _doc(tmp_path, text + "\nСрок действия токена — 15 минут; при истёкшем токене метод возвращает 401.\n", "b.md")
+    assert len(session_lifecycle(s1.requirements, d1)) == 1 and _quotes_ok(session_lifecycle(s1.requirements, d1), s1, d1)
+    assert session_lifecycle(s2.requirements, d2) == []
+
+
+def test_missing_default_described_is_not_flagged(tmp_path):
+    base = "# Д\n\n## Функциональные требования\n- **Ф-1.** Клиент задаёт порог от 1 000 до 1 000 000 ₸.\n"
+    d1, s1 = _doc(tmp_path, base, "a.md")
+    d2, s2 = _doc(tmp_path, base + "- **Ф-2.** По умолчанию порог равен 50 000 ₸.\n", "b.md")
+    assert len(missing_default(s1.requirements, d1)) == 1
+    assert missing_default(s2.requirements, d2) == []

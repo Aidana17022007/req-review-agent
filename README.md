@@ -113,6 +113,17 @@ python review.py docs/requirements.pdf reports/report.md --open      # откр�
    GEMINI_MODEL=gemini-3.8-flash
    ```
 
+**Другие провайдеры** (выбираются `LLM_PROVIDER` или автоматически — по найденному ключу):
+
+| Провайдер | Переменные | Модель по умолчанию |
+|---|---|---|
+| `gemini` | `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_FALLBACK_MODELS` | `gemini-3.8-flash` → резерв `gemini-3.5-flash-lite` |
+| `anthropic` (Claude, Messages API) | `ANTHROPIC_API_KEY` (или `CLAUDE_API_KEY`), `ANTHROPIC_MODEL` | `claude-opus-5-5` |
+| `openrouter` (один ключ к Claude, Gemini, GPT, DeepSeek) | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` | `anthropic/claude-opus-5.5` |
+| `ollama` (локально, без интернета) | `OLLAMA_MODEL`, `OLLAMA_BASE_URL` | `qwen2.5:14b` |
+| `openai` (любой OpenAI-совместимый API) | `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_BASE_URL` | `gpt-4o-mini` |
+| `rules` | — | без модели: только детерминированные правила |
+
 Файл `.env` указан в `.gitignore` и в репозиторий не попадает. В репозитории лежит только `.env.example` без ключа.
 Платный ключ не нужен: профиль `fast` (по умолчанию) укладывается в лимиты бесплатного тарифа — проверка требований
 идёт пакетами по 20, тест-проба и тип EARS запрашиваются в том же запросе, а повторные прогоны берутся из кэша.
@@ -120,8 +131,8 @@ python review.py docs/requirements.pdf reports/report.md --open      # откр�
 ## Флаги и профили
 
 ```
-python review.py <вход> <отчёт.md> [--profile fast|full|offline] [--domain fintech|none] [--compare СТАРЫЙ]
-                                   [--critic | --no-critic] [--rescore] [--no-tests]
+python review.py <вход> <отчёт.md> [--profile fast|full|offline|deep] [--domain fintech|none] [--compare СТАРЫЙ]
+                                   [--critic | --no-critic] [--rescore | --no-rescore] [--no-tests]
                                    [--no-html] [--no-fixed] [--no-xlsx] [--no-jira] [--no-json] [--open] [--quiet]
 ```
 
@@ -130,13 +141,20 @@ python review.py <вход> <отчёт.md> [--profile fast|full|offline] [--dom
 | `fast` (по умолчанию) | проверка требований + тест-проба + EARS, проверка набора, финтех-чек-лист и глоссарий | бесплатный тариф Gemini, итоговый прогон |
 | `full` | + критик-агент, уверенность замечаний, `--rescore` (повторная оценка исправленного документа) | демо «было → стало» |
 | `offline` | как `full` без rescore, модель — локальная через Ollama | конфиденциальные документы банка |
+| `deep` | пакеты по 6 требований, критик на все замечания (объединение дублей из разных проходов, калибровка серьёзности), rescore | финальный отчёт для сдачи, сильная модель |
+
+Во всех профилях работают проверки глубины v5 (`req_review/depth.py`): метод чтения в API, контракт события
+интеграции, НФТ без перцентиля и нагрузки, состояние после ответа 500, тексты сообщений, предусловия критериев
+приёмки, незаполненный шаблон, учёт каждой строки документа, покрытие правил приёмкой, два вердикта (разработка /
+тестирование) и план исправлений с примером формулировки. При модели добавляются проход полноты по чек-листу
+(1 запрос) и «дорезка» строк, не вошедших в нарезку.
 
 | Флаг | Назначение |
 |---|---|
 | `--domain fintech\|none` | доменный чек-лист полноты (`req_review/domains/*.yaml` — можно добавить свой домен без кода) |
 | `--compare old.md` / `--compare report.json` | динамика относительно прошлой версии: исправлено ✅ / новое ⚠️ / ухудшилось 🔻 |
 | `--critic`, `--no-critic` | включить/выключить критик-агента независимо от профиля |
-| `--rescore` | прогнать исправленный документ повторно и показать балл «было → стало» |
+| `--rescore`, `--no-rescore` | прогнать исправленный документ повторно и показать балл «было → стало» (или не прогонять — экономит квоту) |
 | `--no-tests` | не показывать тест-пробу |
 | `--no-html`, `--no-fixed`, `--no-xlsx`, `--no-jira`, `--no-json` | не создавать соответствующий артефакт |
 | `--open` | открыть HTML-отчёт в браузере |
@@ -149,7 +167,14 @@ python review.py <вход> <отчёт.md> [--profile fast|full|offline] [--dom
 | `GEMINI_API_KEY` | — | ключ Google AI Studio |
 | `GEMINI_MODEL` | `gemini-3.8-flash` | модель Gemini |
 | `OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL` | — | OpenAI-совместимые API (OpenRouter, Groq, Ollama и др.) |
-| `LLM_BATCH_SIZE` | `20` | требований в одном запросе |
+| `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` | —, `claude-opus-5-5` | Claude через Anthropic Messages API |
+| `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` | —, `anthropic/claude-opus-5.5` | OpenRouter |
+| `OLLAMA_MODEL`, `OLLAMA_BASE_URL` | `qwen2.5:14b`, `http://localhost:11434/v1` | локальная модель |
+| `GEMINI_API` | `native` | `openai` — OpenAI-совместимый эндпоинт Gemini (ключ в `Authorization: Bearer`; для облачных сред, где ключ подставляет прокси) |
+| `LLM_FALLBACK_AFTER` | `3` | после стольких повторов при 503 переходить на резервную модель; при исчерпанной квоте (429) — сразу |
+| `REQLENS_GAPS` | `1` | проход полноты по чек-листу (1 запрос); `0` — выключить |
+| `REQLENS_RECOVER` | `1` | «дорезка» строк вне нарезки моделью; `0` — выключить |
+| `LLM_BATCH_SIZE` | `20` | требований в одном запросе (явное значение важнее профиля; `deep` — 6) |
 | `LLM_RPM` | — | ограничение запросов в минуту (берётся строже из `LLM_RPM` и `LLM_MIN_INTERVAL`) |
 | `REQLENS_CRITIC_CRITICAL` | `1` | в профиле `fast` перепроверять критичные замечания критиком (1 запрос); `0` — выключить |
 | `LLM_MAX_WAIT` | `180` | если API просит ждать дольше (исчерпана дневная квота) — агент останавливается с понятным сообщением, ответы остаются в кэше |
