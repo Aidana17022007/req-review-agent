@@ -12,53 +12,9 @@ from pathlib import Path
 from .criteria import INDIVIDUAL, SET, SEVERITY, criterion_name, criterion_ref
 from .fixer import word_diff
 from .scoring import METHOD_MD
+from .verify import locate as _locate  # общая логика позиций цитат (verify.py)
 
 ORDER = {"critical": 0, "major": 1, "minor": 2}
-_Q = str.maketrans({"«": '"', "»": '"', "“": '"', "”": '"', "„": '"', "ё": "е", "Ё": "Е", "—": "-", "–": "-", " ": " "})
-
-
-def _find(quote: str, text: str) -> tuple[int, int] | None:
-    if not quote or not text:
-        return None
-    i = text.find(quote)
-    if i >= 0:
-        return i, i + len(quote)
-    tl, ql = text.translate(_Q).lower(), quote.translate(_Q).lower()
-    i = tl.find(ql)
-    if i >= 0:
-        return i, i + len(ql)
-    # нормализация пробелов: ищем по регулярке с \s+
-    parts = [re.escape(p) for p in re.split(r"\s+", ql.strip(" .,;:\"'")) if p]
-    if parts:
-        m = re.search(r"\s+".join(parts), tl)
-        if m:
-            return m.start(), m.end()
-    pieces = [p.strip(" .,;:\"'") for p in re.split(r"\.\.\.|…", ql) if len(p.strip()) >= 3]
-    if len(pieces) > 1:
-        a, b = tl.find(pieces[0]), -1
-        if a >= 0:
-            b = tl.find(pieces[-1], a)
-        if a >= 0 and b >= 0:
-            return a, b + len(pieces[-1])
-    return None
-
-
-def _locate(quote: str, lines, lo: int, hi: int, fallback: str = ""):
-    rng = [l for l in lines if lo <= l.lineno <= hi] if lo else lines
-    for l in rng:
-        span = _find(quote, l.text)
-        if span:
-            return l.lineno, span
-    if fallback:
-        for l in rng:
-            span = _find(fallback[:60], l.text)
-            if span:
-                return l.lineno, (span[0], min(len(l.text), span[0] + len(fallback)))
-    if lo and rng:
-        l = rng[0]
-        s = len(l.text) - len(l.text.lstrip())
-        return l.lineno, (s, len(l.text))
-    return None
 
 
 def _verdict(ctx) -> dict:
@@ -162,7 +118,9 @@ def build_data(ctx) -> dict:
         findings[fid] = {"fid": fid, "kind": "set", "set_kind": f.kind, "criterion": f.criterion,
                          "cname": criterion_name(f.criterion), "cref": criterion_ref(f.criterion), "problem": f.problem,
                          "severity": f.severity, "fix": f.fix, "source": f.source, "confidence": f.confidence,
-                         "critic": f.critic_note, "refs": refs, "quote": " / ".join(x["quote"] for x in refs)}
+                         "critic": f.critic_note, "refs": refs, "quote": " / ".join(x["quote"] for x in refs),
+                         "values": [{**v, "label": (by_rid[v["rid"]].doc_id or v["rid"]) if v["rid"] in by_rid else v["rid"]}
+                                    for v in getattr(f, "values", []) or []]}
         set_list.append(fid)
 
     # снять пересечения: на строке оставляем более серьёзные метки

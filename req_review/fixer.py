@@ -18,6 +18,7 @@ class Change:
     before: str
     after: str
     criteria: list[str]
+    unified: str = ""  # unified diff формулировки (для UI и патчей)
 
 
 def collect_changes(rv: ReviewResult) -> list[Change]:
@@ -25,7 +26,9 @@ def collect_changes(rv: ReviewResult) -> list[Change]:
     for rr in rv.req_results:
         if rr.rewrite and rr.findings and rr.rewrite.strip() != rr.req.text.strip():
             crit = list(dict.fromkeys(criterion_name(f.criterion) for f in rr.findings))
-            out.append(Change(rr.req.rid, rr.req.doc_id, rr.req.text, rr.rewrite, crit))
+            ud = "\n".join(difflib.unified_diff([rr.req.text], [rr.rewrite], fromfile=f"{rr.req.doc_id or rr.req.rid} (было)",
+                                                tofile=f"{rr.req.doc_id or rr.req.rid} (стало)", lineterm="", n=0))
+            out.append(Change(rr.req.rid, rr.req.doc_id, rr.req.text, rr.rewrite, crit, ud))
     return out
 
 
@@ -81,3 +84,10 @@ def word_diff(a: str, b: str) -> list[tuple[str, str]]:
             if j2 > j1:
                 out.append(("ins", " ".join(bw[j1:j2])))
     return out
+
+
+def document_diff(rv: ReviewResult, fixed_text: str) -> str:
+    """Unified diff всего документа: исходный текст → исправленная версия (файл .diff)."""
+    name = rv.doc.path.name
+    return "\n".join(difflib.unified_diff([l.text for l in rv.doc.lines], fixed_text.splitlines(),
+                                           fromfile=f"a/{name}", tofile=f"b/{name} (исправлено ReqLens)", lineterm="")) + "\n"

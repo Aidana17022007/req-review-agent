@@ -62,6 +62,13 @@ class Console:
         n_f = sum(len(r.findings) for r in rv.req_results) + len(rv.set_findings)
         n_crit = sum(1 for r in rv.req_results for f in r.findings if f.severity == "critical") + \
             sum(1 for f in rv.set_findings if f.severity == "critical")
+        if "mock" in (ctx.model_label or ""):
+            warn = ("ВНИМАНИЕ: отчёт сформирован в режиме LLM_PROVIDER=mock — модель не вызывалась. "
+                    "Для сдачи нужен прогон с настоящей моделью (ключ в .env).")
+            if self.rich:
+                self.rich.print(f"[bold #B42318]⚠ {warn}[/]")
+            else:
+                print("⚠ " + warn, file=sys.stderr)
         if not self.rich:
             print(f"Готово: требований {len(rv.req_results)}, нарушений {n_f} (критичных {n_crit}), "
                   f"балл {sc.doc_score}/100, готовность {sc.readiness}%, обращений к модели {ctx.llm_stats.calls}, "

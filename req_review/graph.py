@@ -10,6 +10,12 @@ EDGE_KIND = {"contradiction": "contradiction", "duplicate": "duplicate", "depend
 ORDER = {"critical": 0, "major": 1, "minor": 2}
 
 
+def _score(findings) -> int:
+    from .scoring import req_score
+
+    return req_score(findings)
+
+
 def build_graph(rv: ReviewResult) -> dict:
     reqs = rv.split.requirements
     by_doc = {r.doc_id: r.rid for r in reqs if r.doc_id}
@@ -17,7 +23,8 @@ def build_graph(rv: ReviewResult) -> dict:
     for rr in rv.req_results:
         worst = min((f.severity for f in rr.findings), key=ORDER.get, default="ok")
         nodes.append({"id": rr.req.rid, "label": rr.req.doc_id or rr.req.rid, "severity": worst,
-                      "text": rr.req.short, "section": rr.req.section})
+                      "text": rr.req.short, "section": rr.req.section, "type": rr.ears or "",
+                      "nfind": len(rr.findings), "score": _score(rr.findings)})
     edges: dict[tuple, dict] = {}
 
     def add(a, b, kind, title):
@@ -33,7 +40,8 @@ def build_graph(rv: ReviewResult) -> dict:
         ids = [r.req_id for r in f.refs if r.req_id != "DOC"]
         for x in range(len(ids)):
             for y in range(x + 1, len(ids)):
-                add(ids[x], ids[y], kind, f"S-{i:02d}: {f.problem[:140]}")
+                vals = " vs ".join(v["value"] for v in getattr(f, "values", []) or [])
+                add(ids[x], ids[y], kind, f"S-{i:02d}: " + (f"{vals} — " if vals else "") + f.problem[:140])
     # явные ссылки на другие требования в тексте
     for r in reqs:
         for did, rid in by_doc.items():

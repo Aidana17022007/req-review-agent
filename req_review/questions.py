@@ -26,6 +26,8 @@ class Question:
     ref: str  # R-001 (FR-02) / S-01
     text: str
     severity: str
+    rid: str = ""  # привязка к требованию (R-xxx) или замечанию набора (S-xx)
+    criterion: str = ""
 
 
 def _short(q: str, n: int = 70) -> str:
@@ -39,8 +41,9 @@ def build_questions(rv: ReviewResult) -> list[Question]:
     for rr in rv.req_results:
         r = rr.req
         label = r.rid + (f" ({r.doc_id})" if r.doc_id else "")
+        per_req = 0
         for f in rr.findings:
-            if f.severity == "minor":
+            if f.severity == "minor" or per_req >= 3:
                 continue
             key = r.rid + f.criterion
             if key in seen:
@@ -50,14 +53,15 @@ def build_questions(rv: ReviewResult) -> list[Question]:
             text = tpl.format(q=_short(f.quote))
             if f.fix:
                 text += f" Предложение агента: {_short(re.sub(r'[.。]$', '', f.fix), 160)}."
-            out.append(Question(r.section or "Без раздела", label, text, f.severity))
+            out.append(Question(r.section or "Без раздела", label, text, f.severity, r.rid, f.criterion))
+            per_req += 1
     for i, f in enumerate(rv.set_findings, 1):
         if f.severity == "minor":
             continue
         ids = ", ".join(ref.req_id for ref in f.refs if ref.req_id != "DOC") or "документ"
         out.append(Question("Набор требований", f"S-{i:02d}",
                             f"{criterion_name(f.criterion)} ({ids}): {_short(f.problem, 220)} Как исправить: {_short(f.fix, 200)}",
-                            f.severity))
+                            f.severity, f"S-{i:02d}", f.criterion))
     if rv.domain:
         for a in rv.domain.areas:
             if a.status == "missing":

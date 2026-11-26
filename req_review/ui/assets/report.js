@@ -717,6 +717,8 @@
     const list = D.set.map((fid) => { const f = D.findings[fid]; return `<article class="card" style="padding:20px">
       <div class="row wrap"><b>${fid}</b><span class="chip chip-outline">${esc(KINDS[f.set_kind] || f.set_kind)}</span>${chip(f.severity)}<span class="chip">${esc(f.cname)}</span>
         <span class="grow"></span><button class="btn btn-sm btn-ghost" data-open="${fid}">Подробнее ${ic("arrow-right", 14)}</button></div>
+      ${(f.values || []).length ? `<div class="row wrap" style="gap:8px;margin-top:12px" aria-label="Конфликтующие значения">${ic("alert", 14)}<span class="small" style="font-weight:600">Числовой конфликт:</span>
+        ${f.values.map((v) => `<span class="chip sev-critical" title="${esc(v.quote)}"><b>${esc(v.label)}</b>&nbsp;${esc(v.value)}</span>`).join('<span class="small muted">vs</span>')}</div>` : ""}
       <p style="margin:10px 0">${esc(f.problem)}</p>
       ${f.refs.map((x) => `<div class="quote small" style="margin-top:6px">${x.rid !== "DOC" && reqById[x.rid] ? `<a href="#" data-go-req="${x.rid}"><b>${esc(x.label)}</b></a>` : "<b>документ</b>"}: «${esc(x.quote)}»${x.line ? ` · <a href="#L${x.line}" data-go-line="${x.line}">строка ${x.line}</a>` : ""}</div>`).join("")}
       <p class="small muted" style="margin-top:10px"><b>Как исправить:</b> ${esc(f.fix)}</p></article>`; }).join("");

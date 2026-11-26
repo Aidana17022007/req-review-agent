@@ -176,6 +176,15 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
                 else:
                     w(f"- Текст документа: {_q(ref.quote)}")
             w("")
+            if getattr(f, "values", None):
+                parts = []
+                for v in f.values:
+                    rq = by_rid.get(v["rid"])
+                    name = v["rid"] + (f" ({rq.doc_id})" if rq is not None and rq.doc_id else "")
+                    parts.append(f"{name} — «{_cell(v['value'])}»")
+                vs = " vs ".join(parts)
+                w(f"**Конфликтующие значения:** {vs}")
+                w("")
             w(f"**Проблема:** {_cell(f.problem)}")
             w("")
             w(f"**Как исправить:** {_cell(f.fix)}")

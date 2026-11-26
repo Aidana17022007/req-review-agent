@@ -1,153 +1,520 @@
 {
-  "defects": [
-    {
-      "type": "vague",
-      "ids": [
-        "PAY-01"
+  "documents": {
+    "payments": {
+      "defects": [
+        {
+          "doc": "payments",
+          "type": "vague",
+          "ids": [
+            "PAY-01"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "payments",
+          "type": "vague",
+          "ids": [
+            "NFR-01"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "payments",
+          "type": "missing_units",
+          "ids": [
+            "PAY-07"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous",
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "payments",
+          "type": "open_list",
+          "ids": [
+            "PAY-08"
+          ],
+          "criteria": [
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "payments",
+          "type": "tbd",
+          "ids": [
+            "NFR-05"
+          ],
+          "criteria": [
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "payments",
+          "type": "and_or",
+          "ids": [
+            "PAY-09"
+          ],
+          "criteria": [
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "payments",
+          "type": "conditional",
+          "ids": [
+            "PAY-03"
+          ],
+          "criteria": [
+            "unambiguous",
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "payments",
+          "type": "design",
+          "ids": [
+            "PAY-13"
+          ],
+          "criteria": [
+            "appropriate"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "payments",
+          "type": "compound",
+          "ids": [
+            "PAY-12"
+          ],
+          "criteria": [
+            "singular"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "payments",
+          "type": "subjective",
+          "ids": [
+            "NFR-06"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "payments",
+          "type": "absolute",
+          "ids": [
+            "NFR-02"
+          ],
+          "criteria": [
+            "feasible",
+            "verifiable"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "payments",
+          "type": "contradiction",
+          "ids": [
+            "PAY-05",
+            "SEC-01"
+          ],
+          "criteria": [
+            "set_consistent"
+          ],
+          "level": "set"
+        },
+        {
+          "doc": "payments",
+          "type": "duplicate",
+          "ids": [
+            "PAY-02",
+            "PAY-15"
+          ],
+          "criteria": [
+            "set_consistent",
+            "necessary"
+          ],
+          "level": "set"
+        }
       ],
-      "criteria": [
-        "verifiable",
-        "unambiguous"
-      ],
-      "level": "requirement"
+      "clean_ids": [
+        "PAY-04",
+        "PAY-06",
+        "PAY-10",
+        "PAY-11",
+        "PAY-14",
+        "NFR-03",
+        "NFR-04"
+      ]
     },
-    {
-      "type": "vague",
-      "ids": [
-        "NFR-01"
+    "credit": {
+      "defects": [
+        {
+          "doc": "credit",
+          "type": "vague",
+          "ids": [
+            "CR-03"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "credit",
+          "type": "missing_units",
+          "ids": [
+            "CR-11"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous",
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "credit",
+          "type": "open_list",
+          "ids": [
+            "CR-04"
+          ],
+          "criteria": [
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "credit",
+          "type": "tbd",
+          "ids": [
+            "CR-10"
+          ],
+          "criteria": [
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "credit",
+          "type": "and_or",
+          "ids": [
+            "CR-13"
+          ],
+          "criteria": [
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "credit",
+          "type": "conditional",
+          "ids": [
+            "CR-05"
+          ],
+          "criteria": [
+            "unambiguous",
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "credit",
+          "type": "design",
+          "ids": [
+            "CR-07"
+          ],
+          "criteria": [
+            "appropriate"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "credit",
+          "type": "compound",
+          "ids": [
+            "CR-12"
+          ],
+          "criteria": [
+            "singular"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "credit",
+          "type": "subjective",
+          "ids": [
+            "CNF-01"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "credit",
+          "type": "absolute",
+          "ids": [
+            "CNF-02"
+          ],
+          "criteria": [
+            "feasible",
+            "verifiable"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "credit",
+          "type": "vague_goal",
+          "ids": [
+            "CNF-03"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "credit",
+          "type": "vague",
+          "ids": [
+            "CR-06"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "credit",
+          "type": "contradiction",
+          "ids": [
+            "CR-01",
+            "CR-15"
+          ],
+          "criteria": [
+            "set_consistent"
+          ],
+          "level": "set"
+        },
+        {
+          "doc": "credit",
+          "type": "duplicate",
+          "ids": [
+            "CR-02",
+            "CR-16"
+          ],
+          "criteria": [
+            "set_consistent",
+            "necessary"
+          ],
+          "level": "set"
+        }
       ],
-      "criteria": [
-        "verifiable",
-        "unambiguous"
-      ],
-      "level": "requirement"
+      "clean_ids": [
+        "CR-08",
+        "CR-09",
+        "CR-14",
+        "CNF-04"
+      ]
     },
-    {
-      "type": "missing_units",
-      "ids": [
-        "PAY-07"
+    "onboarding": {
+      "defects": [
+        {
+          "doc": "onboarding",
+          "type": "vague",
+          "ids": [
+            "ON-04"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "onboarding",
+          "type": "open_list",
+          "ids": [
+            "ON-03"
+          ],
+          "criteria": [
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "onboarding",
+          "type": "tbd",
+          "ids": [
+            "ON-10"
+          ],
+          "criteria": [
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "onboarding",
+          "type": "and_or",
+          "ids": [
+            "ON-12"
+          ],
+          "criteria": [
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "onboarding",
+          "type": "conditional",
+          "ids": [
+            "ON-13"
+          ],
+          "criteria": [
+            "unambiguous",
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "onboarding",
+          "type": "design",
+          "ids": [
+            "ON-14"
+          ],
+          "criteria": [
+            "appropriate"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "onboarding",
+          "type": "compound",
+          "ids": [
+            "ON-08"
+          ],
+          "criteria": [
+            "singular"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "onboarding",
+          "type": "subjective",
+          "ids": [
+            "ONF-03"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "onboarding",
+          "type": "absolute",
+          "ids": [
+            "ON-05"
+          ],
+          "criteria": [
+            "feasible",
+            "verifiable"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "onboarding",
+          "type": "vague_goal",
+          "ids": [
+            "ONF-02"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "onboarding",
+          "type": "missing_units",
+          "ids": [
+            "ONF-01"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "onboarding",
+          "type": "passive",
+          "ids": [
+            "ON-11"
+          ],
+          "criteria": [
+            "complete",
+            "conforming"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "onboarding",
+          "type": "contradiction",
+          "ids": [
+            "ON-09",
+            "ON-15"
+          ],
+          "criteria": [
+            "set_consistent"
+          ],
+          "level": "set"
+        },
+        {
+          "doc": "onboarding",
+          "type": "duplicate",
+          "ids": [
+            "ON-07",
+            "ON-16"
+          ],
+          "criteria": [
+            "set_consistent",
+            "necessary"
+          ],
+          "level": "set"
+        }
       ],
-      "criteria": [
-        "verifiable",
-        "unambiguous",
-        "complete"
-      ],
-      "level": "requirement"
-    },
-    {
-      "type": "open_list",
-      "ids": [
-        "PAY-08"
-      ],
-      "criteria": [
-        "complete"
-      ],
-      "level": "requirement"
-    },
-    {
-      "type": "tbd",
-      "ids": [
-        "NFR-05"
-      ],
-      "criteria": [
-        "complete"
-      ],
-      "level": "requirement"
-    },
-    {
-      "type": "and_or",
-      "ids": [
-        "PAY-09"
-      ],
-      "criteria": [
-        "unambiguous"
-      ],
-      "level": "requirement"
-    },
-    {
-      "type": "conditional",
-      "ids": [
-        "PAY-03"
-      ],
-      "criteria": [
-        "unambiguous",
-        "complete"
-      ],
-      "level": "requirement"
-    },
-    {
-      "type": "design",
-      "ids": [
-        "PAY-13"
-      ],
-      "criteria": [
-        "appropriate"
-      ],
-      "level": "requirement"
-    },
-    {
-      "type": "compound",
-      "ids": [
-        "PAY-12"
-      ],
-      "criteria": [
-        "singular"
-      ],
-      "level": "requirement"
-    },
-    {
-      "type": "subjective",
-      "ids": [
-        "NFR-06"
-      ],
-      "criteria": [
-        "verifiable",
-        "unambiguous"
-      ],
-      "level": "requirement"
-    },
-    {
-      "type": "absolute",
-      "ids": [
-        "NFR-02"
-      ],
-      "criteria": [
-        "feasible",
-        "verifiable"
-      ],
-      "level": "requirement"
-    },
-    {
-      "type": "contradiction",
-      "ids": [
-        "PAY-05",
-        "SEC-01"
-      ],
-      "criteria": [
-        "set_consistent"
-      ],
-      "level": "set"
-    },
-    {
-      "type": "duplicate",
-      "ids": [
-        "PAY-02",
-        "PAY-15"
-      ],
-      "criteria": [
-        "set_consistent",
-        "necessary"
-      ],
-      "level": "set"
+      "clean_ids": [
+        "ON-01",
+        "ON-02",
+        "ON-06",
+        "ONF-04"
+      ]
     }
-  ],
-  "clean_ids": [
-    "PAY-04",
-    "PAY-06",
-    "PAY-10",
-    "PAY-11",
-    "PAY-14",
-    "NFR-03",
-    "NFR-04"
-  ]
+  },
+  "total_defects": 41
 }
