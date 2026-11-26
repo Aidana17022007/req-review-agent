@@ -164,7 +164,16 @@ def test_report_without_v22_fields_hides_new_blocks():
     from req_review.html_report import build_data
     from req_review.ui.preview import build_ctx
 
-    d = build_data(build_ctx(fixture=None))
+    # backend 2.2 заполняет категории и карту покрытия всегда (RAG или нет) — эмулируем отчёт без этих полей
+    ctx = build_ctx(fixture=None)
+    ctx.rv.coverage = []
+    for rr in ctx.rv.req_results:
+        rr.category, rr.rewrite_pattern = "", None
+        for f in rr.findings:
+            f.basis = []
+    for f in ctx.rv.set_findings:
+        f.basis = []
+    d = build_data(ctx)
     assert d["coverage"] is None
     assert all(f["basis"] == [] for f in d["findings"].values())
     assert all(r["category"] == "" and r["rewrite_pattern"] is None for r in d["reqs"])
