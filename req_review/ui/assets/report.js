@@ -38,7 +38,7 @@
   const BIG_DOC = D.lines.length > 1200, BIG_TABLE = D.reqs.length > 300;
 
   // ------------------------------------------------------------ тема, печать, тосты
-  function currentTheme() { return document.documentElement.dataset.theme || "light"; }
+  function currentTheme() { return document.documentElement.dataset.theme || "dark"; }
   function setThemeBtn() { const d = currentTheme() === "dark"; $("#btn-theme").innerHTML = ic(d ? "sun" : "moon") + `<span>${d ? "Светлая тема" : "Тёмная тема"}</span>`; }
   function toggleTheme() {
     const t = currentTheme() === "dark" ? "light" : "dark";

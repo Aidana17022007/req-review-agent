@@ -76,7 +76,7 @@
   </section>
 
   {# ------------------------------------------------------------------ цвет #}
-  <section class="sg-section" id="color"><div class="sg-h"><h2 class="h2">Палитра</h2><span class="faint small">опорные шкалы 50–950 · --green-*, --gray-*</span></div>
+  <section class="sg-section" id="color"><div class="sg-h"><h2 class="h2">Палитра</h2><span class="faint small">опорные шкалы 50–950 · --indigo-*, --night-*, --dawn-*</span></div>
     {% for name, scale in tokens.palette.items() %}<div class="sg-sub">{{ name }}</div>
     <div class="ramp">{% for k, v in scale.items() %}<div style="background:{{ v }};color:{{ '#111813' if k|int < 500 else '#FFFFFF' }}">{{ k }}<code>{{ v }}</code></div>{% endfor %}</div>{% endfor %}
     <p class="small muted" style="margin-top:12px">Компоненты используют не шкалы, а семантические токены ниже — так тёмная тема и будущие правки палитры не требуют менять компоненты.</p>

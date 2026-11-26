@@ -241,7 +241,8 @@
   color-scheme: dark;
 }
 
-/* ReqLens — компоненты дизайн-системы (зелёная светлая тема). Токены — в tokens.css (из design/tokens.json). */
+/* ReqLens — компоненты дизайн-системы v3 «Ecliptic Dawn» (ночь → рассвет; тёмная тема по умолчанию).
+   Токены — в tokens.css (из design/tokens.json); здесь цвета только через var(--*). */
 *,*::before,*::after{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
 body{margin:0;background:var(--bg);color:var(--text);font:var(--t-body);-webkit-font-smoothing:antialiased;font-feature-settings:"cv11","ss01","tnum"}
@@ -698,8 +699,8 @@ pre.code{margin:0;padding:12px 14px;border-radius:12px;background:var(--surface-
 .g-rel-row.on{outline:2px solid color-mix(in srgb,var(--critical-accent) 45%,transparent)}
 .g-rel-row .small.muted{flex-basis:100%}
 .g-swatch{display:inline-block;width:18px;height:0;border-top:2px solid;vertical-align:middle;margin-right:4px}
-.g-l-red{border-color:#D64545;border-top-width:3px}.g-l-gray{border-color:#8A968E}.g-l-dash{border-color:#3FA06B;border-top-style:dashed}
-.g-l-thin{border-color:#2E8B57;border-top-width:1px}
+.g-l-red{border-color:var(--critical);border-top-width:3px}.g-l-gray{border-color:var(--text-3)}.g-l-dash{border-color:var(--brand);border-top-style:dashed}
+.g-l-thin{border-color:var(--brand-light);border-top-width:1px}
 .g3-tip{font:500 12px/17px var(--font-sans);max-width:280px;white-space:normal}.g3-tip span{opacity:.8}
 .node text.glyph{fill:#fff;font:800 13px/1 var(--font-sans)}
 .node.dim{opacity:.22}.node.sel circle{stroke:var(--brand);stroke-width:4}
@@ -810,7 +811,7 @@ textarea.input{height:auto;min-height:96px;padding:12px 16px;border-radius:var(-
 .modal-box footer{display:flex;gap:var(--s-3);justify-content:flex-end;flex-wrap:wrap}
 /* --- Тост: варианты статуса (текст всегда белый на тёмном фоне — AA в обеих темах) */
 .toast-ok{background:var(--brand-dark)}.toast-err{background:var(--danger);color:var(--on-danger)}
-.toast-info{background:var(--gray-800);color:#fff}
+.toast-info{background:var(--night-800);color:#fff}
 /* --- Тултип: и при наведении, и при фокусе с клавиатуры */
 [data-tip]:focus-visible::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
   background:var(--text);color:var(--surface);font:500 12px/16px var(--font-sans);padding:6px 8px;border-radius:8px;white-space:nowrap;z-index:var(--z-tooltip);pointer-events:none}
@@ -851,6 +852,91 @@ textarea.input{height:auto;min-height:96px;padding:12px 16px;border-radius:var(-
 .ask-a{background:var(--surface-2);padding:10px 14px;border-radius:14px 14px 14px 4px;font-size:14px;line-height:1.5}
 .ask-a p{margin:4px 0}.ask-list{margin:4px 0;padding-left:20px}.ask-list li{margin:4px 0}
 #ask-log{gap:8px}#ask-log:empty{display:none}
+
+
+/* ============================== Дизайн-система v3 «Ecliptic Dawn»: внешний вид компонентов
+   Страница — градиент индиго → заря, контент — ночная панель (--r-panel); главное действие — белая таблетка (--primary);
+   один источник света на экран. Только семантические токены; имена классов и разметка не меняются. */
+body{background:var(--grad-page) fixed;font:var(--t-body);font-feature-settings:"cv11","ss01"}
+:root[data-theme="light"] body,body[data-theme="light"]{background:var(--bg)}
+.display{font:var(--t-display);font-size:clamp(32px,3.8vw,56px);line-height:1.04;letter-spacing:-.04em}
+.h1{letter-spacing:-.035em}.h2{letter-spacing:-.02em}
+.kpi-num{font:var(--t-kpi);letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+:focus-visible{outline-color:var(--focus)}
+/* каркас: сайдбар — тёмное стекло, контент — ночная панель */
+.main{background:transparent}
+.sidebar{background:color-mix(in srgb,var(--panel) 86%,transparent);border:1px solid var(--glass-border);border-radius:var(--r-panel);
+  -webkit-backdrop-filter:blur(var(--glass-blur));backdrop-filter:blur(var(--glass-blur))}
+.topbar{background:color-mix(in srgb,var(--panel) 80%,transparent);border:1px solid var(--glass-border);border-radius:999px;
+  -webkit-backdrop-filter:blur(var(--glass-blur));backdrop-filter:blur(var(--glass-blur))}
+.content{position:relative;background:var(--panel);border-radius:var(--r-panel);padding:clamp(18px,2.4vw,32px);box-shadow:var(--shadow-xl);overflow:hidden}
+.content::before{content:"";position:absolute;inset:auto 0 0 0;height:320px;pointer-events:none;
+  background:radial-gradient(70% 100% at 50% 120%,color-mix(in srgb,var(--glow) 55%,transparent),transparent 70%)}
+.content>*{position:relative}
+.nav-item[aria-current=page]{background:var(--brand-soft)}
+.nav-item[aria-current=page]::before{background:var(--accent);box-shadow:0 0 12px var(--accent)}
+.nav-item .count{background:var(--surface-2);color:var(--text);border:1px solid var(--border)}
+/* кнопки */
+.btn{font-weight:500;letter-spacing:-.005em}
+.btn-primary{background:var(--primary);color:var(--on-primary);box-shadow:var(--shadow-md)}
+.btn-primary:hover{background:var(--primary);box-shadow:var(--shadow-lg);transform:translateY(-1px)}
+.btn.loading.btn-primary::after{border-color:var(--on-primary);border-right-color:transparent}
+.btn-secondary,.btn-outline{background:var(--surface);color:var(--text);border:1px solid var(--border-strong)}
+.btn-secondary:hover,.btn-outline:hover{background:var(--surface-2);border-color:var(--accent)}
+.btn-round{background:var(--glass-bg);border-color:var(--glass-border)}
+/* карточки, KPI, статы: ночь + тонкая перивинкл-рамка, подсветка при наведении */
+.card,.kpi,.stat,.mini,.skel-card,.doc,.graph-wrap,.table-wrap{border-color:var(--border)}
+.card-hover:hover,.kpi:hover{border-color:color-mix(in srgb,var(--accent) 55%,transparent);transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.kpi{transition:border-color var(--motion-base),transform var(--motion-base) var(--motion-ease),box-shadow var(--motion-base)}
+.kpi .lbl{font-weight:500;color:var(--text-2)}
+.kpi-hero{background:radial-gradient(120% 100% at 50% 130%,var(--indigo-500),var(--indigo-900) 58%,var(--indigo-950));color:#fff;
+  border:1px solid color-mix(in srgb,var(--accent) 40%,transparent)}
+.kpi-hero::after{background:radial-gradient(circle,color-mix(in srgb,var(--accent) 45%,transparent),transparent 65%);width:220px;height:220px}
+.kpi-hero .lbl,.kpi-hero .sub{color:rgba(255,255,255,.88)}
+.agent{border-color:color-mix(in srgb,var(--accent) 40%,var(--border))}
+.agent .vis{background:radial-gradient(240px 200px at 45% 70%,color-mix(in srgb,var(--glow) 60%,transparent),transparent 70%)}
+.agent .metric .kpi-num,.live{color:var(--accent)}
+.st-run{background:var(--primary);color:var(--on-primary)}
+/* чипы — полупрозрачные таблетки */
+.chip{font-weight:500;border:1px solid var(--border)}
+.sev-critical,.sev-major,.sev-minor,.sev-ok,.sev-info,.chip-brand{border-color:transparent}
+/* вкладки и сегменты: активная — белая таблетка */
+.tab{border-radius:999px;background:var(--surface);border-color:var(--border)}
+.tab[aria-selected=true],.tab.on,.seg button[aria-pressed=true],.seg button.on{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.seg{background:var(--glass-bg);border-color:var(--glass-border)}
+.pill{background:var(--surface);border-color:var(--border)}
+/* поля */
+.input{background:var(--surface);border-color:var(--border-strong);color:var(--text)}
+.input:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--brand-soft)}
+/* загрузка: большая область со светом рассвета снизу; при перетаскивании свет сильнее */
+.dropzone{position:relative;overflow:hidden;border:1.5px dashed var(--border-strong);background:var(--surface);min-height:220px}
+.dropzone::before{content:"";position:absolute;inset:auto -10% -40% -10%;height:80%;pointer-events:none;opacity:.55;
+  background:radial-gradient(60% 70% at 50% 100%,var(--glow),transparent 70%);transition:opacity var(--motion-base)}
+.dropzone>*{position:relative}
+.dropzone:hover,.dropzone:focus-visible,.dropzone.is-over{border-color:var(--accent);background:var(--surface-2)}
+.dropzone:hover::before,.dropzone.is-over::before{opacity:1}
+.dropzone .dz-ic{background:var(--primary);color:var(--on-primary);box-shadow:0 0 30px var(--glow)}
+/* ящик, модальное окно, тост */
+.drawer,.modal-box{background:var(--panel);border:1px solid var(--border);box-shadow:var(--shadow-xl)}
+.toast{border-radius:999px}.toast-ok{background:var(--night-800);color:#fff;border:1px solid var(--border-strong)}
+/* прогресс этапов и полосы */
+.stages-bar i,.bar i{background:linear-gradient(90deg,var(--brand-light),var(--accent))}
+.stages li.run::before{background:var(--accent);box-shadow:0 0 0 4px var(--brand-soft),0 0 12px var(--accent)}
+/* цитата и замечание */
+.quote{border-left-color:var(--accent);background:var(--surface-2)}
+.verdict-badge{font-weight:500;letter-spacing:-.02em}
+/* скелетон — холодный блик */
+.skel{background:linear-gradient(90deg,var(--surface-2) 25%,color-mix(in srgb,var(--accent) 14%,var(--surface-2)) 50%,var(--surface-2) 75%);background-size:200% 100%}
+/* светлая тема: панели белые, сайдбар — светлое стекло */
+[data-theme="light"] .content{box-shadow:var(--shadow-lg)}
+[data-theme="light"] .content::before{opacity:.5}
+@media (prefers-reduced-motion:reduce){.card-hover:hover,.kpi:hover,.btn-primary:hover{transform:none}}
+@media print{
+  body{background:#fff!important}
+  .content{box-shadow:none;border-radius:0;padding:0;background:#fff}.content::before,.dropzone::before,.kpi-hero::after{display:none}
+  .sidebar,.topbar{-webkit-backdrop-filter:none;backdrop-filter:none}
+  .kpi-hero{background:#fff;color:#000;border:1px solid #ccc}.kpi-hero .lbl,.kpi-hero .sub{color:#333}
+}
 
 html,body{height:100%;overflow:hidden}
 .deck{height:100vh;position:relative}
