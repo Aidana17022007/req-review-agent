@@ -937,6 +937,11 @@ body{background:var(--grad-page) fixed;font:var(--t-body);font-feature-settings:
   .sidebar,.topbar{-webkit-backdrop-filter:none;backdrop-filter:none}
   .kpi-hero{background:#fff;color:#000;border:1px solid #ccc}.kpi-hero .lbl,.kpi-hero .sub{color:#333}
 }
+/* граф: ночь с синим туманом; рёбра противоречий светятся (3D рисует прозрачным фоном поверх) */
+.graph-wrap,.g-stage{background:radial-gradient(80% 70% at 50% 100%,color-mix(in srgb,var(--glow) 45%,transparent),transparent 70%),
+  radial-gradient(60% 50% at 30% 20%,color-mix(in srgb,var(--indigo-900) 55%,transparent),transparent 70%),var(--panel)}
+.graph-wrap svg line[stroke="#FF7B8A"],.graph-wrap svg path[stroke="#FF7B8A"]{filter:drop-shadow(0 0 4px var(--critical))}
+@media print{.graph-wrap,.g-stage{background:#fff}}
 
 html,body{height:100%;overflow:hidden}
 .deck{height:100vh;position:relative}

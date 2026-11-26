@@ -5,10 +5,10 @@
   const RL = window.RL; if (!RL) return;
   const { D, $, $$, esc, ic, SEV, ORDER, chip, statusChip, label, reqById, empty } = RL;
   const KIND = {
-    contradiction: { label: "Противоречие", color: "#D64545", hint: "красная линия" },
-    dependency: { label: "Зависимость", color: "#8A968E", hint: "серая линия" },
-    duplicate: { label: "Дубликат", color: "#3FA06B", hint: "пунктир" },
-    term: { label: "Термин", color: "#2E8B57", hint: "тонкая линия" },
+    contradiction: { label: "Противоречие", color: "#FF7B8A", hint: "красная линия" },
+    dependency: { label: "Зависимость", color: "#8C91B5", hint: "серая линия" },
+    duplicate: { label: "Дубликат", color: "#8E9BFF", hint: "пунктир" },
+    term: { label: "Термин", color: "#9191D3", hint: "тонкая линия" },
   };
   const short = (s, n) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
 
@@ -145,11 +145,11 @@
 
   // ---------------------------------------------------------------- цвета
   const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-  const DIM = "rgba(110,122,115,0.45)"; // приглушённые узлы вне цепочки остаются различимыми на белом фоне
+  const DIM = "rgba(140,145,181,0.38)"; // приглушённые узлы вне цепочки различимы и на ночном, и на белом фоне
   function nodeColor(n) { if (!inChain(n.id)) return DIM; return SEV[n.severity].color; }
   function linkColor(l) {
-    if (st.chain && !linkInChain(l)) return "rgba(140,150,145,0.10)";
-    return { contradiction: "#D64545", dependency: "rgba(138,150,142,0.85)", duplicate: "rgba(63,160,107,0.45)", term: "rgba(46,139,87,0.5)" }[l.kind];
+    if (st.chain && !linkInChain(l)) return "rgba(140,145,181,0.10)";
+    return { contradiction: "#FF7B8A", dependency: "rgba(163,168,201,0.7)", duplicate: "rgba(142,155,255,0.6)", term: "rgba(145,145,211,0.55)" }[l.kind];
   }
 
   // ---------------------------------------------------------------- 3D
@@ -189,7 +189,8 @@
       G3 = F({ controlType: "orbit" })(box);
     } catch (e) { G3 = null; setMode("2d", "WebGL недоступен — показан 2D-вид."); return; }
     const data = { nodes: NODES.map((n) => ({ ...n })), links: LINKS.map((l) => ({ ...l })) };
-    G3.backgroundColor(css("--surface") || "#ffffff").showNavInfo(false)
+    // фон прозрачный: ночь и синий туман рисует CSS (.graph-wrap), поэтому граф выглядит одинаково в 3D и 2D
+    G3.backgroundColor("rgba(0,0,0,0)").showNavInfo(false)
       .width(box.clientWidth).height(box.clientHeight)
       .nodeId("id").nodeVal((n) => 2 + n.nfind * 3).nodeRelSize(6).nodeResolution(20).nodeOpacity(0.95)
       .nodeColor(nodeColor).nodeVisibility(nodeOn)
@@ -197,7 +198,7 @@
       .linkVisibility(linkOn).linkColor(linkColor).linkOpacity(0.85)
       .linkWidth((l) => (l.kind === "duplicate" ? 0.3 : (l.kind === "contradiction" ? 1.6 : 0.7) * (st.chain && linkInChain(l) ? 1.8 : 1)))
       .linkDirectionalParticles((l) => (l.kind === "duplicate" ? 10 : 0)).linkDirectionalParticleSpeed(RL.REDUCED ? 0 : 0.0035)
-      .linkDirectionalParticleWidth(2.2).linkDirectionalParticleColor(() => "#3FA06B")
+      .linkDirectionalParticleWidth(2.2).linkDirectionalParticleColor(() => css("--accent") || "#8E9BFF")
       .linkLabel((l) => `<div class="g3-tip"><b>${esc(KIND[l.kind].label)}</b><br>${esc(short(l.title, 160))}</div>`)
       .onNodeClick((n) => select(n.id, true)).onLinkClick((l) => { if (l.fid) RL.openFinding(l.fid); })
       .onBackgroundClick(() => select(null))
@@ -321,5 +322,5 @@
   };
   RL.ONSHOW.graph = () => { if (!st.mode) { if (NODES.length) firstMode(); return; } if (G3) { G3.resumeAnimation(); const b = $("#g-canvas"); G3.width(b.clientWidth).height(b.clientHeight); loop(); } };
   RL.ONHIDE.graph = () => { if (G3) G3.pauseAnimation(); cancelAnimationFrame(raf); };
-  document.addEventListener("reqlens:theme", () => { if (G3) G3.backgroundColor(css("--surface") || "#ffffff"); });
+  document.addEventListener("reqlens:theme", () => { if (G3) G3.nodeColor(nodeColor).linkColor(linkColor); });
 })();

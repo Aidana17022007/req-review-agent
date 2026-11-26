@@ -1,4 +1,4 @@
-/* ReqLens — интерактивный отчёт (структура «AI-агент», светлая зелёная тема). Ванильный JS, без зависимостей.
+/* ReqLens — интерактивный отчёт (структура «AI-агент», дизайн-система v3 «Ecliptic Dawn»). Ванильный JS, без зависимостей.
    Модули: ядро и разделы — здесь; «Граф» (3D/2D) — в report-graph.js и использует window.RL. */
 (function () {
   "use strict";
@@ -7,11 +7,14 @@
   const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const ic = (n, s = 18) => `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ""}</svg>`;
+  // цвет серьёзности — из токенов текущей темы (tokens.css): графики и граф совпадают с чипами в обеих темах
+  const tok = (v, fb) => (getComputedStyle(document.documentElement).getPropertyValue(v).trim() || fb);
+  const sev = (label, icon, v, fb) => ({ label, icon, get color() { return tok(v, fb); } });
   const SEV = {
-    critical: { label: "Критичный", icon: "alert", color: "#D64545" },
-    major: { label: "Существенный", icon: "alert", color: "#B7791F" },
-    minor: { label: "Незначительный", icon: "chat", color: "#B8A532" },
-    ok: { label: "Без замечаний", icon: "check", color: "#1F9D55" },
+    critical: sev("Критичный", "alert", "--critical", "#FF7B8A"),
+    major: sev("Существенный", "alert", "--major", "#FFB86B"),
+    minor: sev("Незначительный", "chat", "--minor", "#F3DE8A"),
+    ok: sev("Без замечаний", "check", "--ok", "#5EE6B0"),
   };
   const ORDER = { critical: 0, major: 1, minor: 2, ok: 3 };
   const EARS = { ubiquitous: "постоянное", event: "по событию", state: "по состоянию", unwanted: "нежелательное поведение", optional: "опциональное", complex: "составное" };
