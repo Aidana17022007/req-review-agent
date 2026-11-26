@@ -4,33 +4,41 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ReqLens · Дизайн-система v2</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=&#34;http://www.w3.org/2000/svg&#34; viewBox=&#34;0 0 48 48&#34; role=&#34;img&#34; aria-label=&#34;ReqLens&#34;%3E%3Cdefs%3E%3ClinearGradient id=&#34;f&#34; x1=&#34;0&#34; y1=&#34;0&#34; x2=&#34;1&#34; y2=&#34;1&#34;%3E%3Cstop offset=&#34;0&#34; stop-color=&#34;%2314532D&#34;/%3E%3Cstop offset=&#34;1&#34; stop-color=&#34;%232E8B57&#34;/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width=&#34;48&#34; height=&#34;48&#34; rx=&#34;12&#34; fill=&#34;url%28%23f%29&#34;/%3E%3Ccircle cx=&#34;21.0&#34; cy=&#34;21.0&#34; r=&#34;10.5&#34; fill=&#34;none&#34; stroke=&#34;%23FFFFFF&#34; stroke-width=&#34;4.0&#34;/%3E%3Cpath d=&#34;M28.9 28.9L37.0 37.0&#34; stroke=&#34;%23FFFFFF&#34; stroke-width=&#34;5.0&#34; stroke-linecap=&#34;round&#34;/%3E%3Cpolyline points=&#34;15.9,21.4 19.7,25.2 26.3,17.7&#34; fill=&#34;none&#34; stroke=&#34;%23FFFFFF&#34; stroke-width=&#34;3.2&#34; stroke-linecap=&#34;round&#34; stroke-linejoin=&#34;round&#34;/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=&#34;http://www.w3.org/2000/svg&#34; viewBox=&#34;0 0 48 48&#34; role=&#34;img&#34; aria-label=&#34;ReqLens&#34;%3E%3Cdefs%3E%3ClinearGradient id=&#34;f&#34; gradientUnits=&#34;userSpaceOnUse&#34; x1=&#34;10&#34; y1=&#34;9&#34; x2=&#34;38&#34; y2=&#34;38&#34;%3E%3Cstop offset=&#34;0&#34; stop-color=&#34;%234459C8&#34;/%3E%3Cstop offset=&#34;.55&#34; stop-color=&#34;%239191D3&#34;/%3E%3Cstop offset=&#34;1&#34; stop-color=&#34;%23E3CDDB&#34;/%3E%3C/linearGradient%3E%3CradialGradient id=&#34;fg&#34; cx=&#34;.5&#34; cy=&#34;1&#34; r=&#34;.85&#34;%3E%3Cstop offset=&#34;0&#34; stop-color=&#34;%234459C8&#34; stop-opacity=&#34;.6&#34;/%3E%3Cstop offset=&#34;1&#34; stop-color=&#34;%234459C8&#34; stop-opacity=&#34;0&#34;/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width=&#34;48&#34; height=&#34;48&#34; rx=&#34;12&#34; fill=&#34;%2302030C&#34;/%3E%3Crect width=&#34;48&#34; height=&#34;48&#34; rx=&#34;12&#34; fill=&#34;url%28%23fg%29&#34;/%3E%3Ccircle cx=&#34;21.0&#34; cy=&#34;21.0&#34; r=&#34;10.5&#34; fill=&#34;none&#34; stroke=&#34;url%28%23f%29&#34; stroke-width=&#34;4.0&#34;/%3E%3Cpath d=&#34;M28.9 28.9L37.0 37.0&#34; stroke=&#34;url%28%23f%29&#34; stroke-width=&#34;5.0&#34; stroke-linecap=&#34;round&#34;/%3E%3Cpolyline points=&#34;15.9,21.4 19.7,25.2 26.3,17.7&#34; fill=&#34;none&#34; stroke=&#34;%23FFFFFF&#34; stroke-width=&#34;3.2&#34; stroke-linecap=&#34;round&#34; stroke-linejoin=&#34;round&#34;/%3E%3C/svg%3E">
 <style>
 :root {
-  --font-sans: Inter, 'Inter var', Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-sans: Inter, 'Inter Display', Geist, Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, monospace;
-  --green-50: #F0F8F3;
-  --green-100: #E7F4EC;
-  --green-200: #C9E8D5;
-  --green-300: #97D2AF;
-  --green-400: #4CC07F;
-  --green-500: #3FA06B;
-  --green-600: #2E8B57;
-  --green-700: #1F6B45;
-  --green-800: #14532D;
-  --green-900: #0F3F23;
-  --green-950: #08261A;
-  --gray-50: #F5F7F5;
-  --gray-100: #EDF0EE;
-  --gray-200: #E0E5E1;
-  --gray-300: #CAD2CC;
-  --gray-400: #A7B5AC;
-  --gray-500: #7D8A82;
-  --gray-600: #5E6A62;
-  --gray-700: #47524B;
-  --gray-800: #26332B;
-  --gray-900: #151D18;
-  --gray-950: #0E1410;
+  --indigo-50: #F1F2FF;
+  --indigo-100: #E3E6FF;
+  --indigo-200: #C9CEFF;
+  --indigo-300: #A9B1FF;
+  --indigo-400: #8E9BFF;
+  --indigo-500: #6676E0;
+  --indigo-600: #4459C8;
+  --indigo-700: #3B4CB6;
+  --indigo-800: #2A3794;
+  --indigo-900: #192B84;
+  --indigo-950: #080F36;
+  --night-50: #F5F6FC;
+  --night-100: #ECEEF9;
+  --night-200: #D9DCF0;
+  --night-300: #B9BEDD;
+  --night-400: #A3A8C9;
+  --night-500: #6E7397;
+  --night-600: #4E5378;
+  --night-700: #2A2F55;
+  --night-800: #12163A;
+  --night-900: #0B0E24;
+  --night-950: #02030C;
+  --dawn-100: #E3CDDB;
+  --dawn-200: #D9C6DA;
+  --dawn-300: #9191D3;
+  --dawn-400: #7E82CE;
+  --dawn-500: #4459C8;
+  --dawn-600: #192B84;
+  --dawn-700: #080F36;
+  --dawn-800: #02020E;
   --fs-xs: 12px;
   --lh-xs: 16px;
   --fs-sm: 14px;
@@ -45,14 +53,14 @@
   --lh-2xl: 40px;
   --fs-3xl: 48px;
   --lh-3xl: 56px;
-  --t-kpi: 600 44px/48px Inter, 'Inter var', Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --t-display: 700 36px/44px Inter, 'Inter var', Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --t-h1: 700 28px/36px Inter, 'Inter var', Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --t-h2: 600 20px/28px Inter, 'Inter var', Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --t-h3: 600 16px/24px Inter, 'Inter var', Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --t-body: 400 15px/24px Inter, 'Inter var', Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --t-small: 400 13px/20px Inter, 'Inter var', Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --t-caption: 500 12px/16px Inter, 'Inter var', Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --t-kpi: 500 48px/52px Inter, 'Inter Display', Geist, Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --t-display: 500 72px/74px Inter, 'Inter Display', Geist, Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --t-h1: 500 40px/44px Inter, 'Inter Display', Geist, Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --t-h2: 600 22px/28px Inter, 'Inter Display', Geist, Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --t-h3: 600 17px/24px Inter, 'Inter Display', Geist, Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --t-body: 400 16px/26px Inter, 'Inter Display', Geist, Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --t-small: 400 14px/20px Inter, 'Inter Display', Geist, Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --t-caption: 500 12px/16px Inter, 'Inter Display', Geist, Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --s-1: 4px;
   --s-2: 8px;
   --s-3: 12px;
@@ -70,11 +78,13 @@
   --r-chip: 999px;
   --r-control: 999px;
   --r-card: 20px;
-  --r-hero: 24px;
+  --r-hero: 36px;
   --r-field: 14px;
-  --shadow-sm: 0 1px 2px rgba(17,24,19,.04);
-  --shadow-md: 0 4px 14px rgba(17,24,19,.06);
-  --shadow-lg: 0 16px 40px rgba(17,24,19,.12);
+  --r-panel: 36px;
+  --shadow-sm: 0 1px 2px rgba(2,3,12,.08);
+  --shadow-md: 0 6px 20px rgba(2,3,12,.18);
+  --shadow-lg: 0 20px 50px rgba(2,3,12,.35);
+  --shadow-xl: 0 40px 120px rgba(2,3,12,.6);
   --motion-fast: 120ms;
   --motion-base: 200ms;
   --motion-slow: 280ms;
@@ -90,114 +100,145 @@
   --z-toast: 95;
   --max-width: 1320px;
   --sidebar: 248px;
-  --bg: #F3F5F3;
-  --surface: #FFFFFF;
-  --surface-2: #F5F7F5;
-  --border: #E6EAE7;
-  --text: #111813;
-  --text-2: #5E6A62;
-  --text-3: #65716A;
-  --brand: #1F6B45;
-  --brand-hover: #14532D;
-  --brand-dark: #14532D;
-  --brand-light: #3FA06B;
-  --brand-soft: #E7F4EC;
-  --on-brand: #FFFFFF;
-  --grad-hero: linear-gradient(135deg, #14532D 0%, #2E8B57 100%);
-  --critical: #B42318;
-  --critical-accent: #D64545;
-  --critical-soft: #FDECEC;
-  --major: #8A5A12;
-  --major-accent: #B7791F;
-  --major-soft: #FDF4E3;
-  --minor: #5F5A16;
-  --minor-accent: #B8A532;
-  --minor-soft: #F7F5E3;
-  --ok: #136C3A;
-  --ok-accent: #1F9D55;
-  --ok-soft: #E7F6EE;
-  --info: #1D5FA8;
-  --info-accent: #3B82C4;
-  --info-soft: #E8F1FB;
-  --danger: #B42318;
+  --grad-dawn: linear-gradient(180deg, #02020E 0%, #02020E 30%, #080F36 42%, #192B84 52%, #4459C8 62%, #9191D3 74%, #D9C6DA 88%, #E3CDDB 100%);
+  --grad-page: linear-gradient(180deg, #333E9F 0%, #3B4CB6 35%, #7E82CE 70%, #E3CDDB 100%);
+  --grad-glow: radial-gradient(60% 40% at 50% 60%, rgba(68,89,200,.55), transparent);
+  --glass-blur: 14px;
+  --persp-depth: 1600px;
+  --persp-angle: 18deg;
+  --persp-tilt: 14deg;
+  --bg: #02030C;
+  --panel: #02030C;
+  --surface: #0B0E24;
+  --surface-2: #12163A;
+  --border: rgba(140,155,255,.14);
+  --border-strong: rgba(140,155,255,.28);
+  --text: #F4F5FF;
+  --text-2: #A3A8C9;
+  --text-3: #8C91B5;
+  --brand: #8E9BFF;
+  --brand-hover: #A9B1FF;
+  --brand-dark: #3B4CB6;
+  --brand-light: #4459C8;
+  --brand-soft: rgba(142,155,255,.14);
+  --on-brand: #02030C;
+  --accent: #8E9BFF;
+  --primary: #FFFFFF;
+  --on-primary: #02030C;
+  --grad-hero: linear-gradient(180deg, #02020E 0%, #02020E 30%, #080F36 42%, #192B84 52%, #4459C8 62%, #9191D3 74%, #D9C6DA 88%, #E3CDDB 100%);
+  --critical: #FF7B8A;
+  --critical-accent: #E5485C;
+  --critical-soft: rgba(255,123,138,.14);
+  --major: #FFB86B;
+  --major-accent: #D9892B;
+  --major-soft: rgba(255,184,107,.14);
+  --minor: #F3DE8A;
+  --minor-accent: #C9AE3A;
+  --minor-soft: rgba(243,222,138,.12);
+  --ok: #5EE6B0;
+  --ok-accent: #22B07D;
+  --ok-soft: rgba(94,230,176,.12);
+  --info: #8E9BFF;
+  --info-accent: #4459C8;
+  --info-soft: rgba(142,155,255,.14);
+  --danger: #C0263A;
   --on-danger: #FFFFFF;
-  --neutral-bar: #D9DED9;
-  --focus: #1F6B45;
-  --overlay: rgba(17,24,19,.32);
-  color-scheme: light;
+  --neutral-bar: #2A2F55;
+  --focus: #8E9BFF;
+  --overlay: rgba(2,3,12,.62);
+  --glass-bg: rgba(255,255,255,.04);
+  --glass-border: rgba(255,255,255,.08);
+  --glow: rgba(68,89,200,.55);
+  color-scheme: dark;
 }
 [data-theme="light"] {
-  --bg: #F3F5F3;
+  --bg: #F5F6FC;
+  --panel: #FFFFFF;
   --surface: #FFFFFF;
-  --surface-2: #F5F7F5;
-  --border: #E6EAE7;
-  --text: #111813;
-  --text-2: #5E6A62;
-  --text-3: #65716A;
-  --brand: #1F6B45;
-  --brand-hover: #14532D;
-  --brand-dark: #14532D;
-  --brand-light: #3FA06B;
-  --brand-soft: #E7F4EC;
+  --surface-2: #F1F3FB;
+  --border: rgba(10,13,42,.08);
+  --border-strong: rgba(10,13,42,.16);
+  --text: #0A0D2A;
+  --text-2: #454A6E;
+  --text-3: #5A5F82;
+  --brand: #3B4CB6;
+  --brand-hover: #2F3E9A;
+  --brand-dark: #2A3794;
+  --brand-light: #4459C8;
+  --brand-soft: #ECEEFF;
   --on-brand: #FFFFFF;
-  --grad-hero: linear-gradient(135deg, #14532D 0%, #2E8B57 100%);
-  --critical: #B42318;
-  --critical-accent: #D64545;
-  --critical-soft: #FDECEC;
-  --major: #8A5A12;
-  --major-accent: #B7791F;
-  --major-soft: #FDF4E3;
-  --minor: #5F5A16;
-  --minor-accent: #B8A532;
-  --minor-soft: #F7F5E3;
-  --ok: #136C3A;
-  --ok-accent: #1F9D55;
-  --ok-soft: #E7F6EE;
-  --info: #1D5FA8;
-  --info-accent: #3B82C4;
-  --info-soft: #E8F1FB;
-  --danger: #B42318;
+  --accent: #3B4CB6;
+  --primary: #0A0D2A;
+  --on-primary: #FFFFFF;
+  --grad-hero: linear-gradient(180deg, #02020E 0%, #02020E 30%, #080F36 42%, #192B84 52%, #4459C8 62%, #9191D3 74%, #D9C6DA 88%, #E3CDDB 100%);
+  --critical: #C0263A;
+  --critical-accent: #E5485C;
+  --critical-soft: #FDECEF;
+  --major: #9A5A00;
+  --major-accent: #D9892B;
+  --major-soft: #FFF3E3;
+  --minor: #7A6A00;
+  --minor-accent: #C9AE3A;
+  --minor-soft: #FBF6DD;
+  --ok: #0E7A52;
+  --ok-accent: #22B07D;
+  --ok-soft: #E5F7EF;
+  --info: #3B4CB6;
+  --info-accent: #4459C8;
+  --info-soft: #ECEEFF;
+  --danger: #C0263A;
   --on-danger: #FFFFFF;
-  --neutral-bar: #D9DED9;
-  --focus: #1F6B45;
-  --overlay: rgba(17,24,19,.32);
+  --neutral-bar: #D9DCF0;
+  --focus: #3B4CB6;
+  --overlay: rgba(10,13,42,.32);
+  --glass-bg: rgba(255,255,255,.7);
+  --glass-border: rgba(10,13,42,.08);
+  --glow: rgba(68,89,200,.25);
   color-scheme: light;
 }
 [data-theme="dark"] {
-  --bg: #0E1410;
-  --surface: #151D18;
-  --surface-2: #1B2620;
-  --border: #26332B;
-  --text: #EEF3EF;
-  --text-2: #A7B5AC;
-  --text-3: #93A198;
-  --brand: #4CC07F;
-  --brand-hover: #6FD49A;
-  --brand-dark: #14532D;
-  --brand-light: #3FA06B;
-  --brand-soft: rgba(63,160,107,.16);
-  --on-brand: #0E1410;
-  --grad-hero: linear-gradient(135deg, #14532D 0%, #2E8B57 100%);
-  --critical: #FF8A80;
-  --critical-accent: #D64545;
-  --critical-soft: rgba(214,69,69,.16);
-  --major: #F2C26B;
-  --major-accent: #B7791F;
-  --major-soft: rgba(183,121,31,.18);
-  --minor: #E3D47A;
-  --minor-accent: #B8A532;
-  --minor-soft: rgba(184,165,50,.16);
-  --ok: #6FD49A;
-  --ok-accent: #1F9D55;
-  --ok-soft: rgba(31,157,85,.16);
-  --info: #8DB8F0;
-  --info-accent: #3B82C4;
-  --info-soft: rgba(59,130,196,.18);
-  --danger: #B42318;
+  --bg: #02030C;
+  --panel: #02030C;
+  --surface: #0B0E24;
+  --surface-2: #12163A;
+  --border: rgba(140,155,255,.14);
+  --border-strong: rgba(140,155,255,.28);
+  --text: #F4F5FF;
+  --text-2: #A3A8C9;
+  --text-3: #8C91B5;
+  --brand: #8E9BFF;
+  --brand-hover: #A9B1FF;
+  --brand-dark: #3B4CB6;
+  --brand-light: #4459C8;
+  --brand-soft: rgba(142,155,255,.14);
+  --on-brand: #02030C;
+  --accent: #8E9BFF;
+  --primary: #FFFFFF;
+  --on-primary: #02030C;
+  --grad-hero: linear-gradient(180deg, #02020E 0%, #02020E 30%, #080F36 42%, #192B84 52%, #4459C8 62%, #9191D3 74%, #D9C6DA 88%, #E3CDDB 100%);
+  --critical: #FF7B8A;
+  --critical-accent: #E5485C;
+  --critical-soft: rgba(255,123,138,.14);
+  --major: #FFB86B;
+  --major-accent: #D9892B;
+  --major-soft: rgba(255,184,107,.14);
+  --minor: #F3DE8A;
+  --minor-accent: #C9AE3A;
+  --minor-soft: rgba(243,222,138,.12);
+  --ok: #5EE6B0;
+  --ok-accent: #22B07D;
+  --ok-soft: rgba(94,230,176,.12);
+  --info: #8E9BFF;
+  --info-accent: #4459C8;
+  --info-soft: rgba(142,155,255,.14);
+  --danger: #C0263A;
   --on-danger: #FFFFFF;
-  --neutral-bar: #3A4740;
-  --focus: #6FD49A;
-  --overlay: rgba(0,0,0,.55);
+  --neutral-bar: #2A2F55;
+  --focus: #8E9BFF;
+  --overlay: rgba(2,3,12,.62);
+  --glass-bg: rgba(255,255,255,.04);
+  --glass-border: rgba(255,255,255,.08);
+  --glow: rgba(68,89,200,.55);
   color-scheme: dark;
 }
 
@@ -849,7 +890,7 @@ textarea.input{height:auto;min-height:96px;padding:12px 16px;border-radius:var(-
 </head>
 <body>
 <header class="pagebar">
-  <div class="logo"><span class="logo-mark"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="36" height="36" aria-hidden="true"><defs><linearGradient id="rl1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#14532D"/><stop offset="1" stop-color="#2E8B57"/></linearGradient></defs><rect width="48" height="48" rx="12" fill="url(#rl1)"/><circle cx="21.0" cy="21.0" r="10.5" fill="none" stroke="#FFFFFF" stroke-width="4.0"/><path d="M28.9 28.9L37.0 37.0" stroke="#FFFFFF" stroke-width="5.0" stroke-linecap="round"/><polyline points="15.9,21.4 19.7,25.2 26.3,17.7" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>ReqLens<small>Дизайн-система v2 · токены v3.0.0</small></span></div>
+  <div class="logo"><span class="logo-mark"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="36" height="36" aria-hidden="true"><defs><linearGradient id="rl1" gradientUnits="userSpaceOnUse" x1="10" y1="9" x2="38" y2="38"><stop offset="0" stop-color="#4459C8"/><stop offset=".55" stop-color="#9191D3"/><stop offset="1" stop-color="#E3CDDB"/></linearGradient><radialGradient id="rl1g" cx=".5" cy="1" r=".85"><stop offset="0" stop-color="#4459C8" stop-opacity=".6"/><stop offset="1" stop-color="#4459C8" stop-opacity="0"/></radialGradient></defs><rect width="48" height="48" rx="12" fill="#02030C"/><rect width="48" height="48" rx="12" fill="url(#rl1g)"/><circle cx="21.0" cy="21.0" r="10.5" fill="none" stroke="url(#rl1)" stroke-width="4.0"/><path d="M28.9 28.9L37.0 37.0" stroke="url(#rl1)" stroke-width="5.0" stroke-linecap="round"/><polyline points="15.9,21.4 19.7,25.2 26.3,17.7" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>ReqLens<small>Дизайн-система v2 · токены v4.0.0</small></span></div>
   <div class="grow"></div><span class="small muted hide-sm">Источник правды: design/tokens.json</span>
 </header>
 <main class="container">
@@ -866,9 +907,9 @@ textarea.input{height:auto;min-height:96px;padding:12px 16px;border-radius:var(-
   
   <section class="sg-section" id="brand"><div class="sg-h"><h2 class="h2">Логотип</h2><span class="faint small">знак + слово · светлый / тёмный фон</span></div>
     <div class="brand-tiles">
-      <div data-theme="light" style="background:var(--bg)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 176 48" width="176" height="48" role="img" aria-label="ReqLens"><svg x="0" y="0" width="48" height="48" viewBox="0 0 48 48" role="img" aria-label="ReqLens"><defs><linearGradient id="rl-light" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#14532D"/><stop offset="1" stop-color="#2E8B57"/></linearGradient></defs><rect width="48" height="48" rx="12" fill="url(#rl-light)"/><circle cx="21.0" cy="21.0" r="10.5" fill="none" stroke="#FFFFFF" stroke-width="4.0"/><path d="M28.9 28.9L37.0 37.0" stroke="#FFFFFF" stroke-width="5.0" stroke-linecap="round"/><polyline points="15.9,21.4 19.7,25.2 26.3,17.7" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg><text x="60" y="33" fill="#111813" font-family="Inter, 'Segoe UI', Roboto, Arial, sans-serif" font-size="26" font-weight="700" letter-spacing="-0.6">ReqLens</text></svg></div>
-      <div data-theme="dark" style="background:var(--bg)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 176 48" width="176" height="48" role="img" aria-label="ReqLens"><svg x="0" y="0" width="48" height="48" viewBox="0 0 48 48" role="img" aria-label="ReqLens"><defs><linearGradient id="rl-dark" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#14532D"/><stop offset="1" stop-color="#2E8B57"/></linearGradient></defs><rect width="48" height="48" rx="12" fill="url(#rl-dark)"/><circle cx="21.0" cy="21.0" r="10.5" fill="none" stroke="#FFFFFF" stroke-width="4.0"/><path d="M28.9 28.9L37.0 37.0" stroke="#FFFFFF" stroke-width="5.0" stroke-linecap="round"/><polyline points="15.9,21.4 19.7,25.2 26.3,17.7" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg><text x="60" y="33" fill="#EEF3EF" font-family="Inter, 'Segoe UI', Roboto, Arial, sans-serif" font-size="26" font-weight="700" letter-spacing="-0.6">ReqLens</text></svg></div>
-      <div style="background:var(--surface)"><div class="row" style="gap:20px;align-items:flex-end"><span title="16 px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="16" height="16" aria-hidden="true"><defs><linearGradient id="rl2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#14532D"/><stop offset="1" stop-color="#2E8B57"/></linearGradient></defs><rect width="48" height="48" rx="12" fill="url(#rl2)"/><circle cx="21.0" cy="21.0" r="10.5" fill="none" stroke="#FFFFFF" stroke-width="4.0"/><path d="M28.9 28.9L37.0 37.0" stroke="#FFFFFF" stroke-width="5.0" stroke-linecap="round"/><polyline points="15.9,21.4 19.7,25.2 26.3,17.7" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span title="24 px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24" height="24" aria-hidden="true"><defs><linearGradient id="rl3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#14532D"/><stop offset="1" stop-color="#2E8B57"/></linearGradient></defs><rect width="48" height="48" rx="12" fill="url(#rl3)"/><circle cx="21.0" cy="21.0" r="10.5" fill="none" stroke="#FFFFFF" stroke-width="4.0"/><path d="M28.9 28.9L37.0 37.0" stroke="#FFFFFF" stroke-width="5.0" stroke-linecap="round"/><polyline points="15.9,21.4 19.7,25.2 26.3,17.7" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span title="32 px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="32" height="32" aria-hidden="true"><defs><linearGradient id="rl4" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#14532D"/><stop offset="1" stop-color="#2E8B57"/></linearGradient></defs><rect width="48" height="48" rx="12" fill="url(#rl4)"/><circle cx="21.0" cy="21.0" r="10.5" fill="none" stroke="#FFFFFF" stroke-width="4.0"/><path d="M28.9 28.9L37.0 37.0" stroke="#FFFFFF" stroke-width="5.0" stroke-linecap="round"/><polyline points="15.9,21.4 19.7,25.2 26.3,17.7" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span title="48 px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true"><defs><linearGradient id="rl5" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#14532D"/><stop offset="1" stop-color="#2E8B57"/></linearGradient></defs><rect width="48" height="48" rx="12" fill="url(#rl5)"/><circle cx="21.0" cy="21.0" r="10.5" fill="none" stroke="#FFFFFF" stroke-width="4.0"/><path d="M28.9 28.9L37.0 37.0" stroke="#FFFFFF" stroke-width="5.0" stroke-linecap="round"/><polyline points="15.9,21.4 19.7,25.2 26.3,17.7" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span title="72 px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="72" height="72" aria-hidden="true"><defs><linearGradient id="rl6" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#14532D"/><stop offset="1" stop-color="#2E8B57"/></linearGradient></defs><rect width="48" height="48" rx="12" fill="url(#rl6)"/><circle cx="21.0" cy="21.0" r="10.5" fill="none" stroke="#FFFFFF" stroke-width="4.0"/><path d="M28.9 28.9L37.0 37.0" stroke="#FFFFFF" stroke-width="5.0" stroke-linecap="round"/><polyline points="15.9,21.4 19.7,25.2 26.3,17.7" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div></div>
+      <div data-theme="light" style="background:var(--bg)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 176 48" width="176" height="48" role="img" aria-label="ReqLens"><svg x="0" y="0" width="48" height="48" viewBox="0 0 48 48" role="img" aria-label="ReqLens"><defs><linearGradient id="rl-light" gradientUnits="userSpaceOnUse" x1="10" y1="9" x2="38" y2="38"><stop offset="0" stop-color="#4459C8"/><stop offset=".55" stop-color="#9191D3"/><stop offset="1" stop-color="#E3CDDB"/></linearGradient><radialGradient id="rl-lightg" cx=".5" cy="1" r=".85"><stop offset="0" stop-color="#4459C8" stop-opacity=".6"/><stop offset="1" stop-color="#4459C8" stop-opacity="0"/></radialGradient></defs><rect width="48" height="48" rx="12" fill="#02030C"/><rect width="48" height="48" rx="12" fill="url(#rl-lightg)"/><circle cx="21.0" cy="21.0" r="10.5" fill="none" stroke="url(#rl-light)" stroke-width="4.0"/><path d="M28.9 28.9L37.0 37.0" stroke="url(#rl-light)" stroke-width="5.0" stroke-linecap="round"/><polyline points="15.9,21.4 19.7,25.2 26.3,17.7" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg><text x="60" y="33" fill="#0A0D2A" font-family="Inter, 'Segoe UI', Roboto, Arial, sans-serif" font-size="26" font-weight="700" letter-spacing="-0.6">ReqLens</text></svg></div>
+      <div data-theme="dark" style="background:var(--bg)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 176 48" width="176" height="48" role="img" aria-label="ReqLens"><svg x="0" y="0" width="48" height="48" viewBox="0 0 48 48" role="img" aria-label="ReqLens"><defs><linearGradient id="rl-dark" gradientUnits="userSpaceOnUse" x1="10" y1="9" x2="38" y2="38"><stop offset="0" stop-color="#4459C8"/><stop offset=".55" stop-color="#9191D3"/><stop offset="1" stop-color="#E3CDDB"/></linearGradient><radialGradient id="rl-darkg" cx=".5" cy="1" r=".85"><stop offset="0" stop-color="#4459C8" stop-opacity=".6"/><stop offset="1" stop-color="#4459C8" stop-opacity="0"/></radialGradient></defs><rect width="48" height="48" rx="12" fill="#02030C"/><rect width="48" height="48" rx="12" fill="url(#rl-darkg)"/><circle cx="21.0" cy="21.0" r="10.5" fill="none" stroke="url(#rl-dark)" stroke-width="4.0"/><path d="M28.9 28.9L37.0 37.0" stroke="url(#rl-dark)" stroke-width="5.0" stroke-linecap="round"/><polyline points="15.9,21.4 19.7,25.2 26.3,17.7" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg><text x="60" y="33" fill="#F4F5FF" font-family="Inter, 'Segoe UI', Roboto, Arial, sans-serif" font-size="26" font-weight="700" letter-spacing="-0.6">ReqLens</text></svg></div>
+      <div style="background:var(--surface)"><div class="row" style="gap:20px;align-items:flex-end"><span title="16 px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="16" height="16" aria-hidden="true"><defs><linearGradient id="rl2" gradientUnits="userSpaceOnUse" x1="10" y1="9" x2="38" y2="38"><stop offset="0" stop-color="#4459C8"/><stop offset=".55" stop-color="#9191D3"/><stop offset="1" stop-color="#E3CDDB"/></linearGradient><radialGradient id="rl2g" cx=".5" cy="1" r=".85"><stop offset="0" stop-color="#4459C8" stop-opacity=".6"/><stop offset="1" stop-color="#4459C8" stop-opacity="0"/></radialGradient></defs><rect width="48" height="48" rx="12" fill="#02030C"/><rect width="48" height="48" rx="12" fill="url(#rl2g)"/><circle cx="21.0" cy="21.0" r="10.5" fill="none" stroke="url(#rl2)" stroke-width="4.0"/><path d="M28.9 28.9L37.0 37.0" stroke="url(#rl2)" stroke-width="5.0" stroke-linecap="round"/><polyline points="15.9,21.4 19.7,25.2 26.3,17.7" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span title="24 px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24" height="24" aria-hidden="true"><defs><linearGradient id="rl3" gradientUnits="userSpaceOnUse" x1="10" y1="9" x2="38" y2="38"><stop offset="0" stop-color="#4459C8"/><stop offset=".55" stop-color="#9191D3"/><stop offset="1" stop-color="#E3CDDB"/></linearGradient><radialGradient id="rl3g" cx=".5" cy="1" r=".85"><stop offset="0" stop-color="#4459C8" stop-opacity=".6"/><stop offset="1" stop-color="#4459C8" stop-opacity="0"/></radialGradient></defs><rect width="48" height="48" rx="12" fill="#02030C"/><rect width="48" height="48" rx="12" fill="url(#rl3g)"/><circle cx="21.0" cy="21.0" r="10.5" fill="none" stroke="url(#rl3)" stroke-width="4.0"/><path d="M28.9 28.9L37.0 37.0" stroke="url(#rl3)" stroke-width="5.0" stroke-linecap="round"/><polyline points="15.9,21.4 19.7,25.2 26.3,17.7" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span title="32 px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="32" height="32" aria-hidden="true"><defs><linearGradient id="rl4" gradientUnits="userSpaceOnUse" x1="10" y1="9" x2="38" y2="38"><stop offset="0" stop-color="#4459C8"/><stop offset=".55" stop-color="#9191D3"/><stop offset="1" stop-color="#E3CDDB"/></linearGradient><radialGradient id="rl4g" cx=".5" cy="1" r=".85"><stop offset="0" stop-color="#4459C8" stop-opacity=".6"/><stop offset="1" stop-color="#4459C8" stop-opacity="0"/></radialGradient></defs><rect width="48" height="48" rx="12" fill="#02030C"/><rect width="48" height="48" rx="12" fill="url(#rl4g)"/><circle cx="21.0" cy="21.0" r="10.5" fill="none" stroke="url(#rl4)" stroke-width="4.0"/><path d="M28.9 28.9L37.0 37.0" stroke="url(#rl4)" stroke-width="5.0" stroke-linecap="round"/><polyline points="15.9,21.4 19.7,25.2 26.3,17.7" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span title="48 px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true"><defs><linearGradient id="rl5" gradientUnits="userSpaceOnUse" x1="10" y1="9" x2="38" y2="38"><stop offset="0" stop-color="#4459C8"/><stop offset=".55" stop-color="#9191D3"/><stop offset="1" stop-color="#E3CDDB"/></linearGradient><radialGradient id="rl5g" cx=".5" cy="1" r=".85"><stop offset="0" stop-color="#4459C8" stop-opacity=".6"/><stop offset="1" stop-color="#4459C8" stop-opacity="0"/></radialGradient></defs><rect width="48" height="48" rx="12" fill="#02030C"/><rect width="48" height="48" rx="12" fill="url(#rl5g)"/><circle cx="21.0" cy="21.0" r="10.5" fill="none" stroke="url(#rl5)" stroke-width="4.0"/><path d="M28.9 28.9L37.0 37.0" stroke="url(#rl5)" stroke-width="5.0" stroke-linecap="round"/><polyline points="15.9,21.4 19.7,25.2 26.3,17.7" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span title="72 px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="72" height="72" aria-hidden="true"><defs><linearGradient id="rl6" gradientUnits="userSpaceOnUse" x1="10" y1="9" x2="38" y2="38"><stop offset="0" stop-color="#4459C8"/><stop offset=".55" stop-color="#9191D3"/><stop offset="1" stop-color="#E3CDDB"/></linearGradient><radialGradient id="rl6g" cx=".5" cy="1" r=".85"><stop offset="0" stop-color="#4459C8" stop-opacity=".6"/><stop offset="1" stop-color="#4459C8" stop-opacity="0"/></radialGradient></defs><rect width="48" height="48" rx="12" fill="#02030C"/><rect width="48" height="48" rx="12" fill="url(#rl6g)"/><circle cx="21.0" cy="21.0" r="10.5" fill="none" stroke="url(#rl6)" stroke-width="4.0"/><path d="M28.9 28.9L37.0 37.0" stroke="url(#rl6)" stroke-width="5.0" stroke-linecap="round"/><polyline points="15.9,21.4 19.7,25.2 26.3,17.7" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div></div>
     </div>
     <p class="small muted" style="margin-top:16px;max-width:760px">Знак — линза с галочкой: агент «смотрит» на требования и подтверждает качество.
       Минимальный размер знака — 16 px, вокруг логотипа — свободное поле не меньше высоты галочки. Не перекрашивать, не вращать, не добавлять тени.</p>
@@ -879,15 +920,16 @@ textarea.input{height:auto;min-height:96px;padding:12px 16px;border-radius:var(-
       <figcaption class="small faint" style="margin-top:6px">icon-192.png</figcaption></figure><figure style="margin:0;text-align:center"><img src="brand/icon-512.png" alt="icon-512.png" width="96" height="96" style="border-radius:0">
       <figcaption class="small faint" style="margin-top:6px">icon-512.png</figcaption></figure><figure style="margin:0;text-align:center"><img src="brand/icon-maskable-512.png" alt="icon-maskable-512.png" width="96" height="96" style="border-radius:50%">
       <figcaption class="small faint" style="margin-top:6px">icon-maskable-512.png</figcaption></figure></div>
-    <p class="small faint" style="margin-top:8px">maskable показан в круглой маске — глиф целиком в безопасной зоне. theme_color <code class="mono">#1F6B45</code>,
-      background_color <code class="mono">#F3F5F3</code> (тёмная — <code class="mono">#0E1410</code>) — в design/brand/brand.json.</p>
+    <p class="small faint" style="margin-top:8px">maskable показан в круглой маске — глиф целиком в безопасной зоне. theme_color <code class="mono">#02030C</code>,
+      background_color <code class="mono">#F5F6FC</code> (тёмная — <code class="mono">#02030C</code>) — в design/brand/brand.json.</p>
   </section>
 
   
   <section class="sg-section" id="color"><div class="sg-h"><h2 class="h2">Палитра</h2><span class="faint small">опорные шкалы 50–950 · --green-*, --gray-*</span></div>
-    <div class="sg-sub">green</div>
-    <div class="ramp"><div style="background:#F0F8F3;color:#111813">50<code>#F0F8F3</code></div><div style="background:#E7F4EC;color:#111813">100<code>#E7F4EC</code></div><div style="background:#C9E8D5;color:#111813">200<code>#C9E8D5</code></div><div style="background:#97D2AF;color:#111813">300<code>#97D2AF</code></div><div style="background:#4CC07F;color:#111813">400<code>#4CC07F</code></div><div style="background:#3FA06B;color:#FFFFFF">500<code>#3FA06B</code></div><div style="background:#2E8B57;color:#FFFFFF">600<code>#2E8B57</code></div><div style="background:#1F6B45;color:#FFFFFF">700<code>#1F6B45</code></div><div style="background:#14532D;color:#FFFFFF">800<code>#14532D</code></div><div style="background:#0F3F23;color:#FFFFFF">900<code>#0F3F23</code></div><div style="background:#08261A;color:#FFFFFF">950<code>#08261A</code></div></div><div class="sg-sub">gray</div>
-    <div class="ramp"><div style="background:#F5F7F5;color:#111813">50<code>#F5F7F5</code></div><div style="background:#EDF0EE;color:#111813">100<code>#EDF0EE</code></div><div style="background:#E0E5E1;color:#111813">200<code>#E0E5E1</code></div><div style="background:#CAD2CC;color:#111813">300<code>#CAD2CC</code></div><div style="background:#A7B5AC;color:#111813">400<code>#A7B5AC</code></div><div style="background:#7D8A82;color:#FFFFFF">500<code>#7D8A82</code></div><div style="background:#5E6A62;color:#FFFFFF">600<code>#5E6A62</code></div><div style="background:#47524B;color:#FFFFFF">700<code>#47524B</code></div><div style="background:#26332B;color:#FFFFFF">800<code>#26332B</code></div><div style="background:#151D18;color:#FFFFFF">900<code>#151D18</code></div><div style="background:#0E1410;color:#FFFFFF">950<code>#0E1410</code></div></div>
+    <div class="sg-sub">indigo</div>
+    <div class="ramp"><div style="background:#F1F2FF;color:#111813">50<code>#F1F2FF</code></div><div style="background:#E3E6FF;color:#111813">100<code>#E3E6FF</code></div><div style="background:#C9CEFF;color:#111813">200<code>#C9CEFF</code></div><div style="background:#A9B1FF;color:#111813">300<code>#A9B1FF</code></div><div style="background:#8E9BFF;color:#111813">400<code>#8E9BFF</code></div><div style="background:#6676E0;color:#FFFFFF">500<code>#6676E0</code></div><div style="background:#4459C8;color:#FFFFFF">600<code>#4459C8</code></div><div style="background:#3B4CB6;color:#FFFFFF">700<code>#3B4CB6</code></div><div style="background:#2A3794;color:#FFFFFF">800<code>#2A3794</code></div><div style="background:#192B84;color:#FFFFFF">900<code>#192B84</code></div><div style="background:#080F36;color:#FFFFFF">950<code>#080F36</code></div></div><div class="sg-sub">night</div>
+    <div class="ramp"><div style="background:#F5F6FC;color:#111813">50<code>#F5F6FC</code></div><div style="background:#ECEEF9;color:#111813">100<code>#ECEEF9</code></div><div style="background:#D9DCF0;color:#111813">200<code>#D9DCF0</code></div><div style="background:#B9BEDD;color:#111813">300<code>#B9BEDD</code></div><div style="background:#A3A8C9;color:#111813">400<code>#A3A8C9</code></div><div style="background:#6E7397;color:#FFFFFF">500<code>#6E7397</code></div><div style="background:#4E5378;color:#FFFFFF">600<code>#4E5378</code></div><div style="background:#2A2F55;color:#FFFFFF">700<code>#2A2F55</code></div><div style="background:#12163A;color:#FFFFFF">800<code>#12163A</code></div><div style="background:#0B0E24;color:#FFFFFF">900<code>#0B0E24</code></div><div style="background:#02030C;color:#FFFFFF">950<code>#02030C</code></div></div><div class="sg-sub">dawn</div>
+    <div class="ramp"><div style="background:#E3CDDB;color:#111813">100<code>#E3CDDB</code></div><div style="background:#D9C6DA;color:#111813">200<code>#D9C6DA</code></div><div style="background:#9191D3;color:#111813">300<code>#9191D3</code></div><div style="background:#7E82CE;color:#111813">400<code>#7E82CE</code></div><div style="background:#4459C8;color:#FFFFFF">500<code>#4459C8</code></div><div style="background:#192B84;color:#FFFFFF">600<code>#192B84</code></div><div style="background:#080F36;color:#FFFFFF">700<code>#080F36</code></div><div style="background:#02020E;color:#FFFFFF">800<code>#02020E</code></div></div>
     <p class="small muted" style="margin-top:12px">Компоненты используют не шкалы, а семантические токены ниже — так тёмная тема и будущие правки палитры не требуют менять компоненты.</p>
   </section>
 
@@ -895,11 +937,11 @@ textarea.input{height:auto;min-height:96px;padding:12px 16px;border-radius:var(-
     
     <div class="sg-sub">Светлая</div>
     <div class="swatches" data-theme="light" style="background:var(--bg);padding:16px;border-radius:16px">
-      <div class="sw"><i style="background:#F3F5F3"></i><div>--bg<br><code>#F3F5F3</code></div></div><div class="sw"><i style="background:#FFFFFF"></i><div>--surface<br><code>#FFFFFF</code></div></div><div class="sw"><i style="background:#F5F7F5"></i><div>--surface-2<br><code>#F5F7F5</code></div></div><div class="sw"><i style="background:#E6EAE7"></i><div>--border<br><code>#E6EAE7</code></div></div><div class="sw"><i style="background:#111813"></i><div>--text<br><code>#111813</code></div></div><div class="sw"><i style="background:#5E6A62"></i><div>--text-2<br><code>#5E6A62</code></div></div><div class="sw"><i style="background:#65716A"></i><div>--text-3<br><code>#65716A</code></div></div><div class="sw"><i style="background:#1F6B45"></i><div>--brand<br><code>#1F6B45</code></div></div><div class="sw"><i style="background:#14532D"></i><div>--brand-hover<br><code>#14532D</code></div></div><div class="sw"><i style="background:#14532D"></i><div>--brand-dark<br><code>#14532D</code></div></div><div class="sw"><i style="background:#3FA06B"></i><div>--brand-light<br><code>#3FA06B</code></div></div><div class="sw"><i style="background:#E7F4EC"></i><div>--brand-soft<br><code>#E7F4EC</code></div></div><div class="sw"><i style="background:#FFFFFF"></i><div>--on-brand<br><code>#FFFFFF</code></div></div><div class="sw"><i style="background:linear-gradient(135deg, #14532D 0%, #2E8B57 100%)"></i><div>--grad-hero<br><code>linear-gradient(135deg, #14532D 0%, #2E8B57 100%)</code></div></div><div class="sw"><i style="background:#B42318"></i><div>--critical<br><code>#B42318</code></div></div><div class="sw"><i style="background:#D64545"></i><div>--critical-accent<br><code>#D64545</code></div></div><div class="sw"><i style="background:#FDECEC"></i><div>--critical-soft<br><code>#FDECEC</code></div></div><div class="sw"><i style="background:#8A5A12"></i><div>--major<br><code>#8A5A12</code></div></div><div class="sw"><i style="background:#B7791F"></i><div>--major-accent<br><code>#B7791F</code></div></div><div class="sw"><i style="background:#FDF4E3"></i><div>--major-soft<br><code>#FDF4E3</code></div></div><div class="sw"><i style="background:#5F5A16"></i><div>--minor<br><code>#5F5A16</code></div></div><div class="sw"><i style="background:#B8A532"></i><div>--minor-accent<br><code>#B8A532</code></div></div><div class="sw"><i style="background:#F7F5E3"></i><div>--minor-soft<br><code>#F7F5E3</code></div></div><div class="sw"><i style="background:#136C3A"></i><div>--ok<br><code>#136C3A</code></div></div><div class="sw"><i style="background:#1F9D55"></i><div>--ok-accent<br><code>#1F9D55</code></div></div><div class="sw"><i style="background:#E7F6EE"></i><div>--ok-soft<br><code>#E7F6EE</code></div></div><div class="sw"><i style="background:#1D5FA8"></i><div>--info<br><code>#1D5FA8</code></div></div><div class="sw"><i style="background:#3B82C4"></i><div>--info-accent<br><code>#3B82C4</code></div></div><div class="sw"><i style="background:#E8F1FB"></i><div>--info-soft<br><code>#E8F1FB</code></div></div><div class="sw"><i style="background:#B42318"></i><div>--danger<br><code>#B42318</code></div></div><div class="sw"><i style="background:#FFFFFF"></i><div>--on-danger<br><code>#FFFFFF</code></div></div><div class="sw"><i style="background:#D9DED9"></i><div>--neutral-bar<br><code>#D9DED9</code></div></div><div class="sw"><i style="background:#1F6B45"></i><div>--focus<br><code>#1F6B45</code></div></div><div class="sw"><i style="background:rgba(17,24,19,.32)"></i><div>--overlay<br><code>rgba(17,24,19,.32)</code></div></div>
+      <div class="sw"><i style="background:#F5F6FC"></i><div>--bg<br><code>#F5F6FC</code></div></div><div class="sw"><i style="background:#FFFFFF"></i><div>--panel<br><code>#FFFFFF</code></div></div><div class="sw"><i style="background:#FFFFFF"></i><div>--surface<br><code>#FFFFFF</code></div></div><div class="sw"><i style="background:#F1F3FB"></i><div>--surface-2<br><code>#F1F3FB</code></div></div><div class="sw"><i style="background:rgba(10,13,42,.08)"></i><div>--border<br><code>rgba(10,13,42,.08)</code></div></div><div class="sw"><i style="background:rgba(10,13,42,.16)"></i><div>--border-strong<br><code>rgba(10,13,42,.16)</code></div></div><div class="sw"><i style="background:#0A0D2A"></i><div>--text<br><code>#0A0D2A</code></div></div><div class="sw"><i style="background:#454A6E"></i><div>--text-2<br><code>#454A6E</code></div></div><div class="sw"><i style="background:#5A5F82"></i><div>--text-3<br><code>#5A5F82</code></div></div><div class="sw"><i style="background:#3B4CB6"></i><div>--brand<br><code>#3B4CB6</code></div></div><div class="sw"><i style="background:#2F3E9A"></i><div>--brand-hover<br><code>#2F3E9A</code></div></div><div class="sw"><i style="background:#2A3794"></i><div>--brand-dark<br><code>#2A3794</code></div></div><div class="sw"><i style="background:#4459C8"></i><div>--brand-light<br><code>#4459C8</code></div></div><div class="sw"><i style="background:#ECEEFF"></i><div>--brand-soft<br><code>#ECEEFF</code></div></div><div class="sw"><i style="background:#FFFFFF"></i><div>--on-brand<br><code>#FFFFFF</code></div></div><div class="sw"><i style="background:#3B4CB6"></i><div>--accent<br><code>#3B4CB6</code></div></div><div class="sw"><i style="background:#0A0D2A"></i><div>--primary<br><code>#0A0D2A</code></div></div><div class="sw"><i style="background:#FFFFFF"></i><div>--on-primary<br><code>#FFFFFF</code></div></div><div class="sw"><i style="background:linear-gradient(180deg, #02020E 0%, #02020E 30%, #080F36 42%, #192B84 52%, #4459C8 62%, #9191D3 74%, #D9C6DA 88%, #E3CDDB 100%)"></i><div>--grad-hero<br><code>linear-gradient(180deg, #02020E 0%, #02020E 30%, #080F36 42%, #192B84 52%, #4459C8 62%, #9191D3 74%, #D9C6DA 88%, #E3CDDB 100%)</code></div></div><div class="sw"><i style="background:#C0263A"></i><div>--critical<br><code>#C0263A</code></div></div><div class="sw"><i style="background:#E5485C"></i><div>--critical-accent<br><code>#E5485C</code></div></div><div class="sw"><i style="background:#FDECEF"></i><div>--critical-soft<br><code>#FDECEF</code></div></div><div class="sw"><i style="background:#9A5A00"></i><div>--major<br><code>#9A5A00</code></div></div><div class="sw"><i style="background:#D9892B"></i><div>--major-accent<br><code>#D9892B</code></div></div><div class="sw"><i style="background:#FFF3E3"></i><div>--major-soft<br><code>#FFF3E3</code></div></div><div class="sw"><i style="background:#7A6A00"></i><div>--minor<br><code>#7A6A00</code></div></div><div class="sw"><i style="background:#C9AE3A"></i><div>--minor-accent<br><code>#C9AE3A</code></div></div><div class="sw"><i style="background:#FBF6DD"></i><div>--minor-soft<br><code>#FBF6DD</code></div></div><div class="sw"><i style="background:#0E7A52"></i><div>--ok<br><code>#0E7A52</code></div></div><div class="sw"><i style="background:#22B07D"></i><div>--ok-accent<br><code>#22B07D</code></div></div><div class="sw"><i style="background:#E5F7EF"></i><div>--ok-soft<br><code>#E5F7EF</code></div></div><div class="sw"><i style="background:#3B4CB6"></i><div>--info<br><code>#3B4CB6</code></div></div><div class="sw"><i style="background:#4459C8"></i><div>--info-accent<br><code>#4459C8</code></div></div><div class="sw"><i style="background:#ECEEFF"></i><div>--info-soft<br><code>#ECEEFF</code></div></div><div class="sw"><i style="background:#C0263A"></i><div>--danger<br><code>#C0263A</code></div></div><div class="sw"><i style="background:#FFFFFF"></i><div>--on-danger<br><code>#FFFFFF</code></div></div><div class="sw"><i style="background:#D9DCF0"></i><div>--neutral-bar<br><code>#D9DCF0</code></div></div><div class="sw"><i style="background:#3B4CB6"></i><div>--focus<br><code>#3B4CB6</code></div></div><div class="sw"><i style="background:rgba(10,13,42,.32)"></i><div>--overlay<br><code>rgba(10,13,42,.32)</code></div></div><div class="sw"><i style="background:rgba(255,255,255,.7)"></i><div>--glass-bg<br><code>rgba(255,255,255,.7)</code></div></div><div class="sw"><i style="background:rgba(10,13,42,.08)"></i><div>--glass-border<br><code>rgba(10,13,42,.08)</code></div></div><div class="sw"><i style="background:rgba(68,89,200,.25)"></i><div>--glow<br><code>rgba(68,89,200,.25)</code></div></div>
     </div>
     <div class="sg-sub">Тёмная</div>
     <div class="swatches" data-theme="dark" style="background:var(--bg);padding:16px;border-radius:16px">
-      <div class="sw"><i style="background:#0E1410"></i><div>--bg<br><code>#0E1410</code></div></div><div class="sw"><i style="background:#151D18"></i><div>--surface<br><code>#151D18</code></div></div><div class="sw"><i style="background:#1B2620"></i><div>--surface-2<br><code>#1B2620</code></div></div><div class="sw"><i style="background:#26332B"></i><div>--border<br><code>#26332B</code></div></div><div class="sw"><i style="background:#EEF3EF"></i><div>--text<br><code>#EEF3EF</code></div></div><div class="sw"><i style="background:#A7B5AC"></i><div>--text-2<br><code>#A7B5AC</code></div></div><div class="sw"><i style="background:#93A198"></i><div>--text-3<br><code>#93A198</code></div></div><div class="sw"><i style="background:#4CC07F"></i><div>--brand<br><code>#4CC07F</code></div></div><div class="sw"><i style="background:#6FD49A"></i><div>--brand-hover<br><code>#6FD49A</code></div></div><div class="sw"><i style="background:#14532D"></i><div>--brand-dark<br><code>#14532D</code></div></div><div class="sw"><i style="background:#3FA06B"></i><div>--brand-light<br><code>#3FA06B</code></div></div><div class="sw"><i style="background:rgba(63,160,107,.16)"></i><div>--brand-soft<br><code>rgba(63,160,107,.16)</code></div></div><div class="sw"><i style="background:#0E1410"></i><div>--on-brand<br><code>#0E1410</code></div></div><div class="sw"><i style="background:linear-gradient(135deg, #14532D 0%, #2E8B57 100%)"></i><div>--grad-hero<br><code>linear-gradient(135deg, #14532D 0%, #2E8B57 100%)</code></div></div><div class="sw"><i style="background:#FF8A80"></i><div>--critical<br><code>#FF8A80</code></div></div><div class="sw"><i style="background:#D64545"></i><div>--critical-accent<br><code>#D64545</code></div></div><div class="sw"><i style="background:rgba(214,69,69,.16)"></i><div>--critical-soft<br><code>rgba(214,69,69,.16)</code></div></div><div class="sw"><i style="background:#F2C26B"></i><div>--major<br><code>#F2C26B</code></div></div><div class="sw"><i style="background:#B7791F"></i><div>--major-accent<br><code>#B7791F</code></div></div><div class="sw"><i style="background:rgba(183,121,31,.18)"></i><div>--major-soft<br><code>rgba(183,121,31,.18)</code></div></div><div class="sw"><i style="background:#E3D47A"></i><div>--minor<br><code>#E3D47A</code></div></div><div class="sw"><i style="background:#B8A532"></i><div>--minor-accent<br><code>#B8A532</code></div></div><div class="sw"><i style="background:rgba(184,165,50,.16)"></i><div>--minor-soft<br><code>rgba(184,165,50,.16)</code></div></div><div class="sw"><i style="background:#6FD49A"></i><div>--ok<br><code>#6FD49A</code></div></div><div class="sw"><i style="background:#1F9D55"></i><div>--ok-accent<br><code>#1F9D55</code></div></div><div class="sw"><i style="background:rgba(31,157,85,.16)"></i><div>--ok-soft<br><code>rgba(31,157,85,.16)</code></div></div><div class="sw"><i style="background:#8DB8F0"></i><div>--info<br><code>#8DB8F0</code></div></div><div class="sw"><i style="background:#3B82C4"></i><div>--info-accent<br><code>#3B82C4</code></div></div><div class="sw"><i style="background:rgba(59,130,196,.18)"></i><div>--info-soft<br><code>rgba(59,130,196,.18)</code></div></div><div class="sw"><i style="background:#B42318"></i><div>--danger<br><code>#B42318</code></div></div><div class="sw"><i style="background:#FFFFFF"></i><div>--on-danger<br><code>#FFFFFF</code></div></div><div class="sw"><i style="background:#3A4740"></i><div>--neutral-bar<br><code>#3A4740</code></div></div><div class="sw"><i style="background:#6FD49A"></i><div>--focus<br><code>#6FD49A</code></div></div><div class="sw"><i style="background:rgba(0,0,0,.55)"></i><div>--overlay<br><code>rgba(0,0,0,.55)</code></div></div>
+      <div class="sw"><i style="background:#02030C"></i><div>--bg<br><code>#02030C</code></div></div><div class="sw"><i style="background:#02030C"></i><div>--panel<br><code>#02030C</code></div></div><div class="sw"><i style="background:#0B0E24"></i><div>--surface<br><code>#0B0E24</code></div></div><div class="sw"><i style="background:#12163A"></i><div>--surface-2<br><code>#12163A</code></div></div><div class="sw"><i style="background:rgba(140,155,255,.14)"></i><div>--border<br><code>rgba(140,155,255,.14)</code></div></div><div class="sw"><i style="background:rgba(140,155,255,.28)"></i><div>--border-strong<br><code>rgba(140,155,255,.28)</code></div></div><div class="sw"><i style="background:#F4F5FF"></i><div>--text<br><code>#F4F5FF</code></div></div><div class="sw"><i style="background:#A3A8C9"></i><div>--text-2<br><code>#A3A8C9</code></div></div><div class="sw"><i style="background:#8C91B5"></i><div>--text-3<br><code>#8C91B5</code></div></div><div class="sw"><i style="background:#8E9BFF"></i><div>--brand<br><code>#8E9BFF</code></div></div><div class="sw"><i style="background:#A9B1FF"></i><div>--brand-hover<br><code>#A9B1FF</code></div></div><div class="sw"><i style="background:#3B4CB6"></i><div>--brand-dark<br><code>#3B4CB6</code></div></div><div class="sw"><i style="background:#4459C8"></i><div>--brand-light<br><code>#4459C8</code></div></div><div class="sw"><i style="background:rgba(142,155,255,.14)"></i><div>--brand-soft<br><code>rgba(142,155,255,.14)</code></div></div><div class="sw"><i style="background:#02030C"></i><div>--on-brand<br><code>#02030C</code></div></div><div class="sw"><i style="background:#8E9BFF"></i><div>--accent<br><code>#8E9BFF</code></div></div><div class="sw"><i style="background:#FFFFFF"></i><div>--primary<br><code>#FFFFFF</code></div></div><div class="sw"><i style="background:#02030C"></i><div>--on-primary<br><code>#02030C</code></div></div><div class="sw"><i style="background:linear-gradient(180deg, #02020E 0%, #02020E 30%, #080F36 42%, #192B84 52%, #4459C8 62%, #9191D3 74%, #D9C6DA 88%, #E3CDDB 100%)"></i><div>--grad-hero<br><code>linear-gradient(180deg, #02020E 0%, #02020E 30%, #080F36 42%, #192B84 52%, #4459C8 62%, #9191D3 74%, #D9C6DA 88%, #E3CDDB 100%)</code></div></div><div class="sw"><i style="background:#FF7B8A"></i><div>--critical<br><code>#FF7B8A</code></div></div><div class="sw"><i style="background:#E5485C"></i><div>--critical-accent<br><code>#E5485C</code></div></div><div class="sw"><i style="background:rgba(255,123,138,.14)"></i><div>--critical-soft<br><code>rgba(255,123,138,.14)</code></div></div><div class="sw"><i style="background:#FFB86B"></i><div>--major<br><code>#FFB86B</code></div></div><div class="sw"><i style="background:#D9892B"></i><div>--major-accent<br><code>#D9892B</code></div></div><div class="sw"><i style="background:rgba(255,184,107,.14)"></i><div>--major-soft<br><code>rgba(255,184,107,.14)</code></div></div><div class="sw"><i style="background:#F3DE8A"></i><div>--minor<br><code>#F3DE8A</code></div></div><div class="sw"><i style="background:#C9AE3A"></i><div>--minor-accent<br><code>#C9AE3A</code></div></div><div class="sw"><i style="background:rgba(243,222,138,.12)"></i><div>--minor-soft<br><code>rgba(243,222,138,.12)</code></div></div><div class="sw"><i style="background:#5EE6B0"></i><div>--ok<br><code>#5EE6B0</code></div></div><div class="sw"><i style="background:#22B07D"></i><div>--ok-accent<br><code>#22B07D</code></div></div><div class="sw"><i style="background:rgba(94,230,176,.12)"></i><div>--ok-soft<br><code>rgba(94,230,176,.12)</code></div></div><div class="sw"><i style="background:#8E9BFF"></i><div>--info<br><code>#8E9BFF</code></div></div><div class="sw"><i style="background:#4459C8"></i><div>--info-accent<br><code>#4459C8</code></div></div><div class="sw"><i style="background:rgba(142,155,255,.14)"></i><div>--info-soft<br><code>rgba(142,155,255,.14)</code></div></div><div class="sw"><i style="background:#C0263A"></i><div>--danger<br><code>#C0263A</code></div></div><div class="sw"><i style="background:#FFFFFF"></i><div>--on-danger<br><code>#FFFFFF</code></div></div><div class="sw"><i style="background:#2A2F55"></i><div>--neutral-bar<br><code>#2A2F55</code></div></div><div class="sw"><i style="background:#8E9BFF"></i><div>--focus<br><code>#8E9BFF</code></div></div><div class="sw"><i style="background:rgba(2,3,12,.62)"></i><div>--overlay<br><code>rgba(2,3,12,.62)</code></div></div><div class="sw"><i style="background:rgba(255,255,255,.04)"></i><div>--glass-bg<br><code>rgba(255,255,255,.04)</code></div></div><div class="sw"><i style="background:rgba(255,255,255,.08)"></i><div>--glass-border<br><code>rgba(255,255,255,.08)</code></div></div><div class="sw"><i style="background:rgba(68,89,200,.55)"></i><div>--glow<br><code>rgba(68,89,200,.55)</code></div></div>
     </div>
     <div class="sg-sub">Серьёзность замечаний</div>
     <div class="row wrap"><span class="chip sev-critical"><span class="dot"></span>Критично</span><span class="chip sev-major"><span class="dot"></span>Важно</span>
@@ -912,57 +954,57 @@ textarea.input{height:auto;min-height:96px;padding:12px 16px;border-radius:var(-
     <p class="small" style="margin-bottom:12px"><span class="chip sev-ok"><svg class="ic " width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4.5 4.5L19 7"/></svg>все 48 пар «текст / фон» проходят AA</span></p>
     <div class="grid g-2"><div class="table-wrap card" style="padding:8px 12px;overflow-x:auto">
       <table class="aa"><thead><tr><th>Светлая: текст</th><th>фон</th><th>контраст</th><th></th></tr></thead><tbody>
-      <tr><td><code class="mono">--text</code></td><td><code class="mono">--bg</code></td><td><b>16.47</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text</code></td><td><code class="mono">--surface</code></td><td><b>18.04</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text</code></td><td><code class="mono">--surface-2</code></td><td><b>16.76</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text-2</code></td><td><code class="mono">--bg</code></td><td><b>5.16</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text-2</code></td><td><code class="mono">--surface</code></td><td><b>5.65</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text-2</code></td><td><code class="mono">--surface-2</code></td><td><b>5.25</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text-3</code></td><td><code class="mono">--bg</code></td><td><b>4.65</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text-3</code></td><td><code class="mono">--surface</code></td><td><b>5.09</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text-3</code></td><td><code class="mono">--surface-2</code></td><td><b>4.73</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--brand</code></td><td><code class="mono">--bg</code></td><td><b>5.90</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--brand</code></td><td><code class="mono">--surface</code></td><td><b>6.47</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--brand</code></td><td><code class="mono">--brand-soft</code></td><td><b>5.71</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--critical</code></td><td><code class="mono">--surface</code></td><td><b>6.57</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--critical</code></td><td><code class="mono">--critical-soft</code></td><td><b>5.76</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--major</code></td><td><code class="mono">--surface</code></td><td><b>5.91</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--major</code></td><td><code class="mono">--major-soft</code></td><td><b>5.41</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--minor</code></td><td><code class="mono">--surface</code></td><td><b>7.09</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--minor</code></td><td><code class="mono">--minor-soft</code></td><td><b>6.46</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--ok</code></td><td><code class="mono">--surface</code></td><td><b>6.49</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--ok</code></td><td><code class="mono">--ok-soft</code></td><td><b>5.82</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--info</code></td><td><code class="mono">--surface</code></td><td><b>6.45</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--info</code></td><td><code class="mono">--info-soft</code></td><td><b>5.66</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--on-brand</code></td><td><code class="mono">--brand</code></td><td><b>6.47</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--on-danger</code></td><td><code class="mono">--danger</code></td><td><b>6.57</b></td>
+      <tr><td><code class="mono">--text</code></td><td><code class="mono">--bg</code></td><td><b>17.64</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text</code></td><td><code class="mono">--surface</code></td><td><b>19.02</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text</code></td><td><code class="mono">--surface-2</code></td><td><b>17.17</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text-2</code></td><td><code class="mono">--bg</code></td><td><b>7.92</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text-2</code></td><td><code class="mono">--surface</code></td><td><b>8.54</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text-2</code></td><td><code class="mono">--surface-2</code></td><td><b>7.71</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text-3</code></td><td><code class="mono">--bg</code></td><td><b>5.74</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text-3</code></td><td><code class="mono">--surface</code></td><td><b>6.19</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text-3</code></td><td><code class="mono">--surface-2</code></td><td><b>5.58</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--brand</code></td><td><code class="mono">--bg</code></td><td><b>6.73</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--brand</code></td><td><code class="mono">--surface</code></td><td><b>7.25</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--brand</code></td><td><code class="mono">--brand-soft</code></td><td><b>6.30</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--critical</code></td><td><code class="mono">--surface</code></td><td><b>5.87</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--critical</code></td><td><code class="mono">--critical-soft</code></td><td><b>5.15</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--major</code></td><td><code class="mono">--surface</code></td><td><b>5.47</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--major</code></td><td><code class="mono">--major-soft</code></td><td><b>5.00</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--minor</code></td><td><code class="mono">--surface</code></td><td><b>5.40</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--minor</code></td><td><code class="mono">--minor-soft</code></td><td><b>4.97</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--ok</code></td><td><code class="mono">--surface</code></td><td><b>5.35</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--ok</code></td><td><code class="mono">--ok-soft</code></td><td><b>4.81</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--info</code></td><td><code class="mono">--surface</code></td><td><b>7.25</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--info</code></td><td><code class="mono">--info-soft</code></td><td><b>6.30</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--on-brand</code></td><td><code class="mono">--brand</code></td><td><b>7.25</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--on-danger</code></td><td><code class="mono">--danger</code></td><td><b>5.87</b></td>
         <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr>
       </tbody></table></div><div class="table-wrap card" style="padding:8px 12px;overflow-x:auto">
       <table class="aa"><thead><tr><th>Тёмная: текст</th><th>фон</th><th>контраст</th><th></th></tr></thead><tbody>
-      <tr><td><code class="mono">--text</code></td><td><code class="mono">--bg</code></td><td><b>16.61</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text</code></td><td><code class="mono">--surface</code></td><td><b>15.32</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text</code></td><td><code class="mono">--surface-2</code></td><td><b>13.91</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text-2</code></td><td><code class="mono">--bg</code></td><td><b>8.74</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text-2</code></td><td><code class="mono">--surface</code></td><td><b>8.07</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text-2</code></td><td><code class="mono">--surface-2</code></td><td><b>7.32</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text-3</code></td><td><code class="mono">--bg</code></td><td><b>6.92</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text-3</code></td><td><code class="mono">--surface</code></td><td><b>6.38</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text-3</code></td><td><code class="mono">--surface-2</code></td><td><b>5.79</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--brand</code></td><td><code class="mono">--bg</code></td><td><b>8.13</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--brand</code></td><td><code class="mono">--surface</code></td><td><b>7.50</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--brand</code></td><td><code class="mono">--brand-soft</code></td><td><b>5.97</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--critical</code></td><td><code class="mono">--surface</code></td><td><b>7.54</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--critical</code></td><td><code class="mono">--critical-soft</code></td><td><b>6.54</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--major</code></td><td><code class="mono">--surface</code></td><td><b>10.41</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--major</code></td><td><code class="mono">--major-soft</code></td><td><b>8.25</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--minor</code></td><td><code class="mono">--surface</code></td><td><b>11.44</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--minor</code></td><td><code class="mono">--minor-soft</code></td><td><b>8.67</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--ok</code></td><td><code class="mono">--surface</code></td><td><b>9.47</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--ok</code></td><td><code class="mono">--ok-soft</code></td><td><b>7.71</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--info</code></td><td><code class="mono">--surface</code></td><td><b>8.39</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--info</code></td><td><code class="mono">--info-soft</code></td><td><b>6.78</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--on-brand</code></td><td><code class="mono">--brand</code></td><td><b>8.13</b></td>
-        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--on-danger</code></td><td><code class="mono">--danger</code></td><td><b>6.57</b></td>
+      <tr><td><code class="mono">--text</code></td><td><code class="mono">--bg</code></td><td><b>18.96</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text</code></td><td><code class="mono">--surface</code></td><td><b>17.55</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text</code></td><td><code class="mono">--surface-2</code></td><td><b>16.11</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text-2</code></td><td><code class="mono">--bg</code></td><td><b>8.82</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text-2</code></td><td><code class="mono">--surface</code></td><td><b>8.16</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text-2</code></td><td><code class="mono">--surface-2</code></td><td><b>7.49</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text-3</code></td><td><code class="mono">--bg</code></td><td><b>6.69</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text-3</code></td><td><code class="mono">--surface</code></td><td><b>6.20</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--text-3</code></td><td><code class="mono">--surface-2</code></td><td><b>5.69</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--brand</code></td><td><code class="mono">--bg</code></td><td><b>8.11</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--brand</code></td><td><code class="mono">--surface</code></td><td><b>7.51</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--brand</code></td><td><code class="mono">--brand-soft</code></td><td><b>6.08</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--critical</code></td><td><code class="mono">--surface</code></td><td><b>7.67</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--critical</code></td><td><code class="mono">--critical-soft</code></td><td><b>6.34</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--major</code></td><td><code class="mono">--surface</code></td><td><b>11.17</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--major</code></td><td><code class="mono">--major-soft</code></td><td><b>8.63</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--minor</code></td><td><code class="mono">--surface</code></td><td><b>14.17</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--minor</code></td><td><code class="mono">--minor-soft</code></td><td><b>11.01</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--ok</code></td><td><code class="mono">--surface</code></td><td><b>12.17</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--ok</code></td><td><code class="mono">--ok-soft</code></td><td><b>9.68</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--info</code></td><td><code class="mono">--surface</code></td><td><b>7.51</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--info</code></td><td><code class="mono">--info-soft</code></td><td><b>6.08</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--on-brand</code></td><td><code class="mono">--brand</code></td><td><b>8.11</b></td>
+        <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr><tr><td><code class="mono">--on-danger</code></td><td><code class="mono">--danger</code></td><td><b>5.87</b></td>
         <td><span class="chip sev-ok" style="height:20px">AA</span></td></tr>
       </tbody></table></div></div>
   </section>
@@ -980,13 +1022,13 @@ textarea.input{height:auto;min-height:96px;padding:12px 16px;border-radius:var(-
       <span style="font-size:var(--fs-3xl);line-height:var(--lh-3xl);font-weight:700;letter-spacing:-.02em">Проверка требований до разработки</span><code class="mono faint">48px/56px</code></div>
     <div class="sg-sub">Роли в интерфейсе · --t-*</div>
     <div class="typo-row"><span class="caption">kpi</span>
-      <span style="font:var(--t-kpi)">Проверка требований до разработки</span><code class="mono faint">600 44px/48px</code></div><div class="typo-row"><span class="caption">display</span>
-      <span style="font:var(--t-display)">Проверка требований до разработки</span><code class="mono faint">700 36px/44px</code></div><div class="typo-row"><span class="caption">h1</span>
-      <span style="font:var(--t-h1)">Проверка требований до разработки</span><code class="mono faint">700 28px/36px</code></div><div class="typo-row"><span class="caption">h2</span>
-      <span style="font:var(--t-h2)">Проверка требований до разработки</span><code class="mono faint">600 20px/28px</code></div><div class="typo-row"><span class="caption">h3</span>
-      <span style="font:var(--t-h3)">Проверка требований до разработки</span><code class="mono faint">600 16px/24px</code></div><div class="typo-row"><span class="caption">body</span>
-      <span style="font:var(--t-body)">Проверка требований до разработки</span><code class="mono faint">400 15px/24px</code></div><div class="typo-row"><span class="caption">small</span>
-      <span style="font:var(--t-small)">Проверка требований до разработки</span><code class="mono faint">400 13px/20px</code></div><div class="typo-row"><span class="caption">caption</span>
+      <span style="font:var(--t-kpi)">Проверка требований до разработки</span><code class="mono faint">500 48px/52px</code></div><div class="typo-row"><span class="caption">display</span>
+      <span style="font:var(--t-display)">Проверка требований до разработки</span><code class="mono faint">500 72px/74px</code></div><div class="typo-row"><span class="caption">h1</span>
+      <span style="font:var(--t-h1)">Проверка требований до разработки</span><code class="mono faint">500 40px/44px</code></div><div class="typo-row"><span class="caption">h2</span>
+      <span style="font:var(--t-h2)">Проверка требований до разработки</span><code class="mono faint">600 22px/28px</code></div><div class="typo-row"><span class="caption">h3</span>
+      <span style="font:var(--t-h3)">Проверка требований до разработки</span><code class="mono faint">600 17px/24px</code></div><div class="typo-row"><span class="caption">body</span>
+      <span style="font:var(--t-body)">Проверка требований до разработки</span><code class="mono faint">400 16px/26px</code></div><div class="typo-row"><span class="caption">small</span>
+      <span style="font:var(--t-small)">Проверка требований до разработки</span><code class="mono faint">400 14px/20px</code></div><div class="typo-row"><span class="caption">caption</span>
       <span style="font:var(--t-caption);text-transform:uppercase;letter-spacing:.04em">Проверка требований до разработки</span><code class="mono faint">500 12px/16px</code></div>
   </section>
 
@@ -994,8 +1036,8 @@ textarea.input{height:auto;min-height:96px;padding:12px 16px;border-radius:var(-
   <section class="sg-section" id="layout"><div class="sg-h"><h2 class="h2">Отступы, радиусы, тени</h2></div>
     <div class="grid g-3">
       <div><div class="sg-sub" style="margin-top:0">Отступы · --s-*</div><div class="space-row"><i style="width:4px"></i><span class="small">--s-1 · 4px</span></div><div class="space-row"><i style="width:8px"></i><span class="small">--s-2 · 8px</span></div><div class="space-row"><i style="width:12px"></i><span class="small">--s-3 · 12px</span></div><div class="space-row"><i style="width:16px"></i><span class="small">--s-4 · 16px</span></div><div class="space-row"><i style="width:24px"></i><span class="small">--s-5 · 24px</span></div><div class="space-row"><i style="width:32px"></i><span class="small">--s-6 · 32px</span></div><div class="space-row"><i style="width:48px"></i><span class="small">--s-7 · 48px</span></div><div class="space-row"><i style="width:64px"></i><span class="small">--s-8 · 64px</span></div></div>
-      <div><div class="sg-sub" style="margin-top:0">Радиусы · --r-*</div><div class="row wrap"><div style="width:88px;height:64px;border-radius:8px;background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center;text-align:center" class="small">sm<br>8px</div><div style="width:88px;height:64px;border-radius:12px;background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center;text-align:center" class="small">md<br>12px</div><div style="width:88px;height:64px;border-radius:16px;background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center;text-align:center" class="small">lg<br>16px</div><div style="width:88px;height:64px;border-radius:20px;background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center;text-align:center" class="small">xl<br>20px</div><div style="width:88px;height:64px;border-radius:24px;background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center;text-align:center" class="small">2xl<br>24px</div><div style="width:88px;height:64px;border-radius:999px;background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center;text-align:center" class="small">full<br>999px</div><div style="width:88px;height:64px;border-radius:999px;background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center;text-align:center" class="small">chip<br>999px</div><div style="width:88px;height:64px;border-radius:999px;background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center;text-align:center" class="small">control<br>999px</div><div style="width:88px;height:64px;border-radius:20px;background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center;text-align:center" class="small">card<br>20px</div><div style="width:88px;height:64px;border-radius:24px;background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center;text-align:center" class="small">hero<br>24px</div><div style="width:88px;height:64px;border-radius:14px;background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center;text-align:center" class="small">field<br>14px</div></div></div>
-      <div><div class="sg-sub" style="margin-top:0">Тени · --shadow-*</div><div class="row wrap"><div class="card" style="box-shadow:0 1px 2px rgba(17,24,19,.04);width:110px;text-align:center"><span class="small">sm</span></div><div class="card" style="box-shadow:0 4px 14px rgba(17,24,19,.06);width:110px;text-align:center"><span class="small">md</span></div><div class="card" style="box-shadow:0 16px 40px rgba(17,24,19,.12);width:110px;text-align:center"><span class="small">lg</span></div></div></div>
+      <div><div class="sg-sub" style="margin-top:0">Радиусы · --r-*</div><div class="row wrap"><div style="width:88px;height:64px;border-radius:8px;background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center;text-align:center" class="small">sm<br>8px</div><div style="width:88px;height:64px;border-radius:12px;background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center;text-align:center" class="small">md<br>12px</div><div style="width:88px;height:64px;border-radius:16px;background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center;text-align:center" class="small">lg<br>16px</div><div style="width:88px;height:64px;border-radius:20px;background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center;text-align:center" class="small">xl<br>20px</div><div style="width:88px;height:64px;border-radius:24px;background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center;text-align:center" class="small">2xl<br>24px</div><div style="width:88px;height:64px;border-radius:999px;background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center;text-align:center" class="small">full<br>999px</div><div style="width:88px;height:64px;border-radius:999px;background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center;text-align:center" class="small">chip<br>999px</div><div style="width:88px;height:64px;border-radius:999px;background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center;text-align:center" class="small">control<br>999px</div><div style="width:88px;height:64px;border-radius:20px;background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center;text-align:center" class="small">card<br>20px</div><div style="width:88px;height:64px;border-radius:36px;background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center;text-align:center" class="small">hero<br>36px</div><div style="width:88px;height:64px;border-radius:14px;background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center;text-align:center" class="small">field<br>14px</div><div style="width:88px;height:64px;border-radius:36px;background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center;text-align:center" class="small">panel<br>36px</div></div></div>
+      <div><div class="sg-sub" style="margin-top:0">Тени · --shadow-*</div><div class="row wrap"><div class="card" style="box-shadow:0 1px 2px rgba(2,3,12,.08);width:110px;text-align:center"><span class="small">sm</span></div><div class="card" style="box-shadow:0 6px 20px rgba(2,3,12,.18);width:110px;text-align:center"><span class="small">md</span></div><div class="card" style="box-shadow:0 20px 50px rgba(2,3,12,.35);width:110px;text-align:center"><span class="small">lg</span></div><div class="card" style="box-shadow:0 40px 120px rgba(2,3,12,.6);width:110px;text-align:center"><span class="small">xl</span></div></div></div>
     </div>
     <div class="grid g-2" style="margin-top:24px">
       <div><div class="sg-sub">Движение · --motion-*</div>

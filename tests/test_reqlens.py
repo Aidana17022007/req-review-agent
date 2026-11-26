@@ -214,8 +214,11 @@ def test_html_highlights_every_finding(rv):
 
 
 def test_tokens_css_has_both_themes():
-    css = tokens_css()
-    assert "--brand: #1F6B45" in css and '[data-theme="dark"]' in css and "--grad-hero:" in css
+    from req_review.ui import load_tokens
+
+    css, t = tokens_css(), load_tokens()
+    assert f"--brand: {t['color']['light']['brand']}" in css and f"--brand: {t['color']['dark']['brand']}" in css
+    assert '[data-theme="dark"]' in css and '[data-theme="light"]' in css and "--grad-hero:" in css
 
 
 def test_vague_goal_without_mechanism_is_unverifiable():

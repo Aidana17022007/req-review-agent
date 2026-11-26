@@ -1,9 +1,9 @@
 {
   "name": "ReqLens",
   "short_name": "ReqLens",
-  "theme_color": "#1F6B45",
-  "background_color": "#F3F5F3",
-  "background_color_dark": "#0E1410",
+  "theme_color": "#02030C",
+  "background_color": "#F5F6FC",
+  "background_color_dark": "#02030C",
   "icons": [
     {
       "src": "icon-192.png",
