@@ -3,96 +3,224 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ReqLens · Design System</title>
+<title>ReqLens · Дизайн-система v2</title>
+<link rel="icon" href="{{ favicon_href() }}">
 <style>
 {{ tokens_css()|safe }}
 {{ asset("base.css")|safe }}
 .sg-section{padding:48px 0;border-bottom:1px solid var(--border)}
-.sg-h{display:flex;align-items:baseline;gap:12px;margin-bottom:24px}
+.sg-h{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:24px}
+.sg-sub{font:var(--t-caption);text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin:24px 0 10px}
 .swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
-.sw{border-radius:14px;overflow:hidden;border:1px solid var(--border);background:var(--surface)}
+.sw{border-radius:14px;overflow:hidden;border:1px solid var(--border);background:var(--surface);color:var(--text)}
 .sw i{display:block;height:64px}
-.sw div{padding:8px 10px;font:500 12px/16px var(--font-sans)}
-.sw code{color:var(--text-3);font:400 11px/16px var(--font-mono)}
-.themes{display:grid;grid-template-columns:1fr 1fr;gap:0;border-radius:var(--r-hero);overflow:hidden;border:1px solid var(--border)}
-@media (max-width:900px){.themes{grid-template-columns:1fr}}
-.themes>div{background:var(--bg);color:var(--text);padding:28px}
-.themes>div>*+*{margin-top:18px}
-.typo-row{display:grid;grid-template-columns:120px 1fr 160px;gap:16px;align-items:baseline;padding:12px 0;border-bottom:1px dashed var(--border)}
+.sw div{padding:8px 10px;font:500 12px/16px var(--font-sans);overflow-wrap:anywhere}
+.sw code{color:var(--text-2);font:400 11px/16px var(--font-mono)}
+.ramp{display:grid;grid-template-columns:repeat(11,minmax(0,1fr));border-radius:14px;overflow:hidden;border:1px solid var(--border)}
+.ramp div{height:72px;padding:8px;display:flex;flex-direction:column;justify-content:flex-end;font:600 11px/14px var(--font-sans);min-width:0}
+.ramp code{font:400 10px/14px var(--font-mono);overflow-wrap:anywhere}
+@media (max-width:900px){.ramp{grid-template-columns:repeat(6,minmax(0,1fr))}}
+@media (max-width:480px){.ramp{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.themes{display:grid;grid-template-columns:1fr 1fr;border-radius:var(--r-hero);overflow:hidden;border:1px solid var(--border)}
+@media (max-width:1000px){.themes{grid-template-columns:1fr}}
+.themes>div{background:var(--bg);color:var(--text);padding:28px;min-width:0}
+@media (max-width:640px){.themes>div{padding:16px}}
+.themes>div>*+*{margin-top:20px}
+.typo-row{display:grid;grid-template-columns:110px minmax(0,1fr) 150px;gap:16px;align-items:baseline;padding:12px 0;border-bottom:1px dashed var(--border)}
+.typo-row>span{min-width:0;overflow-wrap:anywhere}
+@media (max-width:700px){.typo-row{grid-template-columns:1fr;gap:4px}}
 .space-row{display:flex;align-items:center;gap:12px;margin:6px 0}
 .space-row i{display:block;height:14px;background:var(--brand);border-radius:3px}
+.icons{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
+.icons div{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 6px;border:1px solid var(--border);border-radius:14px;background:var(--surface);font:500 11px/14px var(--font-mono);color:var(--text-2)}
+.icons .ic{color:var(--text)}
+.brand-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.brand-tiles>div{border-radius:var(--r-card);padding:24px;border:1px solid var(--border);display:grid;place-items:center;min-height:140px;min-width:0}
+.brand-tiles svg{max-width:100%;height:auto}
+.aa{width:100%;border-collapse:collapse;font:var(--t-small)}
+.aa td,.aa th{padding:6px 10px;border-bottom:1px solid var(--border);text-align:left}
+.aa th{font:600 11px/16px var(--font-sans);letter-spacing:.06em;text-transform:uppercase;color:var(--text-2)}
+.demo-label{font:var(--t-caption);text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);overflow-wrap:anywhere}
 </style>
 </head>
 <body>
 <header class="pagebar">
-  <div class="logo"><span class="logo-mark">{{ icon("lens", 18) }}</span><span>ReqLens<small>Design System · v{{ tokens.version }}</small></span></div>
-  <div class="grow"></div><span class="small muted">Источник правды: design/tokens.json</span>
+  <div class="logo"><span class="logo-mark">{{ logo_mark(36) }}</span><span>ReqLens<small>Дизайн-система v2 · токены v{{ tokens.version }}</small></span></div>
+  <div class="grow"></div><span class="small muted hide-sm">Источник правды: design/tokens.json</span>
 </header>
 <main class="container">
   <section class="sg-section">
     <div class="caption">ReqLens</div>
-    <h1 class="display" style="margin:8px 0">Дизайн-система</h1>
-    <p class="muted" style="max-width:720px">Единые токены и компоненты для HTML-отчёта, веб-студии, слайдов и README.
-      Светлая зелёная тема, белые карточки со скруглением 20 px, pill-кнопки и бейджи, сетка 8 pt, контраст WCAG AA.</p>
+    <h1 class="display" style="margin:8px 0">Дизайн-система v2</h1>
+    <p class="muted" style="max-width:760px">Единые токены, компоненты, иконки и логотип для трёх поверхностей: сайт, приложение (Studio) и HTML-отчёт.
+      Спокойный, точный инструмент аналитика: нейтральная шкала с зелёным оттенком, семантика серьёзности, сетка 4/8 pt,
+      контраст текста WCAG AA в обеих темах, анимации не дольше 200 мс.</p>
+    <p class="small faint" style="margin-top:12px">Сборка: <code class="mono">python -m req_review.ui.styleguide</code> (tokens.css, эта страница, слайды) ·
+      логотип и иконки PWA: <code class="mono">python -m req_review.ui.brand</code> → design/brand/</p>
   </section>
 
-  <section class="sg-section"><div class="sg-h"><h2 class="h2">Цвет</h2><span class="faint small">light / dark</span></div>
+  {# ------------------------------------------------------------------ бренд #}
+  <section class="sg-section" id="brand"><div class="sg-h"><h2 class="h2">Логотип</h2><span class="faint small">знак + слово · светлый / тёмный фон</span></div>
+    <div class="brand-tiles">
+      <div data-theme="light" style="background:var(--bg)">{{ logo.light }}</div>
+      <div data-theme="dark" style="background:var(--bg)">{{ logo.dark }}</div>
+      <div style="background:var(--surface)"><div class="row" style="gap:20px;align-items:flex-end">{% for s in [16, 24, 32, 48, 72] %}<span title="{{ s }} px">{{ logo_mark(s) }}</span>{% endfor %}</div></div>
+    </div>
+    <p class="small muted" style="margin-top:16px;max-width:760px">Знак — линза с галочкой: агент «смотрит» на требования и подтверждает качество.
+      Минимальный размер знака — 16 px, вокруг логотипа — свободное поле не меньше высоты галочки. Не перекрашивать, не вращать, не добавлять тени.</p>
+    {% if pngs %}<div class="sg-sub">Иконки приложения (PWA) и favicon · design/brand/</div>
+    <div class="row wrap" style="gap:16px;align-items:flex-end">{% for p in pngs %}{% set big = "32" not in p %}<figure style="margin:0;text-align:center"><img src="brand/{{ p }}" alt="{{ p }}" width="{{ 96 if big else 32 }}" height="{{ 96 if big else 32 }}" style="border-radius:{{ '50%' if 'maskable' in p else '0' }}">
+      <figcaption class="small faint" style="margin-top:6px">{{ p }}</figcaption></figure>{% endfor %}</div>
+    <p class="small faint" style="margin-top:8px">maskable показан в круглой маске — глиф целиком в безопасной зоне. theme_color <code class="mono">{{ tokens.brand.theme_color }}</code>,
+      background_color <code class="mono">{{ tokens.brand.background_color }}</code> (тёмная — <code class="mono">{{ tokens.brand.background_color_dark }}</code>) — в design/brand/brand.json.</p>{% endif %}
+  </section>
+
+  {# ------------------------------------------------------------------ цвет #}
+  <section class="sg-section" id="color"><div class="sg-h"><h2 class="h2">Палитра</h2><span class="faint small">опорные шкалы 50–950 · --green-*, --gray-*</span></div>
+    {% for name, scale in tokens.palette.items() %}<div class="sg-sub">{{ name }}</div>
+    <div class="ramp">{% for k, v in scale.items() %}<div style="background:{{ v }};color:{{ '#111813' if k|int < 500 else '#FFFFFF' }}">{{ k }}<code>{{ v }}</code></div>{% endfor %}</div>{% endfor %}
+    <p class="small muted" style="margin-top:12px">Компоненты используют не шкалы, а семантические токены ниже — так тёмная тема и будущие правки палитры не требуют менять компоненты.</p>
+  </section>
+
+  <section class="sg-section"><div class="sg-h"><h2 class="h2">Семантические цвета</h2><span class="faint small">светлая / тёмная тема</span></div>
     {% for theme in ["light", "dark"] %}
-    <div class="caption" style="margin:16px 0 10px">{{ theme }}</div>
+    <div class="sg-sub">{{ "Светлая" if theme == "light" else "Тёмная" }}</div>
     <div class="swatches" data-theme="{{ theme }}" style="background:var(--bg);padding:16px;border-radius:16px">
       {% for k, v in tokens.color[theme].items() %}<div class="sw"><i style="background:{{ v }}"></i><div>--{{ k }}<br><code>{{ v }}</code></div></div>{% endfor %}
     </div>{% endfor %}
+    <div class="sg-sub">Серьёзность замечаний</div>
+    <div class="row wrap"><span class="chip sev-critical"><span class="dot"></span>Критично</span><span class="chip sev-major"><span class="dot"></span>Важно</span>
+      <span class="chip sev-minor"><span class="dot"></span>Мелочь</span><span class="chip sev-ok"><span class="dot"></span>Ок</span><span class="chip sev-info">{{ icon("info", 13) }}Инфо</span></div>
   </section>
 
-  <section class="sg-section"><div class="sg-h"><h2 class="h2">Типографика</h2><span class="faint small">Inter · JetBrains Mono</span></div>
+  <section class="sg-section" id="contrast"><div class="sg-h"><h2 class="h2">Контраст текста</h2>
+      <span class="faint small">WCAG 2.1 AA: ≥ 4.5 для обычного текста · проверяется тестом tests/test_design.py</span></div>
+    {% set fails = contrast|rejectattr("ok")|list %}
+    <p class="small" style="margin-bottom:12px">{% if fails %}<span class="chip sev-critical">{{ fails|length }} пар ниже AA</span>{% else %}<span class="chip sev-ok">{{ icon("check", 13) }}все {{ contrast|length }} пар «текст / фон» проходят AA</span>{% endif %}</p>
+    <div class="grid g-2">{% for theme in ["light", "dark"] %}<div class="table-wrap card" style="padding:8px 12px;overflow-x:auto">
+      <table class="aa"><thead><tr><th>{{ "Светлая" if theme == "light" else "Тёмная" }}: текст</th><th>фон</th><th>контраст</th><th></th></tr></thead><tbody>
+      {% for r in contrast if r.theme == theme %}<tr><td><code class="mono">--{{ r.fg }}</code></td><td><code class="mono">--{{ r.bg }}</code></td><td><b>{{ "%.2f"|format(r.ratio) }}</b></td>
+        <td>{% if r.ok %}<span class="chip sev-ok" style="height:20px">AA</span>{% else %}<span class="chip sev-critical" style="height:20px">ниже</span>{% endif %}</td></tr>{% endfor %}
+      </tbody></table></div>{% endfor %}</div>
+  </section>
+
+  {# ------------------------------------------------------------------ типографика #}
+  <section class="sg-section" id="type"><div class="sg-h"><h2 class="h2">Типографика</h2><span class="faint small">Inter · JetBrains Mono · шкала 12/14/16/20/24/32/48</span></div>
+    <div class="sg-sub">Шкала · --fs-* / --lh-*</div>
+    {% for k, v in tokens.scale.items() %}<div class="typo-row"><span class="caption">{{ k }}</span>
+      <span style="font-size:var(--fs-{{ k }});line-height:var(--lh-{{ k }});font-weight:{{ 700 if k in ['2xl', '3xl'] else 600 if k in ['lg', 'xl'] else 400 }};letter-spacing:{{ '-.02em' if k in ['2xl', '3xl'] else '0' }}">Проверка требований до разработки</span><code class="mono faint">{{ v }}</code></div>{% endfor %}
+    <div class="sg-sub">Роли в интерфейсе · --t-*</div>
     {% for k, v in tokens.type.items() %}<div class="typo-row"><span class="caption">{{ k }}</span>
       <span style="font:var(--t-{{ k }}){% if k == 'caption' %};text-transform:uppercase;letter-spacing:.04em{% endif %}">Проверка требований до разработки</span><code class="mono faint">{{ v }}</code></div>{% endfor %}
   </section>
 
-  <section class="sg-section"><div class="sg-h"><h2 class="h2">Отступы, радиусы, тени</h2></div>
+  {# ------------------------------------------------------------------ отступы, радиусы, тени, движение, слои #}
+  <section class="sg-section" id="layout"><div class="sg-h"><h2 class="h2">Отступы, радиусы, тени</h2></div>
     <div class="grid g-3">
-      <div>{% for k, v in tokens.space.items() %}<div class="space-row"><i style="width:{{ v }}"></i><span class="small">space-{{ k }} · {{ v }}</span></div>{% endfor %}</div>
-      <div class="row wrap">{% for k, v in tokens.radius.items() %}<div style="width:96px;height:72px;border-radius:{{ v }};background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center" class="small">{{ k }} {{ v }}</div>{% endfor %}</div>
-      <div class="row wrap">{% for k, v in tokens.shadow.items() %}<div class="card" style="box-shadow:{{ v }};width:110px;text-align:center" ><span class="small">shadow-{{ k }}</span></div>{% endfor %}</div>
+      <div><div class="sg-sub" style="margin-top:0">Отступы · --s-*</div>{% for k, v in tokens.space.items() %}<div class="space-row"><i style="width:{{ v }}"></i><span class="small">--s-{{ k }} · {{ v }}</span></div>{% endfor %}</div>
+      <div><div class="sg-sub" style="margin-top:0">Радиусы · --r-*</div><div class="row wrap">{% for k, v in tokens.radius.items() %}<div style="width:88px;height:64px;border-radius:{{ v }};background:var(--brand-soft);border:1px solid var(--brand);display:grid;place-items:center;text-align:center" class="small">{{ k }}<br>{{ v }}</div>{% endfor %}</div></div>
+      <div><div class="sg-sub" style="margin-top:0">Тени · --shadow-*</div><div class="row wrap">{% for k, v in tokens.shadow.items() %}<div class="card" style="box-shadow:{{ v }};width:110px;text-align:center"><span class="small">{{ k }}</span></div>{% endfor %}</div></div>
+    </div>
+    <div class="grid g-2" style="margin-top:24px">
+      <div><div class="sg-sub">Движение · --motion-*</div>
+        {% for k, v in tokens.motion.items() %}<div class="row small" style="padding:6px 0;border-bottom:1px dashed var(--border)"><code class="mono">--motion-{{ k }}</code><span class="grow"></span><span class="muted" style="overflow-wrap:anywhere;text-align:right">{{ v }}</span></div>{% endfor %}
+        <p class="small muted" style="margin-top:8px">Микроанимации — не дольше base (200 мс). При <code class="mono">prefers-reduced-motion: reduce</code> анимации отключаются.</p></div>
+      <div><div class="sg-sub">Слои · --z-*</div>
+        {% for k, v in tokens.z|dictsort(by="value") %}<div class="row small" style="padding:6px 0;border-bottom:1px dashed var(--border)"><code class="mono">--z-{{ k }}</code><span class="grow"></span><span class="muted">{{ v }}</span></div>{% endfor %}</div>
     </div>
   </section>
 
-  <section class="sg-section"><div class="sg-h"><h2 class="h2">Компоненты</h2><span class="faint small">обе темы</span></div>
+  {# ------------------------------------------------------------------ компоненты #}
+  <section class="sg-section" id="components"><div class="sg-h"><h2 class="h2">Компоненты</h2><span class="faint small">обе темы · CSS-классы из base.css</span></div>
     <div class="themes">
       {% for theme in ["light", "dark"] %}
       <div data-theme="{{ theme }}">
-        <div class="caption">{{ theme }}</div>
+        <div class="caption">{{ "Светлая тема" if theme == "light" else "Тёмная тема" }}</div>
+
+        <div class="demo-label">Кнопки · .btn-primary / -secondary / -ghost / -danger · -sm / -lg · .loading</div>
         <div class="row wrap"><button class="btn btn-primary">{{ icon("lens", 16) }}Проверить</button><button class="btn btn-secondary">{{ icon("download", 16) }}Скачать</button>
-          <button class="btn btn-ghost">Отмена</button><button class="btn btn-primary" disabled>Disabled</button><button class="btn btn-primary loading">Загрузка</button></div>
-        <div class="row wrap"><span class="chip sev-critical"><span class="dot"></span>Критичный</span><span class="chip sev-major"><span class="dot"></span>Существенный</span>
-          <span class="chip sev-minor"><span class="dot"></span>Незначительный</span><span class="chip sev-ok"><span class="dot"></span>Без замечаний</span><span class="chip chip-brand">FR-02</span><span class="kbd">J</span><span class="kbd">K</span></div>
-        <div class="grid g-2"><article class="kpi kpi-hero"><span class="lbl">Всего требований</span><div class="kpi-num">31</div><div class="sub"><b>ID</b>нарезка по ID документа</div></article>
+          <button class="btn btn-ghost">Отмена</button><button class="btn btn-danger">{{ icon("trash", 16) }}Удалить</button></div>
+        <div class="row wrap"><button class="btn btn-primary btn-sm">Маленькая</button><button class="btn btn-primary btn-lg">Большая</button>
+          <button class="btn btn-primary loading" aria-busy="true">Загрузка</button><button class="btn btn-secondary loading" aria-busy="true">Загрузка</button>
+          <button class="btn btn-primary" disabled>Недоступна</button><button class="btn btn-round" aria-label="Настройки">{{ icon("settings") }}</button></div>
+
+        <div class="demo-label">Поля · .field / .input / .hint / .invalid</div>
+        <div class="grid g-2">
+          <div class="field"><label for="f1-{{ theme }}">Название проекта</label><input id="f1-{{ theme }}" class="input" value="P2P-переводы"><span class="hint">Видно только вам</span></div>
+          <div class="field invalid"><label for="f2-{{ theme }}">Ссылка на документ</label><input id="f2-{{ theme }}" class="input" value="ftp://doc" aria-invalid="true" aria-describedby="e2-{{ theme }}">
+            <span class="err" id="e2-{{ theme }}">{{ icon("alert", 14) }}Нужна ссылка https://</span></div>
+          <div class="field"><label for="f3-{{ theme }}">Модель</label><select id="f3-{{ theme }}" class="input"><option>gemini (из .env)</option><option>только правила</option></select></div>
+          <div class="field"><span class="label">Поиск</span><label class="search" style="min-width:0">{{ icon("search", 16) }}<input placeholder="Поиск по требованиям…" aria-label="Поиск"><span class="kbd">/</span></label></div>
+        </div>
+
+        <div class="demo-label">Загрузка файла · .dropzone (.is-over — файл над зоной)</div>
+        <div class="dropzone" tabindex="0" role="button" aria-label="Загрузить документ"><span class="dz-ic">{{ icon("upload", 24) }}</span>
+          <b>Перетащите документ сюда или нажмите, чтобы выбрать</b>
+          <span class="formats"><span class="chip chip-outline">.md</span><span class="chip chip-outline">.pdf</span><span class="chip chip-outline">.docx</span><span class="chip chip-outline">.txt</span></span>
+          <span class="small faint">до 10 МБ</span></div>
+
+        <div class="demo-label">Бейджи и чипы · .chip .sev-* · .chip-brand / -outline · .kbd</div>
+        <div class="row wrap"><span class="chip sev-critical"><span class="dot"></span>Критично</span><span class="chip sev-major"><span class="dot"></span>Важно</span>
+          <span class="chip sev-minor"><span class="dot"></span>Мелочь</span><span class="chip sev-ok"><span class="dot"></span>Ок</span><span class="chip sev-info">{{ icon("info", 13) }}Инфо</span>
+          <span class="chip chip-brand">FR-02</span><span class="chip chip-outline">функциональное</span><span class="kbd">J</span><span class="kbd">K</span></div>
+        <div class="row wrap"><span class="status st-run">выполняется</span><span class="status st-done">завершён</span><span class="status st-fail">ошибка</span>
+          <span class="verdict-badge v-ok">Готово</span><span class="verdict-badge v-major">Нужны правки</span><span class="verdict-badge v-critical">Не готово</span></div>
+
+        <div class="demo-label">Карточки · .card · .kpi</div>
+        <div class="grid g-2"><article class="kpi kpi-hero"><span class="lbl">Балл готовности</span><div class="kpi-num">72</div><div class="sub">нужны правки</div></article>
           <article class="kpi"><span class="lbl">Критичных</span><div class="kpi-num" style="color:var(--critical)">7</div><div class="sub">непроверяемые, неполные</div></article></div>
-        <div class="row wrap"><span class="status st-run">ВЫПОЛНЯЕТСЯ</span><span class="status st-done">ЗАВЕРШЁН</span><span class="status st-fail">ОШИБКА</span>
-          <span class="verdict-badge v-ok" style="font-size:15px;padding:8px 16px">Готово</span><span class="verdict-badge v-major" style="font-size:15px;padding:8px 16px">Нужны правки</span><span class="verdict-badge v-critical" style="font-size:15px;padding:8px 16px">Не готово</span></div>
-        <ol class="trace"><li class="ok"><time>13:05</time><span class="dot">✓</span><div><div class="t">Чтение документа</div><div class="d">48 строк · MD</div></div></li>
-          <li class="err"><time>13:06</time><span class="dot">✕</span><div><div class="t">Проверка требований</div><div class="d">модель не ответила по 2 треб.</div></div></li>
-          <li class="run"><time>13:10</time><span class="dot"></span><div><div class="t">Проверка набора</div><div class="d">выполняется…</div></div></li></ol>
-        <div class="grid g-2"><div class="stat"><div class="caption">Требований</div><div class="v">31 <span class="delta up">▲ +4</span></div></div>
-          <div class="stat"><div class="caption">Критичных</div><div class="v" style="color:var(--critical)">7 <span class="delta down">▼ −2</span></div></div></div>
-        <div class="tabs" style="margin:0"><button class="tab" aria-selected="true">{{ icon("file", 16) }}Документ<span class="count">24</span></button><button class="tab" aria-selected="false">{{ icon("list", 16) }}Требования<span class="count">31</span></button><button class="tab" aria-selected="false">{{ icon("graph", 16) }}Граф</button></div>
-        <div class="row wrap"><label class="search">{{ icon("search", 16) }}<input placeholder="Поиск…"></label>
-          <div class="seg"><button aria-pressed="true">Все</button><button aria-pressed="false">Критичные</button></div>
-          <button class="pill" aria-pressed="true">Критичный</button><button class="pill" aria-pressed="false">Минор</button></div>
         <div class="card"><div class="req-head"><div class="score-ring" style="--v:65;--c:var(--major-accent)"><span>65</span></div>
-          <div class="grow"><div class="row"><b>R-002</b><span class="chip chip-brand">FR-02</span><span class="chip sev-critical"><span class="dot"></span>Критичный</span></div>
+          <div class="grow"><div class="row wrap"><b>R-002</b><span class="chip chip-brand">FR-02</span><span class="chip sev-critical"><span class="dot"></span>Критично</span></div>
           <div class="small faint">раздел «3.1 Переводы», строка 20</div></div></div>
           <div class="quote" style="margin-top:12px">Система должна <mark class="hl critical">быстро проверять</mark> наличие получателя.</div></div>
-        <div class="diff"><div class="side">должен <del>быстро</del> проверять</div><div class="side">должен проверять <ins>за ≤ 2 с (p95)</ins></div></div>
+
+        <div class="demo-label">Таблица · .table-wrap .tbl</div>
+        <div class="table-wrap card" style="padding:0;overflow-x:auto"><table class="tbl"><thead><tr><th>ID</th><th>Требование</th><th>Статус</th></tr></thead>
+          <tbody><tr class="rrow"><td><b>FR-01</b></td><td>Перевод по номеру телефона</td><td><span class="chip sev-ok"><span class="dot"></span>Ок</span></td></tr>
+          <tr class="rrow"><td><b>FR-02</b></td><td>Быстрая проверка получателя</td><td><span class="chip sev-critical"><span class="dot"></span>Критично</span></td></tr></tbody></table></div>
+
+        <div class="demo-label">Вкладки · .tabs .tab · переключатели темы и языка · .seg · тултип [data-tip]</div>
+        <div class="tabs" role="tablist" style="margin:0"><button class="tab" role="tab" aria-selected="true">{{ icon("file", 16) }}Документ<span class="count">24</span></button>
+          <button class="tab" role="tab" aria-selected="false">{{ icon("list", 16) }}Требования<span class="count">31</span></button><button class="tab" role="tab" aria-selected="false">{{ icon("graph", 16) }}Граф</button></div>
+        <div class="row wrap"><div class="seg seg-sm" role="group" aria-label="Тема"><button aria-pressed="{{ 'true' if theme == 'light' else 'false' }}">{{ icon("sun", 14) }}Светлая</button><button aria-pressed="{{ 'true' if theme == 'dark' else 'false' }}">{{ icon("moon", 14) }}Тёмная</button></div>
+          <div class="seg seg-sm" role="group" aria-label="Язык"><button aria-pressed="true">Рус</button><button aria-pressed="false">Қаз</button></div>
+          <span class="btn btn-ghost btn-sm" tabindex="0" data-tip="Видна и с клавиатуры">{{ icon("info", 14) }}Тултип</span></div>
+
+        <div class="demo-label">Прогресс этапов прогона · .stages (--p — процент)</div>
+        <div class="stages" style="--p:58"><div class="stages-bar" role="progressbar" aria-valuenow="58" aria-valuemin="0" aria-valuemax="100" aria-label="Прогресс прогона"><i></i></div>
+          <ol><li class="done">Нарезка</li><li class="done">Правила</li><li class="run">Модель · 58%</li><li>Набор</li><li>Перекрёстная</li><li>Отчёт</li></ol></div>
         <div class="stepper"><div class="step done"><span class="b">✓</span><span>Чтение</span><span class="small">1 с</span></div>
           <div class="step run"><span class="b"></span><span>Проверка требований</span><span></span></div><div class="step"><span class="b">3</span><span>Отчёты</span><span></span></div></div>
-        <div class="bar-row"><span class="small">Проверяемость</span><div class="bar"><i style="width:62%"></i></div><b class="small">62</b></div>
-        <div class="skel" style="width:70%"></div><div class="skel" style="width:45%"></div>
-        <div class="row" style="gap:6px">{% for n in ["lens","file","list","layers","graph","flask","wand","chat","book","id","shield","alert","check","copy","search","upload","download","bank","globe","keyboard"] %}<span class="btn btn-ghost btn-icon" title="{{ n }}">{{ icon(n) }}</span>{% endfor %}</div>
+
+        <div class="demo-label">Тосты · .toast .toast-ok / -err / -info</div>
+        <div class="row wrap"><div class="toast toast-ok is-static" role="status">{{ icon("check", 16) }}Отчёт сохранён</div>
+          <div class="toast toast-err is-static" role="alert">{{ icon("alert", 16) }}Квота модели исчерпана</div>
+          <div class="toast toast-info is-static" role="status">{{ icon("wifi-off", 16) }}Нет сети — доступна история</div></div>
+
+        <div class="demo-label">Пустое состояние · .empty · загрузка · .skel</div>
+        <div class="card"><div class="empty" style="padding:24px 8px"><span class="empty-ic">{{ icon("folder", 28) }}</span>
+          <div class="h3">Проверок пока нет</div><p class="small muted">Загрузите документ требований — отчёт появится здесь.</p>
+          <button class="btn btn-primary btn-sm">{{ icon("plus", 14) }}Новая проверка</button></div></div>
+        <div class="skel-card" aria-busy="true" aria-label="Загрузка"><div class="row"><div class="skel skel-circle"></div><div class="grow"><div class="skel skel-lg" style="width:60%"></div></div></div>
+          <div class="skel" style="width:90%"></div><div class="skel" style="width:70%"></div></div>
+
+        <div class="demo-label">Drawer · .drawer (здесь — .is-static)</div>
+        <aside class="drawer is-static" aria-label="Пример drawer"><header>{{ icon("file", 18) }}<b class="grow">R-002 · FR-02</b><button class="btn btn-ghost btn-icon btn-sm" aria-label="Закрыть">{{ icon("x", 16) }}</button></header>
+          <div class="body"><p class="small muted">Боковая панель: подробности требования, ассистент с источниками.</p></div></aside>
+
+        <div class="demo-label">Модальное окно · .modal .modal-box (здесь — .is-static)</div>
+        <div class="modal is-static"><div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="m-{{ theme }}">
+          <h3 class="h2" id="m-{{ theme }}">Удалить проверку?</h3><p class="small muted">Отчёт «P2P-переводы · v3» удалится из истории. Файлы на диске останутся.</p>
+          <footer><button class="btn btn-ghost">Отмена</button><button class="btn btn-danger">{{ icon("trash", 16) }}Удалить</button></footer></div></div>
       </div>{% endfor %}
     </div>
   </section>
-  <footer class="footer">ReqLens Design System · сгенерировано командой <code class="mono">python -m req_review.ui.styleguide</code></footer>
+
+  {# ------------------------------------------------------------------ иконки #}
+  <section class="sg-section" id="icons"><div class="sg-h"><h2 class="h2">Иконки</h2><span class="faint small">{{ ICONS|length }} шт. · 24×24 · линия 1.75 · currentColor · req_review/ui/icons.py</span></div>
+    <div class="icons">{% for n in ICONS %}<div>{{ icon(n, 22) }}<span>{{ n }}</span></div>{% endfor %}</div>
+  </section>
+  <footer class="footer">ReqLens · Дизайн-система v2 · сгенерировано командой <code class="mono">python -m req_review.ui.styleguide</code></footer>
 </main>
 </body>
 </html>
