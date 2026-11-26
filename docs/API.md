@@ -171,12 +171,25 @@ severity, problem, quote}`; `rows` — статус каждого требов�
 |---|---|
 | `/manifest.webmanifest` | имя «ReqLens», `display: standalone`, `theme_color` = `--brand` (#1F6B45), иконки 192/512/maskable |
 | `/sw.js` | service worker (область — всё приложение) |
-| `/static/{icon.svg, icon-192.png, icon-512.png, icon-maskable-512.png}` | временные иконки — заменить логотипом дизайн-системы v2 (`scripts/make_pwa_icons.py`) |
+| `/static/{icon.svg, icon-192.png, icon-512.png, icon-maskable-512.png, apple-touch-icon.png}` | знак дизайн-системы v2 (`design/brand/`) |
 | `/offline` | экран «Нет интернета» |
 
 Кэш service worker: оболочка и статика — из кэша; `GET /api/v1/…` (проекты, история, прогоны) и открытые отчёты —
 «сначала сеть, иначе кэш» (офлайн видна история); SSE не кэшируется; `POST` без сети → **503**
 `{"error": {"code": "offline", "message": "Нужен интернет: проверка документа обращается к модели…"}}`.
 
-Теги манифеста и регистрация service worker сейчас вставляются в страницу Studio на сервере (`app.py`, `PWA_HEAD`),
-чтобы не трогать шаблон дизайна. Когда они появятся в `studio.html.j2`, вставка автоматически отключится.
+Теги манифеста, `theme-color`, `apple-touch-icon` и регистрация service worker — в шаблоне `studio.html.j2`;
+серверная вставка (`app.py`, `PWA_HEAD`) поэтому не срабатывает и остаётся только как запасной вариант.
+
+## Экраны Studio на API v1
+
+| Экран | Эндпоинты |
+|---|---|
+| Новая проверка (выбор проекта, режим «С моделью / Только правила») | `POST /projects` (проект по имени файла), `POST /projects/{pid}/runs`; `duplicate: true` — открывается прошлый результат с кнопкой «Проверить заново» (`force=true`) |
+| Проекты | `GET /projects`, `POST /projects`, `DELETE /projects/{pid}` (подтверждение) |
+| Проект: KPI, график `trend`, история версий | `GET /projects/{pid}/runs` (пока идёт прогон — обновление раз в 2,5 с), `DELETE /runs/{rid}` («Удалить безвозвратно?») |
+| Живой прогон: очередь, этап, процент, отмена | `GET /jobs/{jid}/events`, `POST /jobs/{jid}/cancel`; при `error.code = quota` — «Проверить без модели (только правила)» → тот же файл с `mode=rules` |
+| Отчёт и ассистент с источниками | `GET /runs/{rid}`, `GET /runs/{rid}/files/{name}`, `POST /runs/{rid}/ask` |
+| До / После | поле `compare` прогона; «Проверить исправленный агентом» загружает `*_requirements_fixed.md` прогона новой версией |
+
+Режим «Демо» (`--demo`) по-прежнему идёт через старые эндпоинты Studio и в историю не попадает.

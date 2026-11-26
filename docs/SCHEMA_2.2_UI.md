@@ -6,7 +6,7 @@
 
 | Поле backend | Как читает UI (`req_review/html_report.py`) | Где в интерфейсе |
 |---|---|---|
-| `findings[].basis[]`, `set_findings[].basis[]` `{source, section, quote, url, kind, license, file}` | `kind`: `standards`→стандарт, `law_kz`→закон РК, `patterns`→шаблон; `section` — пункт; `license` с «пересказ» → пометка «пересказ своими словами»; `url` — только `https://`; без `quote` или `source` основание не выводится | блок «Основание» (карточка у фрагмента, таблица, drawer, замечания набора), раздел «База знаний», источники ассистента |
+| `findings[].basis[]`, `set_findings[].basis[]` `{source, section, quote, url, kind, license, file}` | `kind`: `standards`→стандарт, `law_kz`→«Норма РК · пересказ», `patterns`→шаблон; `section` — пункт; `license` с «пересказ» → пометка «пересказ своими словами»; `url` — только `https://`; без `quote` или `source` основание не выводится | блок «Основание» (карточка у фрагмента, таблица, drawer, замечания набора), раздел «База знаний», источники ассистента |
 | `requirements[].rewrite_pattern` `{id, title, template, file}` | название и шаблон из `kb/patterns`, текст — формулировка агента (`rewrite`) | «По шаблону «…»» и «Применить шаблон» в «Исправлениях» |
 | `requirements[].category` (functional, security…) | подпись из `categories.CATEGORIES` | чипы и фильтр «Категория» в таблице требований |
 | `coverage_map[]` / `rv.coverage` `{id, title, reqs, covered, question}` | шаги процесса домена | раздел «Покрытие процесса»: непокрытый шаг — красная метка и вопрос аналитику |

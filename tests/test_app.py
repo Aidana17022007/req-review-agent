@@ -229,6 +229,9 @@ def test_health_docs_and_pwa(client):
     assert c.get("/docs").status_code == 200 and "/api/v1/projects" in c.get("/openapi.json").text
     html = c.get("/").text
     assert 'rel="manifest"' in html and "serviceWorker" in html
+    # теги PWA теперь в самом шаблоне — серверная вставка (PWA_HEAD) отключилась и не дублирует их
+    assert html.count('rel="manifest"') == 1 and webapp.PWA_HEAD not in html
+    assert c.get("/static/apple-touch-icon.png").status_code == 200
     m = c.get("/manifest.webmanifest")
     assert m.headers["content-type"].startswith("application/manifest+json")
     sizes = {i["sizes"] for i in m.json()["icons"]}
@@ -241,3 +244,16 @@ def test_health_docs_and_pwa(client):
     assert c.get("/static/..%2Fapp.py").status_code == 404 and c.get("/static/nope.js").status_code == 404
     assert c.get("/api/v1/runs/nope").json() == {"error": {"code": "not_found", "message": "Прогон не найден"}}
     assert c.post("/api/v1/projects", content=b"not json", headers={"content-type": "application/json"}).json()["error"]["code"] == "invalid"
+
+
+def test_studio_screens_use_api_v1(client):
+    """Экраны приложения построены по docs/API.md: проекты, история с графиком trend, процент, отмена,
+    «Проверить без модели» при квоте, ассистент с источниками — всё через /api/v1."""
+    html = client.get("/").text
+    for marker in ('id="s-projects"', 'id="s-project"', 'id="pj-trend"', 'id="pj-hist"', 'id="p-pct"', 'id="p-cancel"',
+                   'id="seg-mode"', 'id="modal"', "err-rules", "Проверить без модели (только правила)", "Удалить безвозвратно",
+                   "/projects/${pid}/runs", "/jobs/${state.job}/cancel", "/runs/${R.id}/ask", "/api/v1/jobs/${job}/events",
+                   "res.duplicate", "d.trend", "пересказ, не текст закона"):
+        assert marker in html, marker
+    # старые эндпоинты Studio остаются только для режима «Демо»
+    assert "fetch(\"/api/review\"" not in html

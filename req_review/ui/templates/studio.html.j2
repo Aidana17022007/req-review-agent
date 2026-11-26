@@ -4,10 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ReqLens Studio</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='%23E7F4EC' stroke='%231F6B45' stroke-width='4'/%3E%3Ccircle cx='16' cy='16' r='4.5' fill='%231F6B45'/%3E%3C/svg%3E">
+<link rel="icon" href="{{ favicon_href() }}">
+{# PWA: манифест, цвет окна и иконка для iOS; service worker регистрируется в конце страницы #}
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#1F6B45">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <style>
 {{ tokens_css()|safe }}
 {{ asset("base.css")|safe }}
+[hidden]{display:none!important}
 .drop{display:block;position:relative;border:2px dashed color-mix(in srgb,var(--brand) 45%,var(--border));border-radius:var(--r-card);padding:48px 24px;text-align:center;
   background:var(--surface);cursor:pointer;transition:border-color var(--motion-base),background var(--motion-base)}
 .drop:hover,.drop.over{border-color:var(--brand);background:var(--brand-soft)}
@@ -23,8 +28,8 @@
 .side-col{display:flex;flex-direction:column;gap:16px;position:sticky;top:16px}
 .err-card{display:flex;gap:16px;align-items:flex-start}
 .err-card .empty-ic{margin:0;flex:none}
-.err-card.key .empty-ic{background:var(--major-soft);color:var(--major)}
-.err-card.quota .empty-ic,.err-card.error .empty-ic{background:var(--critical-soft);color:var(--critical)}
+.err-card.key .empty-ic,.err-card.cancelled .empty-ic,.err-card.offline .empty-ic{background:var(--major-soft);color:var(--major)}
+.err-card.quota .empty-ic,.err-card.error .empty-ic,.err-card.upload .empty-ic{background:var(--critical-soft);color:var(--critical)}
 .lv-st{display:inline-flex;align-items:center;gap:6px}
 .lv-spin{width:12px;height:12px;border-radius:50%;border:2px solid var(--brand);border-right-color:transparent;animation:spin .8s linear infinite;display:inline-block}
 .live-tbl td:nth-child(3){min-width:220px}.live-tbl td:first-child,.live-tbl td:nth-child(2){white-space:nowrap}
@@ -38,8 +43,37 @@
 .src-line:hover{border-color:var(--brand)}
 .src-kb{display:flex;flex-direction:column;gap:3px;border:1px solid var(--border);background:var(--surface);border-radius:10px;padding:8px 10px}
 .src-kb .chip{align-self:flex-start}
+.src-n{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 4px;border-radius:6px;background:var(--surface-2);color:var(--text-2);font:600 11px/1 var(--font-sans);flex:none}
+.cite{font:600 10px/1 var(--font-sans);color:var(--text-2);margin-left:1px}
 .banner-demo{background:var(--brand-soft);border-color:color-mix(in srgb,var(--brand) 40%,transparent)}.banner-demo>.ic{color:var(--brand)}
-@media (max-width:640px){.side-col{position:static}#frame{height:72vh}}
+.opts{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center}
+.opts .opt{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+#proj-sel{max-width:340px;height:36px}
+.agent .foot .btn{flex:none}
+/* проекты и история */
+.pj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.pj-card{display:block;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.pj-card:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.pj-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist td:last-child{white-space:nowrap}.hist td:nth-child(3){white-space:nowrap}
+.hist .acts{display:flex;gap:6px;justify-content:flex-end}
+/* график динамики: цвета серий проверены на CVD и контраст в обеих темах (dataviz validate_palette) */
+.trend-box{--tr-score:#1E8A50;--tr-ready:#3B82C4}
+[data-theme="dark"] .trend-box{--tr-score:#3FB070;--tr-ready:#5A9BE6}
+.trend{position:relative;margin-top:8px}
+.trend svg{width:100%;height:auto;display:block;overflow:visible}
+.trend .grid-l{stroke:var(--border);stroke-width:1}
+.trend .ax{fill:var(--text-3);font:500 11px/1 var(--font-sans)}
+.trend .lbl-end{fill:var(--text);font:600 12px/1 var(--font-sans)}
+.trend .xh{stroke:var(--text-3);stroke-width:1;stroke-dasharray:3 3;opacity:0}
+.trend .hit{cursor:pointer}
+.trend-tip{position:absolute;top:8px;pointer-events:none;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow-md);border-radius:12px;
+  padding:8px 10px;font:var(--t-small);min-width:160px;opacity:0;transition:opacity var(--motion-fast);z-index:var(--z-tooltip)}
+.trend-tip.show{opacity:1}
+.sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.trend-legend{display:flex;gap:16px;flex-wrap:wrap;font:var(--t-small);color:var(--text-2)}
+.net-off{display:none}.offline .net-off{display:inline-flex}
+@media (max-width:640px){.side-col{position:static}#frame{height:72vh}#proj-sel{max-width:100%}}
 </style>
 <script>(function(){try{var t=localStorage.getItem("reqlens-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}})()</script>
 </head>
@@ -47,9 +81,10 @@
 <a class="sr-only" href="#content">Перейти к содержимому</a>
 <div class="app">
   <aside class="sidebar" id="sidebar" aria-label="Навигация">
-    <div class="logo"><span class="logo-mark">{{ icon("lens", 18) }}</span><span>ReqLens<small>Studio</small></span></div>
+    <div class="logo"><span class="logo-mark">{{ logo_mark(36) }}</span><span>ReqLens<small>Studio</small></span></div>
     <div class="nav-label">Меню</div>
     <button class="nav-item" aria-current="page" type="button" id="nav-new">{{ icon("upload") }}<span>Новая проверка</span></button>
+    <button class="nav-item" type="button" id="nav-projects">{{ icon("folder") }}<span>Проекты</span></button>
     <button class="nav-item" type="button" id="nav-run" disabled>{{ icon("play") }}<span>Живой прогон</span></button>
     <button class="nav-item" type="button" id="nav-report" disabled>{{ icon("file") }}<span>Отчёт</span></button>
     <button class="nav-item" type="button" id="nav-compare" disabled>{{ icon("compare") }}<span>До / После</span></button>
@@ -65,6 +100,7 @@
     <div class="topbar">
       <button class="btn btn-round burger" id="burger" aria-label="Открыть меню" aria-controls="sidebar">{{ icon("menu") }}</button>
       <span class="small muted grow">ИИ-ревью требований по ISO/IEC/IEEE 29148 и IEEE 830</span>
+      <span class="chip sev-major net-off" role="status">{{ icon("wifi-off", 13) }}нет сети · история доступна</span>
       <span class="chip chip-brand" id="model-chip">{{ icon("shield", 13) }}локальный сервер</span>
     </div>
     <div class="content" id="content">
@@ -80,33 +116,61 @@
               <div class="big">{{ icon("upload", 28) }}</div>
               <div class="h2" id="drop-title">Перетащите файл сюда или нажмите, чтобы выбрать</div>
               <div class="fmt"><span class="chip chip-outline">.md</span><span class="chip chip-outline">.pdf</span><span class="chip chip-outline">.docx</span><span class="chip chip-outline">.txt</span></div>
-              <div class="small faint" style="margin-top:10px" id="drop-hint">до 20 МБ · проверка начнётся сразу после выбора файла</div>
+              <div class="small faint" style="margin-top:10px" id="drop-hint">до <span id="max-mb">10</span> МБ · проверка начнётся сразу после выбора файла</div>
             </label>
-            <div class="row wrap between">
-              <div class="row wrap">
-                <span class="small muted">Профиль</span>
+            <div class="opts">
+              <div class="opt"><label class="small muted" for="proj-sel">Проект</label>
+                <select class="input" id="proj-sel"><option value="">Новый проект — по имени файла</option></select></div>
+              <div class="opt"><span class="small muted">Профиль</span>
                 <div class="seg" role="group" aria-label="Профиль" id="seg-profile">
                   {% for p in profiles %}<button type="button" data-v="{{ p }}" aria-pressed="{{ 'true' if p == 'fast' else 'false' }}">{{ {'fast':'Быстрый','full':'Полный','offline':'Офлайн'}[p] }}</button>{% endfor %}
-                </div>
-                <span class="small muted">Домен</span>
+                </div></div>
+              <div class="opt"><span class="small muted">Домен</span>
                 <div class="seg" role="group" aria-label="Домен" id="seg-domain">
                   <button type="button" data-v="fintech" aria-pressed="true">Финтех</button><button type="button" data-v="none" aria-pressed="false">Без домена</button>
-                </div>
-              </div>
-              <div class="row wrap">
-                <button class="btn btn-outline" id="demo" type="button" hidden>{{ icon("play", 16) }}Демо</button>
-                <button class="btn btn-outline" id="sample" type="button">{{ icon("file", 16) }}Пример документа</button>
-                <button class="btn btn-primary" id="go" type="submit" disabled>{{ icon("play", 16) }}Запустить проверку</button>
-              </div>
+                </div></div>
+              <div class="opt"><span class="small muted">Режим</span>
+                <div class="seg" role="group" aria-label="Режим проверки" id="seg-mode">
+                  <button type="button" data-v="llm" aria-pressed="true">С моделью</button><button type="button" data-v="rules" aria-pressed="false">Только правила</button>
+                </div></div>
             </div>
-            <p class="small faint">Быстрый — минимум обращений к модели (бесплатный тариф). Полный — плюс критик-агент и повторная оценка исправленного документа. Офлайн — локальная модель через Ollama.</p>
+            <div class="row wrap" style="justify-content:flex-end">
+              <button class="btn btn-outline" id="demo" type="button" hidden>{{ icon("play", 16) }}Демо</button>
+              <button class="btn btn-outline" id="sample" type="button">{{ icon("file", 16) }}Пример документа</button>
+              <button class="btn btn-primary" id="go" type="submit" disabled>{{ icon("play", 16) }}Запустить проверку</button>
+            </div>
+            <p class="small faint">Версии одного документа складываются в историю проекта: балл по версиям и сравнение «до / после». Тот же файл повторно не проверяется — откроется прошлый результат.
+              Быстрый профиль — минимум обращений к модели; полный — плюс критик-агент; офлайн — локальная модель через Ollama. «Только правила» — без модели и без расхода квоты.</p>
           </form>
           <div class="stack">
             <article class="kpi kpi-hero"><span class="lbl">Что получите</span><div class="kpi-num">6</div><div class="sub">артефактов: отчёт .md, HTML, JSON, Excel, CSV для Jira, исправленный документ</div></article>
-            <div class="card feat">{{ icon("bot") }}<div class="h3" style="margin-top:6px">AI-ассистент</div><p class="small muted">Спросите «Почему R-006 критичное?» — ответ со ссылками на требования.</p></div>
-            <div class="card feat">{{ icon("compare") }}<div class="h3" style="margin-top:6px">До / После</div><p class="small muted">Проверьте исправленную версию и сравните балл и дефекты.</p></div>
+            <div class="card feat">{{ icon("history") }}<div class="h3" style="margin-top:6px">История проверок</div><p class="small muted">Каждая версия документа — в проекте: график балла, критичные дефекты, вердикт.</p></div>
+            <div class="card feat">{{ icon("bot") }}<div class="h3" style="margin-top:6px">AI-ассистент с источниками</div><p class="small muted">Ответ ссылается на требования, строки документа и фрагменты базы знаний.</p></div>
           </div>
         </div>
+      </section>
+
+      <!-- Экран: проекты -->
+      <section class="screen" id="s-projects" aria-labelledby="h-projects">
+        <header class="pagehead"><div class="grow"><div class="caption">Проекты</div><h1 class="display" style="margin-top:6px" id="h-projects">Проекты и история проверок</h1>
+          <p class="muted" style="margin-top:6px">Проект — один документ требований и все его версии.</p></div>
+          <div class="row wrap"><button class="btn btn-primary" id="pj-new" type="button">{{ icon("plus", 16) }}Новый проект</button></div></header>
+        <div class="pj-grid" id="pj-list"><div class="skel-card"><div class="skel skel-lg" style="width:60%"></div><div class="skel" style="width:40%"></div></div></div>
+      </section>
+
+      <!-- Экран: проект — динамика по версиям и история -->
+      <section class="screen" id="s-project" aria-labelledby="pj-name">
+        <header class="pagehead"><div class="grow" style="min-width:0"><div class="caption"><button type="button" class="linkish" id="pj-back">Проекты</button> / проект</div>
+          <h1 class="display" style="margin-top:6px;overflow-wrap:anywhere" id="pj-name">Проект</h1><p class="muted" style="margin-top:6px" id="pj-sub"></p></div>
+          <div class="row wrap">
+            <label class="btn btn-primary" style="position:relative">{{ icon("upload", 16) }}Проверить новую версию<input type="file" id="pj-file" accept="{{ formats }}" style="position:absolute;inset:0;opacity:0;cursor:pointer" aria-label="Загрузить новую версию документа"></label>
+            <button class="btn btn-ghost" id="pj-del" type="button">{{ icon("trash", 16) }}Удалить проект</button>
+          </div></header>
+        <div class="grid g-4" id="pj-kpi"></div>
+        <div class="card trend-box" style="margin-top:16px"><div class="card-title">{{ icon("spark") }}<span class="h2 grow">Динамика по версиям</span></div><div id="pj-trend"></div></div>
+        <div class="card" style="margin-top:16px"><div class="card-title">{{ icon("history") }}<span class="h2 grow">История проверок</span><span class="chip chip-brand" id="pj-count"></span></div>
+          <div class="table-wrap"><table class="tbl hist"><thead><tr><th scope="col">Версия</th><th scope="col">Документ</th><th scope="col">Проверено</th><th scope="col">Режим и статус</th><th scope="col">Балл</th><th scope="col">Критичных</th><th scope="col">Вердикт</th><th scope="col"><span class="sr-only">Действия</span></th></tr></thead>
+            <tbody id="pj-hist"></tbody></table></div></div>
       </section>
 
       <!-- Экран 2: живой прогон -->
@@ -120,13 +184,14 @@
               <div class="info">
                 <div class="h2">Агент проверки требований</div>
                 <div class="metrics">
-                  <div class="metric"><div class="kpi-num" id="p-step">0/7</div><div class="small muted">шагов выполнено</div></div>
+                  <div class="metric"><div class="kpi-num" id="p-pct">0<span class="h3 faint">%</span></div><div class="small muted" id="p-step">шаг 0 из {{ steps|length }}</div></div>
                   <div class="metric"><div class="kpi-num" style="color:var(--text)" id="p-done">0</div><div class="small muted">требований проверено</div></div>
                   <div class="metric"><div class="kpi-num" style="color:var(--text)" id="p-time">0<span class="h3 faint"> с</span></div><div class="small muted">время прогона</div></div>
                 </div>
                 <div class="bar" style="height:10px" role="progressbar" aria-label="Прогресс прогона" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="p-barwrap"><i id="p-bar" style="width:0%"></i></div>
               </div>
-              <div class="foot"><span class="live" id="p-live"><i></i>LIVE</span><span class="small muted grow" id="p-cur" aria-live="polite">Подготовка…</span></div>
+              <div class="foot"><span class="live" id="p-live"><i></i>LIVE</span><span class="small muted grow" id="p-cur" aria-live="polite">Подготовка…</span>
+                <button class="btn btn-sm btn-outline" type="button" id="p-cancel">{{ icon("stop", 14) }}Отменить</button></div>
             </article>
             <div class="card"><div class="card-title">{{ icon("list") }}<span class="h2 grow">Требования</span><span class="chip chip-brand" id="lv-count">ждём нарезку</span></div>
               <div class="table-wrap"><table class="tbl live-tbl"><thead><tr><th scope="col">ID</th><th scope="col">В документе</th><th scope="col">Формулировка</th><th scope="col">Статус</th><th scope="col">Балл</th></tr></thead>
@@ -143,13 +208,15 @@
 
       <!-- Экран 3: результат + ассистент -->
       <section class="screen" id="s-result" aria-labelledby="r-title">
-        <header class="pagehead" style="flex-direction:column;align-items:stretch"><div><div class="caption">Готово</div><h1 class="h1" style="margin-top:6px" id="r-title">Отчёт</h1></div>
-          <div class="row wrap" id="downloads"></div></header>
+        <header class="pagehead" style="flex-direction:column;align-items:stretch"><div><div class="caption" id="r-caption">Готово</div><h1 class="h1" style="margin-top:6px" id="r-title">Отчёт</h1>
+            <div class="row wrap" style="margin-top:8px" id="r-meta"></div></div>
+          <div class="row wrap"><span class="row wrap" id="downloads"></span><button class="btn btn-sm btn-ghost" type="button" id="r-proj" hidden>{{ icon("history", 14) }}История проекта</button></div></header>
+        <div id="r-note"></div>
         <div class="grid" id="res-grid">
           <iframe id="frame" title="Интерактивный отчёт"></iframe>
           <div class="side-col">
             <section class="card chat" id="chat" aria-label="AI-ассистент">
-              <div class="card-title" style="margin-bottom:0">{{ icon("bot") }}<span class="h2 grow">AI Assistant</span><span class="chip chip-brand">по отчёту</span></div>
+              <div class="card-title" style="margin-bottom:0">{{ icon("bot") }}<span class="h2 grow">AI Assistant</span><span class="chip chip-brand">с источниками</span></div>
               <div class="chat-log" id="chat-log" aria-live="polite"><div class="msg ai">Здравствуйте! Я отвечаю по данным этого отчёта. Нажмите на подсказку или задайте свой вопрос — ссылки на требования открывают их в отчёте.</div></div>
               <div class="chips-q" id="chat-sugg"></div>
               <form class="chat-form" id="chat-form"><label class="sr-only" for="chat-q">Вопрос ассистенту</label>
@@ -158,10 +225,11 @@
             </section>
             <section class="card" id="cmp-card" aria-label="Сравнение версий">
               <div class="card-title">{{ icon("compare") }}<span class="h2">Сравнить версии</span></div>
-              <p class="small muted">Исправили документ? Проверьте новую версию — покажем балл до и после, исправленные и новые дефекты.</p>
+              <p class="small muted">Исправили документ? Проверьте новую версию — она попадёт в историю проекта, а мы покажем балл до и после, исправленные и новые дефекты.</p>
               <div class="row wrap" style="margin-top:12px">
                 <button class="btn btn-sm btn-primary" id="cmp-fixed" type="button">{{ icon("wand", 14) }}Проверить исправленный агентом</button>
                 <label class="btn btn-sm btn-outline" style="position:relative">{{ icon("upload", 14) }}Загрузить новую версию<input type="file" id="cmp-file" accept="{{ formats }}" style="position:absolute;inset:0;opacity:0;cursor:pointer" aria-label="Загрузить новую версию документа"></label>
+                <button class="btn btn-sm btn-ghost" id="cmp-open" type="button" hidden>{{ icon("compare", 14) }}Сравнение с прошлой версией</button>
               </div>
             </section>
           </div>
@@ -179,12 +247,22 @@
     </div>
   </div>
 </div>
+<div class="modal" id="modal" aria-hidden="true">
+  <form class="modal-box" id="m-form" role="dialog" aria-modal="true" aria-labelledby="m-title" aria-describedby="m-body" novalidate>
+    <div class="h2" id="m-title">Подтверждение</div>
+    <div class="small muted" id="m-body"></div>
+    <div class="field" id="m-field" hidden><label for="m-input" id="m-label">Название проекта</label>
+      <input class="input" id="m-input" maxlength="120" autocomplete="off"><div class="err" id="m-err">{{ icon("alert", 14) }}Введите название</div></div>
+    <footer><button class="btn btn-ghost" type="button" id="m-cancel">Отмена</button><button class="btn btn-primary" type="submit" id="m-ok">ОК</button></footer>
+  </form>
+</div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
 (function(){
   "use strict";
   const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
   const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const clip=(s,n)=>{s=String(s||"");return s.length>n?s.slice(0,n-1)+"…":s;};
   const ICONS={{ ICONS|tojson }};
   const ic=(n,s=16)=>`<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]||""}</svg>`;
   const REDUCED=matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -192,9 +270,26 @@
   const chip=(s,t)=>s==="ok"?`<span class="chip chip-neutral">${ic("check",13)}${esc(t||SEV.ok[0])}</span>`:`<span class="chip sev-${s}">${ic(SEV[s][1],13)}${esc(t||SEV[s][0])}</span>`;
   const scoreColor=v=>v>=80?"var(--ok-accent)":v>=50?"var(--major-accent)":"var(--critical-accent)";
   const ring=v=>`<div class="mini-ring" style="--v:${v};--c:${v>=100?"var(--neutral-bar)":scoreColor(v)}"><span>${v}</span></div>`;
-  let toastT;const toast=m=>{const t=$("#toast");t.innerHTML=ic("check",16)+esc(m);t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),2200);};
+  const fmtDate=t=>t?new Date(t*1000).toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"—";
+  const VERDICT={"нельзя":["critical","в разработку нельзя"],"условно":["major","условно"],"можно":["ok","можно в разработку"]};
+  const verdictChip=v=>VERDICT[v]?chip(VERDICT[v][0],VERDICT[v][1]):"";
+  const STATUS={queued:["chip-outline","clock","в очереди"],running:["chip-brand","play","идёт"],error:["sev-critical","x","ошибка"],cancelled:["chip-neutral","stop","отменён"],interrupted:["sev-major","alert","прерван"]};
+  const statusChip=r=>{const s=STATUS[r.status];if(!s)return "";
+    return `<span class="chip ${s[0]}">${ic(s[1],13)}${s[2]}${r.status==="running"&&r.pct!=null?` · ${r.pct}%`:""}${r.status==="queued"&&r.queue_position?` · ${r.queue_position}`:""}</span>`;};
+  const modeChip=r=>r.mode==="rules"?`<span class="chip chip-outline" title="Проверка без модели: только детерминированные правила">${ic("list",13)}только правила</span>`:"";
+  let toastT;const toast=(m,kind="ok")=>{const t=$("#toast");t.className="toast toast-"+kind;t.innerHTML=ic(kind==="err"?"alert":"check",16)+esc(m);
+    void t.offsetWidth;t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),kind==="err"?4200:2600);};
   function countUp(el,to,dur=1100){to=+to;if(REDUCED||!isFinite(to)){el.textContent=to;return;}const t0=performance.now();
     const st=t=>{const k=Math.min(1,(t-t0)/dur);el.textContent=Math.round(to*(1-Math.pow(1-k,3)));if(k<1)requestAnimationFrame(st);};requestAnimationFrame(st);}
+
+  // ---------------- API v1 (docs/API.md): ошибки приходят как {"error": {"code", "message"}} — текст показываем как есть
+  async function api(path,opt={}){
+    let r;try{r=await fetch("/api/v1"+path,opt);}catch(x){throw Object.assign(new Error("Сервер ReqLens недоступен."),{code:"network"});}
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){const e=j.error||{};throw Object.assign(new Error(e.message||j.detail||r.statusText||"Ошибка"),{code:e.code||"error",status:r.status});}
+    return j;}
+  const jpost=(p,b)=>api(p,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})});
+  const jdel=p=>api(p,{method:"DELETE"});
 
   // ---------------- тема, меню, экраны
   const cur=()=>document.documentElement.dataset.theme||"light";
@@ -202,30 +297,37 @@
   $("#btn-theme").onclick=()=>{const n=cur()==="dark"?"light":"dark";document.documentElement.dataset.theme=n;try{localStorage.setItem("reqlens-theme",n)}catch(e){}themeBtn();
     try{const f=$("#frame").contentDocument;if(f){f.documentElement.dataset.theme=n;}}catch(e){}};themeBtn();
   $("#burger").onclick=()=>$("#sidebar").classList.toggle("open");
-  const NAV={"s-upload":"#nav-new","s-progress":"#nav-run","s-result":"#nav-report","s-compare":"#nav-compare"};
+  const NAV={"s-upload":"#nav-new","s-projects":"#nav-projects","s-project":"#nav-projects","s-progress":"#nav-run","s-result":"#nav-report","s-compare":"#nav-compare"};
   function show(id){$$(".screen").forEach(s=>s.classList.toggle("active",s.id===id));
-    Object.entries(NAV).forEach(([s,n])=>{const b=$(n);if(s===id)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current");});
+    Object.entries(NAV).forEach(([s,n])=>{const b=$(n);if(s===id)b.setAttribute("aria-current","page");else if(NAV[id]!==n)b.removeAttribute("aria-current");});
+    if(id!=="s-project")clearTimeout(state.poll);
     $("#sidebar").classList.remove("open");window.scrollTo({top:0});}
   const enable=(n,fn)=>{const b=$(n);b.disabled=false;b.onclick=fn;};
   $("#nav-new").onclick=()=>{clearErr();show("s-upload");};
+  $("#nav-projects").onclick=()=>{clearErr();show("s-projects");loadProjects().then(renderProjects);};
+  const net=()=>document.body.classList.toggle("offline",!navigator.onLine);addEventListener("online",net);addEventListener("offline",net);net();
 
-  // ---------------- состояние модели: нет ключа — предупреждаем до запуска
+  // ---------------- состояние
+  const state={profile:"fast",domain:"fintech",mode:"llm",projects:[],pid:null,job:null,res:null,run:null,src:null,demo:null,poll:0};
+
   // режим «Демо»: сохранённый реальный прогон проигрывается без сети и без модели (страховка на защите)
   fetch("/api/demo").then(r=>r.json()).then(d=>{if(!d.available)return;state.demo=d;const b=$("#demo");b.hidden=false;
     b.title=`Проиграть сохранённый прогон: ${d.document} · ${d.model}`;
     $("#health").insertAdjacentHTML("afterbegin",`<div class="banner-err banner-demo" role="status">${ic("play",18)}<div><b>Режим «Демо» включён.</b> Кнопка «Демо» проигрывает сохранённый прогон
       «${esc(d.document)}» (${esc(d.model)}, ${esc(d.started)}) — без сети и без обращения к модели. Загрузка своего файла запускает настоящую проверку.</div></div>`);}).catch(()=>{});
-  fetch("/api/health").then(r=>r.json()).then(h=>{
+  // состояние модели: нет ключа — предупреждаем до запуска
+  api("/health").then(h=>{
+    if(h.max_upload_mb)$("#max-mb").textContent=h.max_upload_mb;
     $("#model-chip").innerHTML=ic(h.mock?"flask":"cpu",13)+esc(h.mock?"mock-режим (без модели)":h.model);
-    if(!h.key_ok)$("#health").innerHTML=`<div class="banner-err banner-warn" role="alert">${ic("key",18)}<div><b>Ключ модели не найден.</b> Проверка завершится ошибкой: в .env сервера не задан ${esc(h.key_name||"ключ API")}.
-      <div class="small" style="margin-top:4px">Скопируйте .env.example в .env, впишите ${esc(h.key_name||"ключ")} и перезапустите Studio. Для демо без ключа: <code class="mono">LLM_PROVIDER=mock</code>.</div></div></div>`;
-    else if(h.mock)$("#health").innerHTML=`<div class="banner-err banner-warn">${ic("flask",18)}<div><b>Тестовый режим (mock).</b> Модель не вызывается: замечания строятся эвристиками — удобно для демо живого прогона, но не для сдачи.</div></div>`;
+    if(!h.key_ok)$("#health").insertAdjacentHTML("beforeend",`<div class="banner-err banner-warn" role="alert">${ic("key",18)}<div><b>Ключ модели не найден.</b> Проверка с моделью завершится ошибкой: в .env сервера не задан ${esc(h.key_name||"ключ API")}.
+      <div class="small" style="margin-top:4px">Скопируйте .env.example в .env, впишите ${esc(h.key_name||"ключ")} и перезапустите Studio. Без ключа работает режим «Только правила» и <code class="mono">LLM_PROVIDER=mock</code>.</div></div></div>`);
+    else if(h.mock)$("#health").insertAdjacentHTML("beforeend",`<div class="banner-err banner-warn">${ic("flask",18)}<div><b>Тестовый режим (mock).</b> Модель не вызывается: замечания строятся эвристиками — удобно для демо живого прогона, но не для сдачи.</div></div>`);
   }).catch(()=>{});
 
   // ---------------- загрузка
-  const state={profile:"fast",domain:"fintech",job:null,reportJob:null,src:null};
-  for(const id of ["seg-profile","seg-domain"])$("#"+id).addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
-    [...$("#"+id).children].forEach(x=>x.setAttribute("aria-pressed",x===b));state[id==="seg-profile"?"profile":"domain"]=b.dataset.v;});
+  const SEGS={"seg-profile":"profile","seg-domain":"domain","seg-mode":"mode"};
+  for(const id of Object.keys(SEGS))$("#"+id).addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+    [...$("#"+id).children].forEach(x=>x.setAttribute("aria-pressed",x===b));state[SEGS[id]]=b.dataset.v;});
   const file=$("#file"),drop=$("#drop");
   const pick=()=>{const f=file.files[0];$("#go").disabled=!f;$("#drop-title").textContent=f?`${f.name} · ${Math.max(1,Math.round(f.size/1024))} КБ`:"Перетащите файл сюда или нажмите, чтобы выбрать";};
   file.onchange=()=>{pick();};
@@ -237,37 +339,172 @@
   $("#demo").onclick=async()=>{clearErr();let r;try{r=await fetch("/api/demo/start",{method:"POST"});}catch(x){return showErr("error","Сервер Studio недоступен.");}
     if(!r.ok){const j=await r.json().catch(()=>({}));return showErr("error",String(j.detail||"Режим «Демо» недоступен"));}
     const {job,demo}=await r.json();state.job=job;state.src=null;
-    resetProgress(demo.document||"Сохранённый прогон","Демо · сохранённый прогон, модель не вызывается");
-    enable("#nav-run",()=>show("s-progress"));show("s-progress");follow(job,false);};
+    resetProgress(demo.document||"Сохранённый прогон","Демо · сохранённый прогон, модель не вызывается",false);
+    enable("#nav-run",()=>show("s-progress"));show("s-progress");follow(job,{legacy:true});};
   $("#sample").onclick=async()=>{const b=$("#sample");b.classList.add("loading");
-    try{const t=await (await fetch("/api/sample")).text();launch(new File([t],"Пример_P2P-переводы.md",{type:"text/markdown"}));}catch(x){showErr("error","Не удалось загрузить демо-документ.");}
+    try{const t=await (await fetch("/api/v1/sample")).text();await launch(new File([t],"Пример_P2P-переводы.md",{type:"text/markdown"}));}catch(x){showErr("error","Не удалось загрузить демо-документ.");}
     finally{b.classList.remove("loading");}};
 
+  // ---------------- карточка ошибки
   function clearErr(){$("#err").innerHTML="";}
-  const ERR={key:["key","Нет ключа API","Модель не приняла запрос: ключ не задан или неверный.",["Откройте .env на сервере и впишите GEMINI_API_KEY (или OPENAI_API_KEY).","Перезапустите Studio: python -m req_review.web","Для демо без ключа: LLM_PROVIDER=mock в .env."]],
-    quota:["clock","Лимит API исчерпан","Модель отказала из-за квоты (429). Уже полученные ответы сохранены в кэше — повторный запуск продолжит с того же места.",["Подождите сброса квоты или смените GEMINI_MODEL / ключ.","Увеличьте LLM_BATCH_SIZE — меньше запросов на документ.","Профиль «Офлайн» работает с локальной моделью без лимитов."]],
+  const ERR={key:["key","Нет ключа API","Модель не приняла запрос: ключ не задан или неверный.",["Откройте .env на сервере и впишите GEMINI_API_KEY (или OPENAI_API_KEY).","Перезапустите Studio: python -m req_review.web","Без ключа: режим «Только правила» или LLM_PROVIDER=mock в .env."]],
+    quota:["clock","Лимит API исчерпан","Модель отказала из-за квоты (429). Уже полученные ответы сохранены в кэше — повторный запуск продолжит с того же места.",["Проверьте документ без модели — только правилами: размытые формулировки, плейсхолдеры, числа, правила API.","Подождите сброса квоты или смените GEMINI_MODEL / ключ.","Профиль «Офлайн» работает с локальной моделью без лимитов."]],
     noreqs:["file","Требования не найдены","Похоже, это не документ требований (ТЗ, SRS): агент не нашёл ни идентификаторов вида FR-01 / 3.1.2, ни формулировок «должен», «необходимо», «shall».",
       ["Загрузите техническое задание или спецификацию требований — например, «Пример документа».","Оформите требования пунктами с ID (FR-01, NFR-02 …) или модальными словами («Система должна …»).",
        "В mock-режиме нарезка «моделью» ищет только русские и английские модальные слова; с настоящей моделью (ключ Gemini) нарезка идёт по смыслу."],true],
+    upload:["file","Файл не принят","",["Поддерживаются PDF, DOCX, MD и TXT — содержимое должно соответствовать расширению.","Проверьте, что файл не пустой и меньше лимита."],true],
+    offline:["wifi-off","Нет интернета","Проверка документа обращается к модели и требует сети.",["История проверок и открытые ранее отчёты доступны офлайн — раздел «Проекты».","Подключитесь к сети и повторите."]],
+    cancelled:["stop","Прогон отменён","Проверка остановлена. Уже готовые этапы не сохраняются в историю как результат.",["Запустите проверку снова, когда будете готовы."]],
     error:["alert","Проверка не удалась","",["Проверьте, что файл открывается и содержит текст требований.","Повторите запуск; при повторной ошибке — смотрите журнал агента."]]};
-  function showErr(code,msg){const e=ERR[code]||ERR.error,noRetry=!!e[4];
+  const ERR_OF={too_large:"upload",unsupported:"upload",empty:"upload",bad_request:"upload",offline:"offline",network:"error"};
+  function showErr(code,msg,extra={}){code=ERR_OF[code]||code;const e=ERR[code]||ERR.error,noRetry=!!e[4];
+    const canRe=!!(state.src&&state.src.file),rules=code==="quota"&&extra.fallback==="rules";
     // карточку ошибки показываем сразу под заголовком текущего экрана, а не внизу страницы
     const scr=document.querySelector(".screen.active"),errEl=$("#err");
     if(scr&&scr.querySelector(".pagehead"))scr.querySelector(".pagehead").after(errEl);
+    const btn=(id,cls,icn,t)=>`<button class="btn btn-sm ${cls}" type="button" id="${id}">${icn?ic(icn,14):""}${t}</button>`;
+    const btns=noRetry?btn("err-new","btn-primary","upload","Загрузить другой файл")+btn("err-sample","btn-outline","file","Пример документа")
+      :(rules&&canRe?btn("err-rules","btn-primary","list","Проверить без модели (только правила)"):"")
+       +(canRe?btn("err-retry",rules?"btn-outline":"btn-primary","refresh","Попробовать снова"):"")+btn("err-new","btn-outline","","Новая проверка")
+       +(state.src&&state.src.pid?btn("err-proj","btn-ghost","history","История проекта"):"");
     errEl.innerHTML=`<div class="card err-card ${code}" role="alert" style="margin:0 0 16px"><span class="empty-ic">${ic(e[0],26)}</span><div class="grow">
-      <div class="h2">${esc(e[1])}</div><p class="small muted" style="margin-top:4px">${esc(e[2]||"")}</p>${msg?`<pre class="code small" style="margin-top:10px">${esc(msg)}</pre>`:""}
+      <div class="h2">${esc(e[1])}</div><p class="small muted" style="margin-top:4px">${esc(extra.hint||e[2]||"")}</p>${msg&&msg!==e[1]?`<pre class="code small" style="margin-top:10px;white-space:pre-wrap">${esc(msg)}</pre>`:""}
       <ul class="small" style="margin:10px 0 0;padding-left:18px">${e[3].map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
-      <div class="row wrap" style="margin-top:12px">${noRetry?`<button class="btn btn-sm btn-primary" type="button" id="err-new">${ic("upload",14)}Загрузить другой файл</button><button class="btn btn-sm btn-outline" type="button" id="err-sample">${ic("file",14)}Пример документа</button>`
-        :`<button class="btn btn-sm btn-primary" type="button" id="err-retry">${ic("refresh",14)}Попробовать снова</button><button class="btn btn-sm btn-outline" type="button" id="err-new">Новая проверка</button>`}</div></div></div>`;
-    if($("#err-retry"))$("#err-retry").onclick=()=>{clearErr();if(state.src)launch(state.src.file,state.src.cmp);};
-    if($("#err-sample"))$("#err-sample").onclick=()=>{clearErr();$("#sample").click();};
-    $("#err-new").onclick=()=>{clearErr();show("s-upload");};
-    $("#go").classList.remove("loading");$("#p-status").className="status st-fail";$("#p-status").innerHTML=ic("x",11)+"ОШИБКА";
-    $("#p-cur").textContent=e[1];$("#p-live").innerHTML="СТОП";$("#p-live").style.color="var(--critical)";
-    // таблица не должна «ждать нарезку» вечно
-    if(!document.querySelector("#lv-body tr:not(.sk) td:nth-child(2)"))$("#lv-body").innerHTML=`<tr><td colspan="5" class="small muted">${ic("x",14)} ${code==="noreqs"?"В документе не найдено требований — таблица пуста.":"Прогон остановлен — таблица не заполнена."}</td></tr>`;
-    $("#lv-count").textContent="остановлено";
+      <div class="row wrap" style="margin-top:12px">${btns}</div></div></div>`;
+    const on=(id,fn)=>{const b=$("#"+id);if(b)b.onclick=fn;};
+    on("err-retry",()=>{clearErr();launch(state.src.file,{pid:state.src.pid,force:true,mode:state.src.mode,cmp:state.src.cmp});});
+    on("err-rules",()=>{clearErr();launch(state.src.file,{pid:state.src.pid,force:true,mode:"rules",cmp:state.src.cmp});});
+    on("err-sample",()=>{clearErr();show("s-upload");$("#sample").click();});
+    on("err-new",()=>{clearErr();show("s-upload");});
+    on("err-proj",()=>{clearErr();openProject(state.src.pid);});
+    $("#go").classList.remove("loading");
+    if(scr&&scr.id==="s-progress"){
+      $("#p-status").className="status st-fail";$("#p-status").innerHTML=ic(code==="cancelled"?"stop":"x",11)+(code==="cancelled"?"ОТМЕНЁН":"ОШИБКА");
+      $("#p-cur").textContent=e[1];$("#p-live").innerHTML="СТОП";$("#p-live").style.color="var(--critical)";$("#p-cancel").hidden=true;
+      // таблица не должна «ждать нарезку» вечно
+      if(!document.querySelector("#lv-body tr:not(.sk) td:nth-child(2)"))$("#lv-body").innerHTML=`<tr><td colspan="5" class="small muted">${ic("x",14)} ${code==="noreqs"?"В документе не найдено требований — таблица пуста.":"Прогон остановлен — таблица не заполнена."}</td></tr>`;
+      $("#lv-count").textContent="остановлено";}
     errEl.scrollIntoView({behavior:REDUCED?"auto":"smooth",block:"start"});}
+
+  // ---------------- модальное окно: подтверждение удаления, название проекта
+  function dialog({title,body="",ok="ОК",danger=false,input=null}){return new Promise(res=>{
+    const m=$("#modal"),f=$("#m-field"),inp=$("#m-input"),prev=document.activeElement;
+    $("#m-title").textContent=title;$("#m-body").textContent=body;f.hidden=!input;f.classList.remove("invalid");inp.removeAttribute("aria-invalid");
+    if(input){$("#m-label").textContent=input.label;inp.value=input.value||"";}
+    const okB=$("#m-ok");okB.textContent=ok;okB.className="btn "+(danger?"btn-danger":"btn-primary");
+    m.classList.add("open");m.setAttribute("aria-hidden","false");setTimeout(()=>(input?inp:$("#m-cancel")).focus(),30);
+    const done=v=>{m.classList.remove("open");m.setAttribute("aria-hidden","true");m.onkeydown=m.onclick=$("#m-form").onsubmit=$("#m-cancel").onclick=null;if(prev&&prev.focus)prev.focus();res(v);};
+    $("#m-form").onsubmit=e=>{e.preventDefault();if(!input)return done(true);const v=inp.value.trim();
+      if(!v){f.classList.add("invalid");inp.setAttribute("aria-invalid","true");inp.focus();return;}done(v);};
+    $("#m-cancel").onclick=()=>done(false);
+    m.onclick=e=>{if(e.target===m)done(false);};
+    m.onkeydown=e=>{if(e.key==="Escape"){e.preventDefault();done(false);}
+      if(e.key==="Tab"){const fs=[...m.querySelectorAll("input,button")].filter(x=>x.offsetParent);const a=fs[0],z=fs[fs.length-1];
+        if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus();}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus();}}};
+  });}
+
+  // ---------------- проекты
+  const projName=n=>String(n||"").replace(/\.[^.]+$/,"").replace(/_+/g," ").trim().slice(0,120)||"Документ";
+  async function loadProjects(){try{state.projects=(await api("/projects")).projects;}catch(e){}fillSelect();return state.projects;}
+  function fillSelect(){const s=$("#proj-sel"),v=s.value;
+    s.innerHTML=`<option value="">Новый проект — по имени файла</option>`+state.projects.map(p=>`<option value="${esc(p.id)}">${esc(clip(p.name,48))} · версий: ${p.runs}</option>`).join("");
+    if(state.projects.some(p=>p.id===v))s.value=v;}
+  function renderProjects(){const box=$("#pj-list");
+    if(!state.projects.length){box.innerHTML=`<div class="card empty" style="grid-column:1/-1"><span class="empty-ic">${ic("folder",26)}</span><div class="h2">Проектов пока нет</div>
+      <p class="small muted">Загрузите документ требований — проект создастся по имени файла, а следующие версии лягут в его историю.</p>
+      <button class="btn btn-primary" type="button" id="pj-first">${ic("upload",16)}Загрузить документ</button></div>`;$("#pj-first").onclick=()=>show("s-upload");return;}
+    box.innerHTML=state.projects.map(p=>{const r=p.last_run;
+      return `<button type="button" class="card card-hover pj-card" data-pid="${esc(p.id)}" aria-label="Открыть проект ${esc(p.name)}">
+        <div class="row between" style="align-items:flex-start;gap:12px"><div class="grow" style="min-width:0"><div class="h3 pj-name" title="${esc(p.name)}">${esc(p.name)}</div>
+          <div class="small muted" style="margin-top:4px">${p.runs?`версий: ${p.runs} · ${fmtDate(r&&r.created)}`:"пока без проверок"}</div></div>${r&&r.status==="done"?ring(r.score):""}</div>
+        <div class="row wrap" style="margin-top:12px">${r?(r.status==="done"?verdictChip(r.verdict)+`<span class="small muted">критичных: ${r.critical}</span>`:statusChip(r))+modeChip(r):`<span class="small faint">загрузите первую версию</span>`}</div></button>`;}).join("");}
+  $("#pj-list").onclick=e=>{const c=e.target.closest("[data-pid]");if(c)openProject(c.dataset.pid);};
+  $("#pj-new").onclick=async()=>{const name=await dialog({title:"Новый проект",body:"Проект — один документ требований и все его версии.",ok:"Создать",input:{label:"Название проекта"}});
+    if(!name)return;try{const p=await jpost("/projects",{name});await loadProjects();openProject(p.id);toast("Проект создан");}catch(e){toast(e.message,"err");}};
+  $("#pj-back").onclick=()=>$("#nav-projects").click();
+
+  async function openProject(pid,{silent=false}={}){
+    let d;try{d=await api(`/projects/${pid}/runs`);}catch(e){if(!silent){show("s-projects");loadProjects().then(renderProjects);toast(e.message,"err");}return;}
+    state.pid=pid;state.trendData=d.trend;if(!silent){clearErr();show("s-project");}renderProject(d);
+    const sel=$("#proj-sel");if(![...sel.options].some(o=>o.value===pid))await loadProjects();sel.value=pid;
+    clearTimeout(state.poll);
+    if(d.runs.some(r=>r.status==="queued"||r.status==="running"))state.poll=setTimeout(()=>{if($("#s-project").classList.contains("active")&&state.pid===pid)openProject(pid,{silent:true});},2500);
+  }
+  function renderProject(d){
+    const p=d.project,tr=d.trend,runs=d.runs.slice().sort((a,b)=>b.version-a.version),last=tr[tr.length-1],prev=tr[tr.length-2];
+    $("#pj-name").textContent=p.name;$("#pj-sub").textContent=`Версий: ${runs.length} · проверено: ${tr.length} · создан ${fmtDate(p.created)}`;
+    const dl=(v,lowerBetter)=>{if(v==null)return "";const good=lowerBetter?v<=0:v>=0;return `<span class="delta ${good?"up":"down"}">${v>0?"▲ +":v<0?"▼ ":"● "}${v}</span>`;};
+    const kpi=(l,v,u,d,sub)=>`<article class="kpi"><span class="lbl">${l}</span><div class="kpi-num">${v}<span class="h3 faint">${u}</span></div><div class="sub">${d} ${sub}</div></article>`;
+    $("#pj-kpi").innerHTML=last?[
+      kpi("Балл документа",last.score,"/100",dl(prev&&last.score-prev.score),prev?`к версии ${prev.version}`:`версия ${last.version}`),
+      kpi("Готовность к разработке",last.readiness,"%",dl(prev&&last.readiness-prev.readiness),prev?`п.п. к версии ${prev.version}`:""),
+      kpi("Критичных дефектов",last.critical,"",dl(prev&&last.critical-prev.critical,true),prev?`к версии ${prev.version}`:""),
+      kpi("Версий проверено",tr.length,"",`<span class="small muted">из ${runs.length} загруженных</span>`,"")].join("")
+      :"";
+    $("#pj-kpi").hidden=!last;
+    $("#pj-trend").innerHTML=trendHTML(tr);wireTrend(tr);
+    $("#pj-count").textContent=runs.length?`версий: ${runs.length}`:"пусто";
+    const live=r=>r.status==="queued"||r.status==="running";
+    $("#pj-hist").innerHTML=runs.length?runs.map(r=>`<tr data-rid="${esc(r.id)}" data-v="${r.version}">
+      <td><b>v${r.version}</b></td><td class="small" style="overflow-wrap:anywhere">${esc(r.doc_name)}</td><td class="small">${fmtDate(r.created)}</td>
+      <td><div class="row wrap" style="gap:6px">${r.status==="done"?(modeChip(r)||`<span class="small muted">${esc(r.model||"модель")}</span>`):statusChip(r)+modeChip(r)}</div>
+        ${r.error&&r.status!=="done"?`<div class="small faint" style="margin-top:4px" title="${esc(r.error)}">${esc(clip(r.error,90))}</div>`:""}</td>
+      <td>${r.status==="done"?ring(r.score):'<span class="faint">—</span>'}</td><td>${r.status==="done"?`<b>${r.critical}</b>`:'<span class="faint">—</span>'}</td>
+      <td>${r.status==="done"?verdictChip(r.verdict):""}</td>
+      <td><div class="acts">${r.status==="done"?`<button class="btn btn-sm btn-outline" type="button" data-act="open">${ic("file",14)}Отчёт</button>`:""}
+        ${r.status==="done"&&r.compare?`<button class="btn btn-sm btn-ghost" type="button" data-act="cmp" title="До / после относительно прошлой версии">${ic("compare",14)}До / после</button>`:""}
+        ${live(r)?`<button class="btn btn-sm btn-outline" type="button" data-act="watch">${ic("play",14)}Смотреть</button><button class="btn btn-sm btn-ghost" type="button" data-act="cancel">${ic("stop",14)}Отменить</button>`
+          :`<button class="btn btn-sm btn-ghost btn-icon" type="button" data-act="del" aria-label="Удалить версию ${r.version}" title="Удалить версию">${ic("trash",16)}</button>`}</div></td></tr>`).join("")
+      :`<tr><td colspan="8"><div class="empty" style="padding:24px 0"><span class="empty-ic">${ic("upload",24)}</span><div class="h3">Версий пока нет</div><p class="small muted">Нажмите «Проверить новую версию» и выберите файл документа.</p></div></td></tr>`;
+  }
+  $("#pj-hist").onclick=async e=>{const b=e.target.closest("[data-act]");if(!b)return;const tr=b.closest("tr"),rid=tr.dataset.rid,v=tr.dataset.v,a=b.dataset.act;
+    if(a==="open")openRun(rid);
+    else if(a==="cmp")openRun(rid,{cmp:true});
+    else if(a==="watch")openRun(rid);
+    else if(a==="cancel"){b.disabled=true;try{await jpost(`/jobs/${rid}/cancel`);toast("Отменяем прогон…","info");}catch(x){toast(x.message,"err");}setTimeout(()=>openProject(state.pid,{silent:true}),800);}
+    else if(a==="del"){if(!await dialog({title:`Удалить версию ${v}?`,body:"Отчёт и файлы этой проверки будут удалены безвозвратно. Динамика проекта пересчитается.",ok:"Удалить безвозвратно",danger:true}))return;
+      try{await jdel(`/runs/${rid}`);toast(`Версия ${v} удалена`);loadProjects();openProject(state.pid,{silent:true});}catch(x){toast(x.message,"err");}}};
+  $("#pj-file").onchange=e=>{const f=e.target.files[0];e.target.value="";if(f)launch(f,{pid:state.pid,cmp:true,back:"s-project"});};
+  $("#pj-del").onclick=async()=>{const p=state.projects.find(x=>x.id===state.pid);
+    if(!await dialog({title:`Удалить проект${p?` «${clip(p.name,60)}»`:""}?`,body:"Все версии документа, отчёты и история проверок будут удалены безвозвратно.",ok:"Удалить безвозвратно",danger:true}))return;
+    try{await jdel(`/projects/${state.pid}`);toast("Проект удалён");state.pid=null;$("#nav-projects").click();}catch(x){toast(x.message,"err");}};
+
+  // график динамики: балл и готовность — одна шкала 0–100; критичные дефекты — в подсказке и в таблице истории
+  // ширина берётся из контейнера (а не масштабируется из 680): на телефоне подписи остаются 11–12 px
+  let TW=680,TR=118;const TH=230,TL=34,TT=16,TB=28;
+  const TS=[["score","Балл","--tr-score",""],["readiness","Готовность","--tr-ready","%"]];
+  function trendHTML(tr){
+    if(!tr.length)return `<p class="small muted">Проверенных версий пока нет — график появится после первой проверки.</p>`;
+    if(tr.length<2){const t=tr[0];return `<p class="small muted">Проверена одна версия: балл ${t.score}/100, готовность ${t.readiness}%, критичных дефектов — ${t.critical}. Динамика появится после проверки следующей версии документа.</p>`;}
+    TW=Math.max(300,Math.min(1000,Math.round($("#pj-trend").clientWidth)||680));TR=TW<480?104:118;
+    const n=tr.length,X=i=>TL+(TW-TL-TR)*i/(n-1),Y=v=>TT+(TH-TT-TB)*(1-Math.max(0,Math.min(100,+v||0))/100);
+    let g="";for(const v of [0,50,100])g+=`<line class="grid-l" x1="${TL}" x2="${TW-TR}" y1="${Y(v)}" y2="${Y(v)}"/><text class="ax" x="${TL-8}" y="${Y(v)+4}" text-anchor="end">${v}</text>`;
+    const every=Math.ceil(n/10);tr.forEach((t,i)=>{if(i%every===0||i===n-1)g+=`<text class="ax" x="${X(i).toFixed(1)}" y="${TH-8}" text-anchor="middle">v${t.version}</text>`;});
+    const ends=TS.map(([k])=>Y(tr[n-1][k]));
+    if(Math.abs(ends[0]-ends[1])<16){const m=(ends[0]+ends[1])/2,up=ends[0]<=ends[1]?0:1;ends[up]=m-8;ends[1-up]=m+8;}
+    let marks="";TS.forEach(([k,name,c,u],si)=>{
+      marks+=`<polyline fill="none" stroke="var(${c})" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="${tr.map((t,i)=>`${X(i).toFixed(1)},${Y(t[k]).toFixed(1)}`).join(" ")}"/>`;
+      marks+=tr.map((t,i)=>`<circle cx="${X(i).toFixed(1)}" cy="${Y(t[k]).toFixed(1)}" r="4" fill="var(${c})" stroke="var(--surface)" stroke-width="2"/>`).join("");
+      marks+=`<text class="lbl-end" x="${TW-TR+12}" y="${(ends[si]+4).toFixed(1)}">${name} ${tr[n-1][k]}${u}</text>`;});
+    const w=(TW-TL-TR)/(n-1);
+    const hits=tr.map((t,i)=>`<rect class="hit" data-i="${i}" x="${(X(i)-w/2).toFixed(1)}" y="${TT}" width="${w.toFixed(1)}" height="${TH-TT-TB}" fill="transparent"/>`).join("");
+    const aria=`Динамика по версиям. Балл: ${tr.map(t=>t.score).join(" → ")}. Готовность: ${tr.map(t=>t.readiness+"%").join(" → ")}.`;
+    return `<div class="trend-legend" aria-hidden="true">${TS.map(([,nm,c])=>`<span><i class="sw" style="background:var(${c})"></i>${nm}</span>`).join("")}<span class="faint">наведите на версию — подробности, нажмите — отчёт</span></div>
+      <div class="trend" id="trend"><svg viewBox="0 0 ${TW} ${TH}" role="img" aria-label="${esc(aria)}">${g}<line class="xh" id="tr-xh" x1="0" x2="0" y1="${TT}" y2="${TH-TB}"/>${marks}${hits}</svg>
+      <div class="trend-tip" id="tr-tip" aria-hidden="true"></div></div>`;}
+  let rzT;addEventListener("resize",()=>{clearTimeout(rzT);rzT=setTimeout(()=>{if($("#s-project").classList.contains("active")&&state.trendData&&state.trendData.length>1){
+    $("#pj-trend").innerHTML=trendHTML(state.trendData);wireTrend(state.trendData);}},150);});
+  function wireTrend(tr){const box=$("#trend");if(!box)return;const svg=box.querySelector("svg"),tip=$("#tr-tip"),xh=$("#tr-xh");
+    const hide=()=>{tip.classList.remove("show");xh.style.opacity=0;};
+    svg.addEventListener("mousemove",e=>{const r=e.target.closest(".hit");if(!r)return hide();const t=tr[+r.dataset.i],cx=+r.getAttribute("x")+ +r.getAttribute("width")/2;
+      xh.setAttribute("x1",cx);xh.setAttribute("x2",cx);xh.style.opacity=1;
+      tip.innerHTML=`<div><b>Версия ${t.version}</b></div><div class="faint" style="margin-bottom:4px">${fmtDate(t.created)}</div>
+        <div><i class="sw" style="background:var(--tr-score)"></i>Балл <b>${t.score}</b>/100</div><div><i class="sw" style="background:var(--tr-ready)"></i>Готовность <b>${t.readiness}</b>%</div>
+        <div class="muted" style="margin-top:2px">Критичных дефектов: <b>${t.critical}</b></div>`;
+      const k=svg.getBoundingClientRect().width/TW,bw=box.getBoundingClientRect().width;let left=cx*k+14;if(left+180>bw)left=cx*k-194;
+      tip.style.left=Math.max(0,left)+"px";tip.classList.add("show");});
+    svg.addEventListener("mouseleave",hide);
+    svg.addEventListener("click",e=>{const r=e.target.closest(".hit");if(r)openRun(tr[+r.dataset.i].run);});}
 
   // ---------------- декоративная «сфера агента»
   (function(){let s=7;const r=()=>((s=(s*9301+49297)%233280)/233280);const w=320,h=260,cx=170,cy=130,R=100,fx=cx-72,fy=cy+5;let l="",d="";const ga=Math.PI*(3-Math.sqrt(5));
@@ -276,29 +513,42 @@
       if(i%4===0&&e>.45)l+=`<line x1="${fx}" y1="${fy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--brand)" stroke-width=".5" opacity="${(.12+e*.25).toFixed(2)}"/>`;}
     $("#p-vis").innerHTML=`<svg viewBox="0 0 ${w} ${h}" aria-hidden="true"><g style="transform-origin:${cx}px ${cy}px;animation:spin 18s linear infinite">${l}${d}</g></svg>`;})();
 
-  // ---------------- живой прогон: шаги, пакеты требований, лог (SSE)
+  // ---------------- запуск проверки: POST /api/v1/projects/{pid}/runs
+  async function launch(f,o={}){
+    clearErr();$("#go").classList.add("loading");
+    try{
+      let pid=o.pid||$("#proj-sel").value||null;
+      if(!pid){const nm=projName(f.name),same=state.projects.find(p=>p.name===nm);pid=same?same.id:(await jpost("/projects",{name:nm})).id;}
+      const mode=o.mode||state.mode;
+      state.src={file:f,pid,mode,cmp:!!o.cmp};
+      const fd=new FormData();fd.append("file",f);fd.append("profile",state.profile);fd.append("domain",state.domain);fd.append("mode",mode);if(o.force)fd.append("force","true");
+      const res=await api(`/projects/${pid}/runs`,{method:"POST",body:fd});
+      loadProjects();
+      // тот же файл уже проверен в проекте: новый прогон не запускается, квота не тратится
+      if(res.duplicate){await openRun(res.run.id,{dup:res.message,cmp:o.cmp});return;}
+      state.job=res.job;
+      resetProgress(o.name||f.name,(o.caption||(res.compare_with?"Новая версия · сравнение с прошлой":"Живой прогон"))+(mode==="rules"?" · только правила":""),true);
+      enable("#nav-run",()=>show("s-progress"));show("s-progress");follow(res.job,{rid:res.run.id,cmp:o.cmp});
+    }catch(e){show(o.back||"s-upload");showErr(e.code||"error",e.message);}
+    finally{$("#go").classList.remove("loading");}
+  }
+
+  // ---------------- живой прогон: очередь, этапы и процент, пакеты требований, лог, отмена (SSE)
   const items=[...document.querySelectorAll("#trace li")];
-  function resetProgress(name,caption){
+  const setPct=p=>{p=Math.max(0,Math.min(100,Math.round(p)));$("#p-bar").style.width=p+"%";$("#p-barwrap").setAttribute("aria-valuenow",p);$("#p-pct").innerHTML=p+'<span class="h3 faint">%</span>';};
+  function resetProgress(name,caption,cancellable){
     $("#p-name").textContent=name;$("#p-caption").textContent=caption;$("#p-status").className="status st-run";$("#p-status").innerHTML=ic("play",11)+"ВЫПОЛНЯЕТСЯ";
-    $("#p-step").textContent=`0/${items.length}`;$("#p-done").textContent="0";$("#p-bar").style.width="0%";$("#p-cur").textContent="Подготовка…";$("#p-live").innerHTML="<i></i>LIVE";$("#p-live").style.color="";$("#log").textContent="";
+    setPct(0);$("#p-step").textContent=`шаг 0 из ${items.length}`;$("#p-done").textContent="0";$("#p-cur").textContent="Подготовка…";$("#p-live").innerHTML="<i></i>LIVE";$("#p-live").style.color="";$("#log").textContent="";
+    const c=$("#p-cancel");c.hidden=!cancellable;c.disabled=false;c.classList.remove("loading");
     $("#lv-body").innerHTML=`<tr><td colspan="5"><div class="skel" style="width:60%"></div></td></tr>`;$("#lv-count").textContent="ждём нарезку";
     items.forEach(it=>{it.className="skip";it.querySelector("time").textContent="—";it.querySelector(".dot").innerHTML="";it.querySelector(".d").textContent="ожидает";});
   }
-  async function launch(f,cmp){
-    clearErr();state.src={file:f,cmp};$("#go").classList.add("loading");
-    const fd=new FormData();let url="/api/review";
-    if(cmp){url=`/api/jobs/${state.reportJob}/compare`;if(cmp==="fixed")fd.append("use_fixed","true");else fd.append("file",f);}
-    else{fd.append("file",f);fd.append("profile",state.profile);fd.append("domain",state.domain);}
-    let r;try{r=await fetch(url,{method:"POST",body:fd});}catch(x){$("#go").classList.remove("loading");return showErr("error","Сервер Studio недоступен.");}
-    $("#go").classList.remove("loading");
-    if(!r.ok){const j=await r.json().catch(()=>({detail:r.statusText}));show(cmp?"s-result":"s-upload");return showErr("error",String(j.detail||"не удалось начать проверку"));}
-    const {job}=await r.json();state.job=job;
-    resetProgress(cmp==="fixed"?"Исправленная версия документа":f.name,cmp?"Проверка новой версии":"Живой прогон");
-    enable("#nav-run",()=>show("s-progress"));show("s-progress");follow(job,!!cmp);
-  }
-  function follow(job,isCompare){
-    const t0=Date.now();let curI=-1,total=0,done=0;const rows={};
-    const tick=setInterval(()=>{$("#p-time").innerHTML=Math.round((Date.now()-t0)/1000)+'<span class="h3 faint"> с</span>';},500);
+  $("#p-cancel").onclick=async()=>{const b=$("#p-cancel");if(!state.job)return;b.disabled=true;b.classList.add("loading");
+    try{await jpost(`/jobs/${state.job}/cancel`);$("#p-cur").textContent="Отменяем… уже отправленный запрос к модели завершится, затем прогон остановится";}
+    catch(e){toast(e.message,"err");b.disabled=false;}finally{b.classList.remove("loading");}};
+  function follow(job,ctx={}){
+    const t0=ctx.t0||Date.now();let curI=-1,total=0,done=0,fin=false;const rows={};
+    const tick=setInterval(()=>{$("#p-time").innerHTML=Math.max(0,Math.round((Date.now()-t0)/1000))+'<span class="h3 faint"> с</span>';},500);
     const clock=()=>new Date().toTimeString().slice(0,8);
     const setDone=()=>{$("#p-done").textContent=done;$("#lv-count").textContent=total?`проверено ${done} из ${total}`:`проверено ${done}`;};
     const body=$("#lv-body");
@@ -307,14 +557,18 @@
       if(!tr){if(!Object.keys(rows).length)body.innerHTML="";tr=document.createElement("tr");tr.id="lv-"+r.rid;rows[r.rid]=tr;
         const sk=body.querySelector("tr.sk");if(sk)body.insertBefore(tr,sk);else body.appendChild(tr);if(sk)sk.remove();}
       tr.innerHTML=rowHTML(r,st);if(flash){tr.classList.remove("new");void tr.offsetWidth;tr.classList.add("new");}}
-    const es=new EventSource(`/api/jobs/${job}/events`);
-    es.onerror=()=>{if(es.readyState===2){clearInterval(tick);}};
+    const stop=()=>{fin=true;es.close();clearInterval(tick);};
+    const es=new EventSource(`/api/v1/jobs/${job}/events`);
+    es.onerror=()=>{if(es.readyState===2&&!fin){stop();showErr("error","Поток событий прогона недоступен — возможно, сервер перезапускался. Статус версии виден в истории проекта.");}};
     es.onmessage=m=>{const ev=JSON.parse(m.data);
-      if(ev.kind==="step"){
+      if(ev.kind==="queued"){$("#p-status").className="status";$("#p-status").innerHTML=ic("clock",11)+"В ОЧЕРЕДИ";
+        $("#p-cur").textContent=`В очереди: ${ev.position||1}. Одновременно идёт не больше двух проверок — начнём, как только освободится слот.`;}
+      else if(ev.kind==="started"){$("#p-status").className="status st-run";$("#p-status").innerHTML=ic("play",11)+"ВЫПОЛНЯЕТСЯ";$("#p-cur").textContent="Прогон начался…";}
+      else if(ev.kind==="step"){
         if(curI>=0&&items[curI]){items[curI].className="ok";items[curI].querySelector(".dot").innerHTML=ic("check",12);items[curI].querySelector(".d").textContent="готово · "+((Date.now()-t0)/1000).toFixed(1)+" с";}
         for(let k=curI+1;k<ev.i;k++){if(items[k]){items[k].className="skip";items[k].querySelector(".d").textContent="пропущен";}}
-        curI=ev.i;const it=items[ev.i];if(it){it.className="run";it.querySelector("time").textContent=clock();it.querySelector(".d").textContent="выполняется…";$("#p-cur").textContent=it.querySelector(".t").textContent+"…";}
-        $("#p-step").textContent=`${Math.min(ev.i,items.length)}/${items.length}`;const pct=Math.round(100*ev.i/items.length);$("#p-bar").style.width=pct+"%";$("#p-barwrap").setAttribute("aria-valuenow",pct);}
+        curI=ev.i;const it=items[ev.i];if(it){it.className="run";it.querySelector("time").textContent=clock();it.querySelector(".d").textContent="выполняется…";$("#p-cur").textContent=(ev.name||it.querySelector(".t").textContent)+"…";}
+        $("#p-step").textContent=`шаг ${Math.min(ev.i+1,items.length)} из ${items.length}`;setPct(ev.pct!=null?ev.pct:100*ev.i/items.length);}
       else if(ev.kind==="split"){total=ev.total;setDone();
         body.innerHTML=Array.from({length:Math.min(total,8)},()=>`<tr class="sk"><td colspan="5"><div class="skel" style="width:${40+Math.random()*50}%"></div></td></tr>`).join("");}
       else if(ev.kind==="batch_start"){ev.reqs.forEach(r=>upsert(r,`<span class="lv-st small muted"><span class="lv-spin" aria-hidden="true"></span>проверяется…</span>`,true));
@@ -323,63 +577,132 @@
           tr.children[3].innerHTML=`${chip(w,w==="ok"?"нет замечаний":SEV[w][0]+(r.n>1?` · ${r.n}`:""))} <span class="small faint">предварительно</span>`;tr.classList.remove("new");void tr.offsetWidth;tr.classList.add("new");done++;});setDone();}
       else if(ev.kind==="batch_fail"){ev.rids.forEach(rid=>{const tr=rows[rid];if(tr)tr.children[3].innerHTML=`<span class="chip sev-major">${ic("alert",13)}модель не ответила</span>`;});}
       else if(ev.kind==="log"){const l=$("#log");l.textContent+=ev.msg+"\n";l.scrollTop=l.scrollHeight;}
-      else if(ev.kind==="error"){es.close();clearInterval(tick);if(items[curI]){items[curI].className="err";items[curI].querySelector(".dot").innerHTML=ic("x",12);items[curI].querySelector(".d").textContent="ошибка";}showErr(ev.code||"error",ev.msg);}
-      else if(ev.kind==="done"){es.close();clearInterval(tick);
+      else if(ev.kind==="error"){stop();if(items[curI]){items[curI].className="err";items[curI].querySelector(".dot").innerHTML=ic("x",12);items[curI].querySelector(".d").textContent="ошибка";}
+        showErr(ev.code||"error",ev.msg,{fallback:ev.fallback,hint:ev.hint});loadProjects();}
+      else if(ev.kind==="cancelled"){stop();if(items[curI]){items[curI].className="err";items[curI].querySelector(".d").textContent="отменён";}showErr("cancelled","");loadProjects();}
+      else if(ev.kind==="done"){stop();
         items.forEach(it=>{if(it.className==="run"){it.className="ok";it.querySelector(".dot").innerHTML=ic("check",12);it.querySelector(".d").textContent="готово";}});
-        $("#p-status").className="status st-done";$("#p-status").innerHTML=ic("check",11)+"ЗАВЕРШЁН";$("#p-step").textContent=`${items.length}/${items.length}`;$("#p-bar").style.width="100%";$("#p-cur").textContent="Готово: отчёт сформирован";
+        $("#p-status").className="status st-done";$("#p-status").innerHTML=ic("check",11)+"ЗАВЕРШЁН";$("#p-step").textContent=`шаг ${items.length} из ${items.length}`;setPct(100);
+        $("#p-cur").textContent="Готово: отчёт сформирован";$("#p-cancel").hidden=true;
         const s=ev.summary;total=s.reqs;done=s.reqs;setDone();
         s.rows.forEach(r=>{upsert(r,chip(r.worst,r.worst==="ok"?"Без замечаний":SEV[r.worst][0]+(r.n>1?` · ${r.n}`:"")),false);});
-        setTimeout(()=>isCompare?openCompare(job,ev):openResult(job,ev),REDUCED?200:1400);}
+        loadProjects();
+        setTimeout(()=>ctx.legacy?(ctx.legacyCmp?legacyCompareDone(job,ev):openLegacy(job,ev)):openRun(ctx.rid,{cmp:ctx.cmp}),REDUCED?200:1400);}
     };
   }
 
   // ---------------- результат: отчёт в iframe + ассистент
-  function openResult(job,ev){
-    state.reportJob=job;const a=ev.artifacts,s=ev.summary,html=Object.values(a).find(v=>v.endsWith(".html"));
-    $("#r-title").textContent=`${s.document||"Документ"} — балл ${s.score}/100, готовность ${s.readiness}%`;
-    $("#downloads").innerHTML=Object.entries(a).map(([k,v],i)=>`<a class="btn btn-sm ${i===0?"btn-primary":"btn-outline"}" href="/jobs/${job}/${encodeURIComponent(v)}" ${v.endsWith(".html")?'target="_blank" rel="noopener"':"download"}>${ic(v.endsWith(".html")?"arrow-up-right":"download",14)}${esc(k)}</a>`).join("");
-    if(html)$("#frame").src=`/jobs/${job}/${encodeURIComponent(html)}?embed=studio`;
-    $("#cmp-fixed").disabled=!s.has_fixed||(s.demo&&!(state.demo&&state.demo.has_after));
-    $("#cmp-fixed").title=s.demo&&!(state.demo&&state.demo.has_after)?"В режиме «Демо» нужен --demo-after":s.has_fixed?"":"Агент не предложил исправлений";
-    $("#chat-log").innerHTML=`<div class="msg ai">Отчёт готов: ${s.reqs} требований, критичных дефектов — ${s.critical}. Спросите о любом требовании или нажмите подсказку.</div>`;
-    loadSuggest();enable("#nav-report",()=>show("s-result"));show("s-result");
+  async function openRun(rid,o={}){
+    let run;try{run=await api(`/runs/${rid}`);}catch(e){toast(e.message,"err");return;}
+    if(run.status==="queued"||run.status==="running"){state.job=run.id;state.src=null;
+      resetProgress(run.doc_name,`Версия ${run.version} · живой прогон`+(run.mode==="rules"?" · только правила":""),true);
+      enable("#nav-run",()=>show("s-progress"));show("s-progress");follow(run.id,{rid:run.id,t0:run.created*1000,cmp:o.cmp});return;}
+    if(run.status!=="done"){toast(`Версия ${run.version}: ${STATUS[run.status]?STATUS[run.status][2]:run.status}${run.error?" — "+run.error:""}`,"err");return;}
+    state.run=run;state.pid=run.project_id;
+    const files=Object.entries(run.artifacts||{}).map(([k,v])=>[k,(run.files||{})[k]||`/api/v1/runs/${run.id}/files/${encodeURIComponent(v)}`,v]);
+    const html=files.find(f=>f[2].endsWith(".html")),fixed=files.find(f=>f[2].endsWith("_requirements_fixed.md"));
+    const pj=state.projects.find(p=>p.id===run.project_id);
+    setResult({id:run.id,v1:true,pid:run.project_id,compare:run.compare,
+      caption:`${pj?`Проект «${clip(pj.name,60)}» · `:""}версия ${run.version}`,
+      title:`${run.doc_name} — балл ${run.score}/100, готовность ${run.readiness}%`,
+      meta:verdictChip(run.verdict)+modeChip(run)+`<span class="small muted">критичных: ${run.critical} · существенных: ${run.major} · замечаний: ${run.findings} · ${fmtDate(run.finished||run.created)}${run.model?" · "+esc(run.model):""}</span>`,
+      files,frame:html?`${html[1]}?embed=studio${o.ref?"#"+o.ref:""}`:"",
+      fixed:fixed?fixed[1]:null,canFixed:!!fixed,fixedTitle:fixed?"":"Агент не предложил исправлений",
+      hello:`Отчёт готов: балл ${run.score}/100, критичных дефектов — ${run.critical}. Спросите о любом требовании или нажмите подсказку — в ответе будут источники.`});
+    if(o.dup){$("#r-note").innerHTML=`<div class="banner-err banner-demo" role="status" style="margin-bottom:16px;align-items:center">${ic("history",18)}<div class="grow"><b>Этот файл уже проверялся.</b> Открыт прошлый результат — квота модели не потрачена.</div>
+        ${state.src&&state.src.file?`<button class="btn btn-sm btn-outline" type="button" id="r-force">${ic("refresh",14)}Проверить заново</button>`:""}</div>`;
+      const b=$("#r-force");if(b)b.onclick=()=>launch(state.src.file,{pid:state.src.pid,force:true,mode:state.src.mode,cmp:state.src.cmp});}
+    if(run.compare)enable("#nav-compare",()=>renderCompare(run.compare,{run}));
+    if(o.cmp&&run.compare&&!o.dup)return renderCompare(run.compare,{run});
+    show("s-result");
   }
+  function setResult(R){state.res=R;
+    $("#r-caption").textContent=R.caption;$("#r-title").textContent=R.title;$("#r-meta").innerHTML=R.meta||"";$("#r-note").innerHTML="";
+    $("#downloads").innerHTML=R.files.map(([k,url,name],i)=>`<a class="btn btn-sm ${i===0?"btn-primary":"btn-outline"}" href="${esc(url)}" ${name.endsWith(".html")?'target="_blank" rel="noopener"':`download="${esc(name)}"`}>${ic(name.endsWith(".html")?"arrow-up-right":"download",14)}${esc(k)}</a>`).join("");
+    if(R.frame)$("#frame").src=R.frame;
+    const b=$("#cmp-fixed");b.disabled=!R.canFixed;b.title=R.fixedTitle||"";
+    $("#cmp-open").hidden=!R.compare;$("#r-proj").hidden=!R.pid;
+    $("#chat-log").innerHTML=`<div class="msg ai">${esc(R.hello)}</div>`;$("#chat-sugg").innerHTML="";loadSuggest();
+    enable("#nav-report",()=>show("s-result"));}
+  $("#r-proj").onclick=()=>{if(state.res&&state.res.pid)openProject(state.res.pid);};
+  $("#cmp-open").onclick=()=>{if(state.res&&state.res.compare)renderCompare(state.res.compare,{run:state.run});};
+  // режим «Демо»: сохранённый прогон живёт в старых эндпоинтах Studio (/jobs/…, /api/jobs/…/ask) и не попадает в историю
+  function openLegacy(job,ev){const a=ev.artifacts,s=ev.summary;
+    const files=Object.entries(a).map(([k,v])=>[k,`/jobs/${job}/${encodeURIComponent(v)}`,v]),html=files.find(f=>f[2].endsWith(".html"));
+    const noAfter=s.demo&&!(state.demo&&state.demo.has_after);
+    setResult({id:job,v1:false,pid:null,compare:null,caption:s.demo?"Демо · сохранённый прогон":"Готово",title:`${s.document||"Документ"} — балл ${s.score}/100, готовность ${s.readiness}%`,
+      meta:`<span class="small muted">${s.reqs} требований · критичных: ${s.critical}</span>`,files,frame:html?`${html[1]}?embed=studio`:"",
+      canFixed:!!s.has_fixed&&!noAfter,fixedTitle:noAfter?"В режиме «Демо» нужен --demo-after":s.has_fixed?"":"Агент не предложил исправлений",
+      hello:`Отчёт готов: ${s.reqs} требований, критичных дефектов — ${s.critical}. Спросите о любом требовании или нажмите подсказку.`});
+    show("s-result");}
+  async function legacyCompare(f){const fd=new FormData();if(f)fd.append("file",f);else fd.append("use_fixed","true");
+    let r;try{r=await fetch(`/api/jobs/${state.res.id}/compare`,{method:"POST",body:fd});}catch(x){return showErr("error","Сервер Studio недоступен.");}
+    if(!r.ok){const j=await r.json().catch(()=>({}));return showErr("error",String(j.detail||"не удалось начать проверку"));}
+    const {job}=await r.json();state.job=job;resetProgress(f?f.name:"Исправленная версия документа","Проверка новой версии",false);
+    enable("#nav-run",()=>show("s-progress"));show("s-progress");follow(job,{legacy:true,legacyCmp:true});}
+  function legacyCompareDone(job,ev){const a=ev.artifacts,s=ev.summary;
+    renderCompare(s.compare,{openNew:ref=>{const files=Object.entries(a).map(([k,v])=>[k,`/jobs/${job}/${encodeURIComponent(v)}`,v]),html=files.find(f=>f[2].endsWith(".html"));
+      setResult({id:job,v1:false,pid:null,compare:null,caption:"Новая версия",title:`Новая версия — балл ${s.score}/100, готовность ${s.readiness}%`,meta:"",files,
+        frame:html?`${html[1]}?embed=studio${ref?"#"+ref:""}`:"",canFixed:false,fixedTitle:"",hello:"Теперь я отвечаю по отчёту новой версии."});show("s-result");}});}
+
   function frameGo(ref){try{const w=$("#frame").contentWindow;w.location.hash=ref;$("#frame").scrollIntoView({behavior:REDUCED?"auto":"smooth",block:"start"});toast("Открыто в отчёте: "+ref);}catch(e){}}
-  function renderAnswer(a){const txt=esc(a.answer).replace(/\[\[((?:R|S)-\d+)\]\]/g,(m,id)=>`<button type="button" class="ref" data-ref="${id}" aria-label="Открыть ${id} в отчёте">${id}</button>`);
-    return `${txt}${sourcesHTML(a.sources)}<span class="src">${a.source==="модель"?"ответ модели по данным отчёта":a.source==="подсказка"?"подсказка":"по данным отчёта, без обращения к модели"}</span>`;}
-  // источники ответа: требования и строки документа открываются в отчёте, фрагменты базы знаний — карточкой с URL
-  const BK={standard:["Стандарт","book"],law:["Закон РК","shield"],template:["Шаблон","file"]};
-  function sourcesHTML(ss){
-    ss=(ss||[]).filter(s=>s.type!=="req");if(!ss.length)return "";
-    return `<div class="srcs"><div class="caption">Источники</div>${ss.map(s=>s.type==="line"
-      ?`<button type="button" class="src-line" data-ref="L${+s.line}" aria-label="Открыть строку ${+s.line} документа">${ic("file",13)}<span><b>строка ${+s.line}</b> · «${esc(s.text)}»</span></button>`
-      :`<div class="src-kb"><span class="chip basis-${esc(s.kind)}">${ic((BK[s.kind]||BK.standard)[1],12)}${(BK[s.kind]||BK.standard)[0]}</span>
-         <div class="small"><b>${esc(s.source)}</b>${s.clause?` · ${esc(s.clause)}`:""}</div><div class="small muted">«${esc(s.quote)}»${s.paraphrase?" — пересказ":""}</div>
-         ${s.url?`<a class="small" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${ic("arrow-up-right",12)} официальный текст</a>`:""}</div>`).join("")}</div>`;}
+  // источники: ответ API v1 — {kind: requirement | document | kb}; старый ассистент Studio (режим «Демо») — {type: req | line | kb}
+  const legacySrc=s=>s.type==="req"?{kind:"requirement",ref:s.id,label:s.label||s.id}:s.type==="line"?{kind:"document",ref:"L"+s.line,line:s.line,quote:s.text}
+    :{kind:"kb",source:s.source,label:s.clause,quote:s.quote,url:s.url,paraphrase:!!s.paraphrase||s.kind==="law",tpl:s.kind==="template"};
+  const BK={standard:["Стандарт","book"],law:["Норма РК · пересказ","shield"],template:["Шаблон","file"]};
+  const kbKind=s=>s.paraphrase||/law_kz/.test(s.file||"")?"law":s.tpl||/pattern/.test((s.file||"")+(s.ref||""))?"template":"standard";
+  function sourcesHTML(ss,withReqs){
+    ss=(ss||[]).filter(s=>withReqs||s.kind!=="requirement");if(!ss.length)return "";
+    const num=s=>s.n?`<span class="src-n" aria-label="источник ${+s.n}">${+s.n}</span>`:"";
+    return `<div class="srcs"><div class="caption">Источники</div>${ss.map(s=>{
+      if(s.kind==="requirement")return `<button type="button" class="src-line" data-ref="${esc(s.ref)}" aria-label="Открыть ${esc(s.ref)} в отчёте">${num(s)}${ic("list",13)}<span><b>${esc(s.label||s.ref)}</b>${s.quote?` · «${esc(clip(s.quote,140))}»`:""}${s.note?`<span class="faint"> — ${esc(clip(s.note,100))}</span>`:""}</span></button>`;
+      if(s.kind==="document")return `<button type="button" class="src-line" data-ref="L${+s.line}" aria-label="Открыть строку ${+s.line} документа">${num(s)}${ic("file",13)}<span><b>строка ${+s.line}</b> · «${esc(clip(s.quote,160))}»</span></button>`;
+      const k=kbKind(s),bk=BK[k],src=s.source||s.label||s.ref;
+      return `<div class="src-kb"><div class="row" style="gap:6px">${num(s)}<span class="chip basis-${k}">${ic(bk[1],12)}${bk[0]}</span></div>
+        <div class="small"><b>${esc(src)}</b>${s.label&&s.label!==src?` · ${esc(s.label)}`:""}</div><div class="small muted">«${esc(clip(s.quote,300))}»${k==="law"?" — пересказ, не текст закона":""}</div>
+        ${s.file?`<div class="small faint mono">${esc(s.file)}</div>`:""}${/^https:\/\//.test(s.url||"")?`<a class="small" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${ic("arrow-up-right",12)} официальный текст</a>`:""}</div>`;}).join("")}</div>`;}
+  function renderAnswer(a){
+    const inline=/\[\[(?:R|S)-\d+\]\]/.test(a.answer||"");
+    const txt=esc(a.answer).replace(/\[\[((?:R|S)-\d+)\]\]/g,(m,id)=>`<button type="button" class="ref" data-ref="${id}" aria-label="Открыть ${id} в отчёте">${id}</button>`)
+      .replace(/\[(\d{1,2})\]/g,'<sup class="cite">[$1]</sup>');
+    const how=a.mode==="модель по источникам"?"ответ модели только по источникам ниже":a.source==="модель"?"ответ модели по данным отчёта":a.source==="подсказка"?"подсказка"
+      :a.source==="источники"?"по источникам, без обращения к модели":"по данным отчёта, без обращения к модели";
+    return `${txt}${sourcesHTML(a.sources,!inline)}<span class="src">${how}</span>`;}
   function sugg(list){$("#chat-sugg").innerHTML=(list||[]).map(q=>`<button type="button" data-q="${esc(q)}">${esc(q)}</button>`).join("");}
+  async function askRaw(R,q){
+    if(R.v1)return jpost(`/runs/${R.id}/ask`,{q});
+    const r=await fetch(`/api/jobs/${R.id}/ask`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({q})});
+    const a=await r.json();if(!r.ok)throw new Error(a.detail||"ошибка");a.sources=(a.sources||[]).map(legacySrc);return a;}
   async function ask(q){
-    if(!q||!state.reportJob)return;const log=$("#chat-log");
-    log.insertAdjacentHTML("beforeend",`<div class="msg me">${esc(q)}</div><div class="msg ai typing" id="typing">Думаю…</div>`);log.scrollTop=log.scrollHeight;
-    try{const r=await fetch(`/api/jobs/${state.reportJob}/ask`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({q})});
-      const a=await r.json();$("#typing").remove();if(!r.ok)throw new Error(a.detail||"ошибка");
+    const R=state.res;if(!q||!R)return;const log=$("#chat-log");
+    log.insertAdjacentHTML("beforeend",`<div class="msg me">${esc(q)}</div><div class="msg ai typing" id="typing">Ищу в отчёте и источниках…</div>`);log.scrollTop=log.scrollHeight;
+    try{const a=await askRaw(R,q);const t=$("#typing");if(t)t.remove();if(state.res!==R)return;
       log.insertAdjacentHTML("beforeend",`<div class="msg ai">${renderAnswer(a)}</div>`);sugg(a.suggest);}
     catch(e){const t=$("#typing");if(t)t.remove();log.insertAdjacentHTML("beforeend",`<div class="msg ai">Не удалось получить ответ: ${esc(e.message)}</div>`);}
     log.scrollTop=log.scrollHeight;}
-  async function loadSuggest(){try{const r=await fetch(`/api/jobs/${state.reportJob}/ask`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({q:"помощь"})});sugg((await r.json()).suggest);}catch(e){}}
+  // «помощь» — типовой вопрос: отвечает по данным отчёта, модель не вызывается
+  async function loadSuggest(){const R=state.res;if(!R)return;try{const a=await askRaw(R,"помощь");if(state.res===R)sugg(a.suggest);}catch(e){}}
   $("#chat-form").onsubmit=e=>{e.preventDefault();const q=$("#chat-q").value.trim();$("#chat-q").value="";ask(q);};
   $("#chat-sugg").onclick=e=>{const b=e.target.closest("[data-q]");if(b)ask(b.dataset.q);};
   $("#chat-log").onclick=e=>{const b=e.target.closest("[data-ref]");if(b&&/^(R-\d+|S-\d+|L\d+)$/.test(b.dataset.ref))frameGo(b.dataset.ref);};
-  $("#cmp-fixed").onclick=()=>launch(null,"fixed");
-  $("#cmp-file").onchange=e=>{const f=e.target.files[0];if(f)launch(f,"file");e.target.value="";};
+  // новая версия из экрана отчёта — в тот же проект; исправленный агентом документ берётся из файлов прогона
+  $("#cmp-fixed").onclick=async()=>{const R=state.res;if(!R)return;if(!R.v1)return legacyCompare(null);
+    const b=$("#cmp-fixed");b.classList.add("loading");
+    try{const r=await fetch(R.fixed);if(!r.ok)throw new Error("Исправленный документ недоступен");const t=await r.text();
+      const nm=`${projName(state.run.doc_name)} (исправленный).md`;
+      await launch(new File([t],nm,{type:"text/markdown"}),{pid:R.pid,cmp:true,back:"s-result",caption:"Проверка исправленной версии"});}
+    catch(e){showErr("error",e.message);}finally{b.classList.remove("loading");}};
+  $("#cmp-file").onchange=e=>{const f=e.target.files[0];e.target.value="";if(!f||!state.res)return;
+    if(state.res.v1)launch(f,{pid:state.res.pid,cmp:true,back:"s-result",caption:"Проверка новой версии"});else legacyCompare(f);};
 
   // ---------------- До / После
-  function openCompare(job,ev){
-    const c=ev.summary.compare,a=ev.artifacts,html=Object.values(a).find(v=>v.endsWith(".html"));
+  function renderCompare(c,ctx={}){
     if(!c){showErr("error","Сравнение не построено.");return;}
-    const B=c.before,A=c.after,d=A.score-B.score,dr=A.readiness-B.readiness;
-    $("#c-sub").textContent=`${B.document||"Исходная версия"} → новая версия · ${A.reqs} требований`;
+    const B=c.before,A=c.after,d=A.score-B.score,dr=A.readiness-B.readiness,run=ctx.run;
+    $("#c-sub").textContent=`${B.document||"Прошлая версия"} → ${run?`${run.doc_name} (версия ${run.version})`:"новая версия"} · ${A.reqs} требований`;
     const stLbl={fixed:["ok","исправлено"],improved:["ok","улучшено"],new:["major","новые"],worse:["critical","хуже"],same:["minor","без изменений"]};
-    const def=(x)=>`<div class="def">${chip(x.severity)}<div><div class="small"><b>${x.rid?`<a href="#" data-cref="${esc(x.rid)}">${esc(x.label)}</a>`:esc(x.label)}</b> · ${esc(x.cname)}</div><div class="small muted" style="margin-top:2px">${esc(x.problem.slice(0,200))}</div></div></div>`;
+    const counts=c.counts||(c.rows||[]).reduce((m,r)=>(m[r.status]=(m[r.status]||0)+1,m),{});
+    const def=(x)=>`<div class="def">${chip(x.severity)}<div><div class="small"><b>${x.rid?`<a href="#" data-cref="${esc(x.rid)}">${esc(x.label)}</a>`:esc(x.label)}</b> · ${esc(x.cname)}</div><div class="small muted" style="margin-top:2px">${esc(String(x.problem||"").slice(0,200))}</div></div></div>`;
     $("#c-body").innerHTML=`<div class="grid g-3">
         <article class="card"><div class="ba"><div class="ba-card"><span class="ba-lbl">Было</span><span class="big" style="color:var(--text-2)" data-to="${B.score}">0</span></div>
           <span class="arrow">${ic("arrow-right",36)}</span><div class="ba-card"><span class="ba-lbl">Стало</span><span class="big" style="color:${d>=0?"var(--ok)":"var(--critical)"}" data-to="${A.score}">0</span></div></div>
@@ -392,19 +715,19 @@
           <div class="def-list">${c.fixed.map(def).join("")||'<p class="small muted">Исправленных дефектов нет.</p>'}</div></div>
         <div class="card"><div class="card-title">${ic("alert")}<span class="h2 grow">Новые дефекты</span><span class="chip ${c.new.length?"sev-major":"sev-ok"}">${c.new.length}</span></div>
           <div class="def-list">${c.new.map(def).join("")||'<p class="small muted">Новых дефектов не появилось.</p>'}</div></div></div>
-      <div class="section-title"><h2 class="h2">Требования</h2><div class="row wrap">${Object.entries(c.counts).filter(([,n])=>n).map(([k,n])=>chip(stLbl[k][0],`${stLbl[k][1]}: ${n}`)).join("")}</div></div>
+      <div class="section-title"><h2 class="h2">Требования</h2><div class="row wrap">${Object.entries(counts).filter(([k,n])=>n&&stLbl[k]).map(([k,n])=>chip(stLbl[k][0],`${stLbl[k][1]}: ${n}`)).join("")}</div></div>
       <div class="table-wrap"><table class="tbl"><thead><tr><th scope="col">ID</th><th scope="col">Формулировка</th><th scope="col">Изменение</th><th scope="col">Балл до</th><th scope="col">Балл после</th></tr></thead><tbody>
-        ${c.rows.map(r=>`<tr><td><b>${esc(r.label)}</b></td><td class="small">${esc(r.text)}</td><td>${chip(stLbl[r.status][0],stLbl[r.status][1])}</td><td>${r.before==null?"—":r.before}</td><td>${ring(r.after)}</td></tr>`).join("")}</tbody></table></div>`;
+        ${(c.rows||[]).map(r=>`<tr><td><b>${esc(r.label)}</b></td><td class="small">${esc(r.text)}</td><td>${stLbl[r.status]?chip(stLbl[r.status][0],stLbl[r.status][1]):esc(r.status)}</td><td>${r.before==null?"—":r.before}</td><td>${r.after==null?"—":ring(r.after)}</td></tr>`).join("")}</tbody></table></div>`;
     $$("#c-body [data-to]").forEach(el=>countUp(el,el.dataset.to));
+    const openNew=ctx.openNew||(ref=>openRun(run.id,{ref}));
     $("#c-body").onclick=e=>{const l=e.target.closest("[data-cref]");if(l){e.preventDefault();openNew(l.dataset.cref);}};
-    const openNew=(ref)=>{state.reportJob=job;if(html)$("#frame").src=`/jobs/${job}/${encodeURIComponent(html)}?embed=studio${ref?"#"+ref:""}`;
-      $("#r-title").textContent=`Новая версия — балл ${A.score}/100, готовность ${A.readiness}%`;
-      $("#downloads").innerHTML=Object.entries(a).map(([k,v],i)=>`<a class="btn btn-sm ${i===0?"btn-primary":"btn-outline"}" href="/jobs/${job}/${encodeURIComponent(v)}" ${v.endsWith(".html")?'target="_blank" rel="noopener"':"download"}>${esc(k)}</a>`).join("");
-      $("#chat-log").innerHTML=`<div class="msg ai">Теперь я отвечаю по отчёту новой версии.</div>`;loadSuggest();show("s-result");};
     $("#c-open-new").onclick=()=>openNew("");
     enable("#nav-compare",()=>show("s-compare"));show("s-compare");
   }
+
+  loadProjects();
 })();
 </script>
+<script>if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}));</script>
 </body>
 </html>

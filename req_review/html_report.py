@@ -256,9 +256,20 @@ def render_html(ctx) -> str:
     from .ui import env
 
     data = build_data(ctx)
+    # Markdown-отчёт нужен только кнопке «Скачать .md» — хранится сжатым (gzip+base64, распаковка по клику),
+    # чтобы HTML-отчёт оставался меньше 1 МБ и на длинных документах
+    md = data.pop("report_md", "") or ""
     blob = json.dumps(data, ensure_ascii=False, default=str).replace("</", "<\\/")
     tpl = env().get_template("report.html.j2")
-    return tpl.render(title=ctx.rv.doc.title, data_json=blob, mock=data["mock"])
+    return tpl.render(title=ctx.rv.doc.title, data_json=blob, mock=data["mock"], report_md_b64=gzip_b64(md))
+
+
+def gzip_b64(text: str) -> str:
+    """Текст → gzip (mtime=0, воспроизводимо) → base64 для инлайна в офлайн-HTML."""
+    import base64
+    import gzip
+
+    return base64.b64encode(gzip.compress(text.encode("utf-8"), 9, mtime=0)).decode("ascii") if text else ""
 
 
 def write_html(ctx, path: Path) -> None:
