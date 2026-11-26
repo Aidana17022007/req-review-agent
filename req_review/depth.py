@@ -818,8 +818,20 @@ def verdicts(rv) -> dict:
                     "остальных критичных или существенных дефектах этих критериев."}
 
 
-def _example(rv, rids: list[str], fix: str) -> tuple[str, str]:
-    """Пример правильной формулировки: переписанное моделью требование, шаблон kb/patterns или пример из рекомендации."""
+def _from_fix(fix: str) -> str:
+    m = re.search(r"[«\"]([^»\"]{20,})[»\"]", fix or "")
+    if m:
+        return m.group(1)
+    m = re.search(r"\b[Нн]апример[,:]?\s*([^);]{12,240}?)(?:\)|;|\.\s|\.$|$)", fix or "")
+    return m.group(1).strip(" ,") if m else ""
+
+
+def _example(rv, rids: list[str], fix: str, set_item: bool = False) -> tuple[str, str]:
+    """Пример правильной формулировки: переписанное моделью требование, шаблон kb/patterns или пример из рекомендации.
+    Для замечания к набору сначала — пример из его рекомендации: переписанное требование из ссылок может быть про
+    другой дефект (у S-03 «нет метода чтения» первая ссылка — строка с адресом Prod)."""
+    if set_item and (ex := _from_fix(fix)):
+        return ex, "из рекомендации"
     by = {rr.req.rid: rr for rr in rv.req_results}
     for rid in rids:
         rr = by.get(rid)
@@ -865,7 +877,8 @@ def fix_plan(rv, limit: int = 8) -> list[dict]:
                       "title": f"{criterion_name(crit)}: замечаний — {len(lst)}", "action": lst[0][1].fix})
     items = items[:limit]
     for it in items:
-        it["example"], it["example_source"] = _example(rv, it["reqs"], it["action"])
+        it["example"], it["example_source"] = _example(rv, it["reqs"], it["action"],
+                                                       set_item=any(i.startswith("S-") for i in it["ids"]))
     return items
 
 
