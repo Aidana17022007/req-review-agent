@@ -1,4 +1,14 @@
 services:
+  # Прогон одной командой:  docker compose run --rm review docs/requirements.md reports/report.md
+  review:
+    build: .
+    image: reqlens
+    env_file: .env
+    volumes:
+      - ./:/work
+    working_dir: /work
+
+  # Веб-интерфейс:  docker compose up studio  →  http://localhost:8000
   studio:
     build: .
     image: reqlens

@@ -1,0 +1,43 @@
+# Проверка требований в каждом PR, который меняет документы требований («requirements as code»).
+# Без секрета GEMINI_API_KEY работает в режиме mock (правила + эвристики) — так пример воспроизводим без ключа.
+# С секретом в настройках репозитория (Settings → Secrets → GEMINI_API_KEY) проверка идёт настоящей моделью.
+name: Requirements review
+
+on:
+  pull_request:
+    paths:
+      - "docs/**/*.md"
+      - "docs/**/*.pdf"
+      - "docs/**/*.docx"
+      - "tests/fixtures/sample_requirements.md"
+  workflow_dispatch:
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Review requirements
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          LLM_MIN_INTERVAL: "0"
+        run: |
+          if [ -z "$GEMINI_API_KEY" ]; then export LLM_PROVIDER=mock; echo "Секрета нет — режим mock"; fi
+          f=$(ls docs/requirements.* 2>/dev/null | head -1)
+          [ -z "$f" ] && f=tests/fixtures/sample_requirements.md
+          python review.py "$f" review/report.md --quiet
+          {
+            echo "## ReqLens: проверка требований"
+            sed -n '/## 5. Сводка/,/## 6. Итог/p' review/report.md | head -40
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: requirements-review
+          path: review/

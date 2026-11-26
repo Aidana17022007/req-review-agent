@@ -118,7 +118,9 @@ def build_data(ctx) -> dict:
         findings[fid] = {"fid": fid, "kind": "set", "set_kind": f.kind, "criterion": f.criterion,
                          "cname": criterion_name(f.criterion), "cref": criterion_ref(f.criterion), "problem": f.problem,
                          "severity": f.severity, "fix": f.fix, "source": f.source, "confidence": f.confidence,
-                         "critic": f.critic_note, "refs": refs, "quote": " / ".join(x["quote"] for x in refs)}
+                         "critic": f.critic_note, "refs": refs, "quote": " / ".join(x["quote"] for x in refs),
+                         "values": [{**v, "label": (by_rid[v["rid"]].doc_id or v["rid"]) if v["rid"] in by_rid else v["rid"]}
+                                    for v in getattr(f, "values", []) or []]}
         set_list.append(fid)
 
     # снять пересечения: на строке оставляем более серьёзные метки

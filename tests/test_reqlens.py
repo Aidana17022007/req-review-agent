@@ -239,3 +239,44 @@ def test_slides_hide_mock_metrics_and_placeholder_team(tmp_path):
     y = tmp_path / "team.yaml"
     y.write_text('team:\n  - name: "Имя Фамилия"\n    role: "x"\n  - name: "Айдана С."\n    role: "UI"\n', encoding="utf-8")
     assert [t["name"] for t in team(y)] == ["Айдана С."]
+
+
+def test_numeric_conflicts_are_precise():
+    from req_review.numbers import find_conflicts
+    from req_review.reader import read_document
+    from req_review.splitter import split_requirements
+
+    s = split_requirements(read_document(FIX))
+    pairs = {(c.a.rid, c.b.rid) for c in find_conflicts(s.requirements)}
+    assert ("R-015", "R-016") in pairs  # 3 vs 5 неверных вводов
+    assert ("R-003", "R-005") in pairs  # 500 000 vs 300 000 тенге за операцию
+    assert not any("R-005" in p and "R-011" in p for p in pairs)  # «в сутки» vs «за операцию» — не конфликт
+    clean = split_requirements(read_document(Path(__file__).parent.parent / "bench" / "docs" / "payments.md"))
+    assert find_conflicts(clean.requirements) == []  # чистый документ — без ложных противоречий
+
+
+def test_benchmark_has_40_plus_known_defects():
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).parent.parent / "bench"))
+    from inject import build_all
+
+    truth = build_all()
+    assert truth["total_defects"] >= 40 and len(truth["documents"]) == 3
+
+
+def test_compare_cli(tmp_path, monkeypatch):
+    from req_review.compare import diff_reports
+    from req_review.compare import main as cmp_main
+
+    monkeypatch.setenv("LLM_PROVIDER", "mock")
+    out = tmp_path / "r.md"
+    assert main([str(FIX), str(out), "--env", str(tmp_path / "x.env"), "--quiet", "--no-xlsx", "--no-jira"]) == 0
+    data = json.loads((tmp_path / "r.json").read_text(encoding="utf-8"))
+    assert data["schema_version"] == "2.1"
+    f = next(f for r in data["requirements"] for f in r["findings"])
+    assert "span" in f and 0 < f["confidence_score"] <= 1
+    res = diff_reports(data, data)
+    assert res["defects_new"] == [] and res["defects_fixed"] == []
+    assert cmp_main([str(tmp_path / "r.json"), str(tmp_path / "r.json"), "--md", str(tmp_path / "c.md")]) == 0
+    assert (tmp_path / "r_tests.feature").read_text(encoding="utf-8").startswith("# language: ru")
