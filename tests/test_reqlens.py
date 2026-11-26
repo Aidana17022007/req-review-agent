@@ -262,7 +262,7 @@ def test_benchmark_has_40_plus_known_defects():
     from inject import build_all
 
     truth = build_all()
-    assert truth["total_defects"] >= 60 and len(truth["documents"]) == 5
+    assert truth["total_defects"] >= 80 and len(truth["documents"]) == 6
     for name in ("deposit_kk", "cards"):  # v5: казахский документ и DOCX с таблицами — по 10–15 дефектов
         assert 10 <= len(truth["documents"][name]["defects"]) <= 15
     import docx
