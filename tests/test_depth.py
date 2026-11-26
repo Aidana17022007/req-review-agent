@@ -660,3 +660,25 @@ def test_no_key_gives_clear_error_and_rules_hint(tmp_path, monkeypatch, capsys):
     err = capsys.readouterr()
     text = err.err + err.out
     assert rc == 2 and "GEMINI_API_KEY" in text and "LLM_PROVIDER=rules python review.py" in text
+
+
+def test_critical_rule_marker_kept_when_model_uses_other_criterion(tmp_path):
+    """«и т.д.» (открытое перечисление → полнота, critical): модель записала его как неоднозначность —
+    замечание правила по полноте остаётся отдельно, иначе теряется нарушенная характеристика."""
+    from req_review.checker import check_requirements
+    from req_review.llm import BaseLLM
+
+    doc, s = _doc(tmp_path, "# Д\n\n## Функциональные требования\n- **Ф-1.** Система должна фильтровать историю по периоду, "
+                            "поставщику и т.д.\n")
+    r = s.requirements[0]
+
+    class Fake(BaseLLM):
+        provider, model = "fake", "fake"
+
+        def generate_json(self, system, prompt, *, task="", context=None):
+            return {"results": [{"id": r.rid, "findings": [{"criterion": "unambiguous", "quote": "поставщику и т.д.",
+                                                            "problem": "Неоднозначно.", "severity": "major", "fix": "—"}]}]}
+
+    rr = check_requirements(s.requirements, doc, Fake(), 6, [], log=lambda *a: None)[0]
+    crits = {(f.criterion, f.source) for f in rr.findings}
+    assert ("unambiguous", "LLM + правило") in crits and ("complete", "правило") in crits

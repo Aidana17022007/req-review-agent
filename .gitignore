@@ -8,4 +8,8 @@ venv/
 .cache/
 reports/*
 !reports/.gitkeep
+# отчёт для сдачи (документ организаторов, финальный прогон) — в репозитории
+!reports/requirements-report.md
+!reports/requirements-report.json
+!reports/requirements-report.html
 data/

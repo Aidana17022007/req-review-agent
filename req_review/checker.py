@@ -315,7 +315,9 @@ def check_requirements(reqs: list[Requirement], doc: Document, llm: BaseLLM, bat
                 if any(t in norm(f.quote) for t in terms) or (f.criterion == h.criterion and _overlap(f.quote, h.quote)):
                     if f.source == "LLM":
                         f.source = "LLM + правило"
-                    covered = True
+                    # критичный маркер правила (открытое перечисление, TBD, размытая скорость), который модель записала
+                    # под другим критерием, остаётся отдельным замечанием: одна фраза нарушает две характеристики 29148
+                    covered = f.criterion == h.criterion or h.severity != "critical"
                     break
             if covered:
                 continue
