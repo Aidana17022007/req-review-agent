@@ -61,6 +61,8 @@
 <div class="hl-pop" id="hlpop" role="dialog" aria-label="Замечание к фрагменту" hidden></div>
 
 <script type="application/json" id="data">{{ data_json|safe }}</script>
+{# Markdown-отчёт для «Скачать .md» — gzip+base64, распаковывается только по клику #}
+<script type="application/octet-stream" id="report-md" data-enc="gzip-base64">{{ report_md_b64|default("") }}</script>
 <script>const ICONS = {{ ICONS|tojson }};</script>
 {# 3d-force-graph (с three.js) — инлайн, gzip+base64; распаковывается только при открытии раздела «Граф» #}
 <script type="application/octet-stream" id="lib-3d" data-enc="gzip-base64">{{ asset_b64("vendor/3d-force-graph.min.js.gz") }}</script>

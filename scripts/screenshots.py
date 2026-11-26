@@ -34,7 +34,12 @@ REPORT_SHOTS = [("overview", "", True), ("requirements", "#reqs", False), ("doc"
 
 
 def mock_env() -> dict:
-    return {**os.environ, "LLM_PROVIDER": "mock", "LLM_MIN_INTERVAL": "0", "PYTHONIOENCODING": "utf-8"}
+    # история проектов — во временной папке: каждый запуск скрипта начинается с пустой истории
+    # (иначе тот же файл распознаётся как уже проверенный и живого прогона не будет)
+    import tempfile
+
+    data = tempfile.mkdtemp(prefix="reqlens-shots-")
+    return {**os.environ, "LLM_PROVIDER": "mock", "LLM_MIN_INTERVAL": "0", "PYTHONIOENCODING": "utf-8", "REQLENS_DATA": data}
 
 
 def console_guard(page, errors: list, where: str):

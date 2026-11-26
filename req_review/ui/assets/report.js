@@ -57,6 +57,14 @@
     const fallback = () => { const ta = document.createElement("textarea"); ta.value = text; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); done(); } catch (e) { toast("Не удалось скопировать"); } ta.remove(); };
     if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, fallback); else fallback();
   }
+  // Markdown-отчёт встроен сжатым (gzip+base64, #report-md); старые отчёты держали его в D.report_md
+  async function reportMD() {
+    if (D.report_md) return D.report_md;
+    const raw = (document.getElementById("report-md") || {}).textContent || "";
+    if (!raw.trim()) return "";
+    const bin = Uint8Array.from(atob(raw.trim()), (c) => c.charCodeAt(0));
+    return new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
+  }
   function download(name, text, type) {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([text], { type: (type || "text/plain") + ";charset=utf-8" }));
@@ -113,7 +121,8 @@
     return lines.join("\n");
   }
   const DL = {
-    md: () => download(`${base}_report.md`, D.report_md || "", "text/markdown"),
+    md: () => reportMD().then((t) => download(`${base}_report.md`, t, "text/markdown"))
+      .catch(() => toast("Не удалось распаковать отчёт: обновите браузер (нужен DecompressionStream)")),
     json: () => download(`${base}_data.json`, JSON.stringify(D, null, 2), "application/json"),
     fixed: () => download(`${base}_requirements_fixed.md`, D.fixed_text || "", "text/markdown"),
     feature: () => download("tests.feature", featureFile(), "text/plain"),

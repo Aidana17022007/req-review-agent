@@ -160,7 +160,14 @@ def test_full_run_writes_all_artifacts(tmp_path, monkeypatch):
     import re as _re
     assert "<script" in html
     assert not _re.search(r'<(script|img|iframe)[^>]+src="https?://|<link[^>]+href="https?://|url\(\s*["\']?https?://|@import', html)
-    assert "D.report_md" in html and '"trace"' in html  # «Скачать отчёт» и таймлайн агента
+    assert "reportMD()" in html and '"trace"' in html  # «Скачать отчёт» и таймлайн агента
+    # Markdown-отчёт встроен сжатым и распаковывается ровно в report.md; сам HTML — меньше 1 МБ
+    import base64 as _b64
+    import gzip as _gz
+    blob = _re.search(r'<script type="application/octet-stream" id="report-md"[^>]*>([^<]+)</script>', html).group(1)
+    assert _gz.decompress(_b64.b64decode(blob)).decode("utf-8") == md
+    assert '"report_md"' not in html
+    assert len(html.encode("utf-8")) < 1_000_000
     _check_offline_3d_bundle(html)
     data = json.loads((tmp_path / "report.json").read_text(encoding="utf-8"))
     assert data["schema_version"] == "2.2" and data["scores"]["document"] >= 0
