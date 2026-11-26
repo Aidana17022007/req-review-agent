@@ -224,3 +224,18 @@ def test_vague_goal_without_mechanism_is_unverifiable():
     # конкретное требование с числами не должно ловиться этим правилом
     ok = check_requirement(_req("После 5 неверных вводов кода операция должна блокироваться на 30 минут."))
     assert not any(h.criterion == "verifiable" for h in ok)
+
+
+def test_slides_hide_mock_metrics_and_placeholder_team(tmp_path):
+    from req_review.ui.styleguide import bench_metrics, team
+
+    res = tmp_path / "RESULTS.md"
+    res.write_text("*Модель:* mock / mock-heuristic · x\n| Recall | **69 %** (9 из 13) |\n| Precision | **100 %** |\n", encoding="utf-8")
+    m = bench_metrics(res)
+    assert m["recall"] == "—" and "ещё не запускался" in m["model_note"] and "выше" not in m["model_note"]
+    real = tmp_path / "REAL.md"
+    real.write_text("*Модель:* gemini / gemini-3.8-flash · x\n| Recall | **85 %** (34 из 40) |\n", encoding="utf-8")
+    assert bench_metrics(real)["recall"] == "85%"
+    y = tmp_path / "team.yaml"
+    y.write_text('team:\n  - name: "Имя Фамилия"\n    role: "x"\n  - name: "Айдана С."\n    role: "UI"\n', encoding="utf-8")
+    assert [t["name"] for t in team(y)] == ["Айдана С."]

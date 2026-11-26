@@ -175,7 +175,8 @@ html,body{height:100%;overflow:hidden}
     </table>
   </section>
 
-  <!-- 9. Команда -->
+  <!-- 9. Команда (показывается, только если docs/team.yaml заполнен) -->
+  {% if team %}
   <section class="slide" aria-label="Команда">
     <div class="caption">Команда</div>
     <h2 class="k2">Кто делал ReqLens</h2>
@@ -184,6 +185,7 @@ html,body{height:100%;overflow:hidden}
     </div>
     <p class="lead small">Состав команды задаётся в <code class="mono">docs/team.yaml</code> — слайды собираются командой <code class="mono">python -m req_review.ui.styleguide</code>.</p>
   </section>
+  {% endif %}
 
   <!-- 10. Финал -->
   <section class="slide" aria-label="Спасибо">

@@ -89,6 +89,29 @@ def test_assistant_unknown_refs_are_not_links():
     assert a._reply("см. [[R-999]] и [[R-001]]")["answer"] == "см. R-999 и [[R-001]]"
 
 
+def test_assistant_quota_error_is_fast_and_friendly(monkeypatch):
+    """Свободный вопрос при исчерпанной квоте: без многоминутных ретраев, с понятным ответом."""
+    import req_review.llm as llm_mod
+    from req_review.llm import GeminiLLM
+
+    calls = []
+
+    class R:
+        status_code, headers, text = 429, {}, '{"error":{"details":[{"retryDelay":"5s"}]}}'
+
+    def fake_post(*a, **k):
+        calls.append(1)
+        return R()
+
+    monkeypatch.setattr(llm_mod.requests, "post", fake_post)
+    monkeypatch.setattr(llm_mod.time, "sleep", lambda s: None)
+    data = {"requirements": [{"rid": "R-001", "doc_id": None, "text": "t", "score": 100, "findings": [], "test": {}}],
+            "set_findings": [], "scores": {"document": 100, "set": 100, "readiness": 100, "tests": {"ok": 0, "total": 1}}}
+    out = Assistant(data).ask_llm("расскажи что-нибудь необычное", lambda: GeminiLLM(api_key="k", model="m"))
+    assert out and out["source"] == "подсказка" and "типовые вопросы" in out["answer"]
+    assert len(calls) <= 2  # одна попытка + один повтор, а не 7
+
+
 def test_compare_fixed_version(studio):
     c, job = studio
     r = c.post(f"/api/jobs/{job}/compare", data={"use_fixed": "true"})

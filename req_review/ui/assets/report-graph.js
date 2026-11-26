@@ -145,7 +145,7 @@
 
   // ---------------------------------------------------------------- цвета
   const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-  const DIM = "rgba(140,150,145,0.18)";
+  const DIM = "rgba(110,122,115,0.45)"; // приглушённые узлы вне цепочки остаются различимыми на белом фоне
   function nodeColor(n) { if (!inChain(n.id)) return DIM; return SEV[n.severity].color; }
   function linkColor(l) {
     if (st.chain && !linkInChain(l)) return "rgba(140,150,145,0.10)";

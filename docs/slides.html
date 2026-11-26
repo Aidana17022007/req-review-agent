@@ -569,7 +569,7 @@ pre.code{margin:0;padding:12px 14px;border-radius:12px;background:var(--surface-
 .g-labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .g-lbl{position:absolute;left:0;top:0;font:600 11px/1 var(--font-sans);color:var(--text);background:color-mix(in srgb,var(--surface) 80%,transparent);
   padding:2px 5px;border-radius:6px;white-space:nowrap;will-change:transform}
-.g-lbl.dim{opacity:.3}.g-lbl.sel{background:var(--brand);color:var(--on-brand)}
+.g-lbl.dim{opacity:.7;color:var(--text-2)}.g-lbl.sel{background:var(--brand);color:var(--on-brand)}
 .g-note{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:999px;
   padding:8px 14px;font:500 13px/18px var(--font-sans);color:var(--text-2);box-shadow:var(--shadow-md);z-index:2;display:flex;gap:8px;align-items:center;max-width:calc(100% - 24px)}
 .g-note[hidden]{display:none}
@@ -775,12 +775,12 @@ html,body{height:100%;overflow:hidden}
     <div class="caption">Метрики · бенчмарк на документе с известными дефектами</div>
     <h2 class="k2">Точность измеряется, а не обещается</h2>
     <div class="cols c4">
-      <div class="card hero"><div class="caption" style="color:rgba(255,255,255,.85)">Recall</div><div class="metric-big" style="color:#fff">69%</div><p class="small muted">найдено 9 из 13 внедрённых дефектов</p></div>
-      <div class="card"><div class="caption">Precision</div><div class="metric-big">100%</div><p class="small muted">доля верных существенных замечаний</p></div>
-      <div class="card"><div class="caption">F1</div><div class="metric-big">82%</div><p class="small muted">гармоническое среднее</p></div>
-      <div class="card"><div class="caption">Ложные срабатывания</div><div class="metric-big">0</div><p class="small muted">существенных замечаний к 7 заведомо чистым требованиям</p></div>
+      <div class="card hero"><div class="caption" style="color:rgba(255,255,255,.85)">Recall</div><div class="metric-big" style="color:#fff">—</div><p class="small muted">появится после прогона на модели</p></div>
+      <div class="card"><div class="caption">Precision</div><div class="metric-big">—</div><p class="small muted">доля верных существенных замечаний</p></div>
+      <div class="card"><div class="caption">F1</div><div class="metric-big">—</div><p class="small muted">гармоническое среднее</p></div>
+      <div class="card"><div class="caption">Ложные срабатывания</div><div class="metric-big">—</div><p class="small muted">появится после прогона на модели</p></div>
     </div>
-    <p class="lead small">Прогон в режиме mock (только словарные правила и эвристики, без модели) — нижняя граница; с моделью Gemini цифры выше. Источник: <code class="mono">bench/RESULTS.md</code>, воспроизводится командой <code class="mono">python bench/run.py</code>.</p>
+    <p class="lead small">Бенчмарк на модели ещё не запускался (есть только mock-прогон словарных правил). Источник: <code class="mono">bench/RESULTS.md</code>, воспроизводится командой <code class="mono">python bench/run.py</code>.</p>
   </section>
 
   <!-- 8. Отличие от конкурентов -->
@@ -801,15 +801,8 @@ html,body{height:100%;overflow:hidden}
     </table>
   </section>
 
-  <!-- 9. Команда -->
-  <section class="slide" aria-label="Команда">
-    <div class="caption">Команда</div>
-    <h2 class="k2">Кто делал ReqLens</h2>
-    <div class="cols c4">
-      <div class="card person"><span class="avatar" aria-hidden="true">?</span><div class="h3">Имя Фамилия</div><p class="small muted">Продукт и анализ требований</p></div><div class="card person"><span class="avatar" aria-hidden="true">?</span><div class="h3">Имя Фамилия</div><p class="small muted">ИИ-агент и промпты</p></div><div class="card person"><span class="avatar" aria-hidden="true">?</span><div class="h3">Имя Фамилия</div><p class="small muted">Интерфейс и дизайн-система</p></div><div class="card person"><span class="avatar" aria-hidden="true">?</span><div class="h3">Имя Фамилия</div><p class="small muted">Бэкенд, Studio, DevOps</p></div>
-    </div>
-    <p class="lead small">Состав команды задаётся в <code class="mono">docs/team.yaml</code> — слайды собираются командой <code class="mono">python -m req_review.ui.styleguide</code>.</p>
-  </section>
+  <!-- 9. Команда (показывается, только если docs/team.yaml заполнен) -->
+  
 
   <!-- 10. Финал -->
   <section class="slide" aria-label="Спасибо">

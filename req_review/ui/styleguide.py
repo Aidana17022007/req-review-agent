@@ -32,9 +32,17 @@ def bench_metrics(path: Path = ROOT / "bench" / "RESULTS.md") -> dict:
         m["false_pos"], m["false_note"] = x[2], f"существенных замечаний к {x[1]} заведомо чистым требованиям"
     model = g(r"\*Модель:\*\s*([^·\n]+)")
     mock = "mock" in (model or "") or "режиме mock" in t
-    m["model_note"] = ("Прогон в режиме mock (только словарные правила и эвристики, без модели) — нижняя граница; "
-                       "с моделью Gemini цифры выше." if mock else f"Модель: {model.strip()}." if model else "")
+    if mock:
+        # Цифры mock-прогона (только словарь, без модели) на слайд не выводим: жюри видит лишь измеренное на модели
+        m.update({"recall": "—", "precision": "—", "f1": "—", "false_pos": "—",
+                  "recall_note": "появится после прогона на модели", "false_note": "появится после прогона на модели",
+                  "model_note": "Бенчмарк на модели ещё не запускался (есть только mock-прогон словарных правил)."})
+        return m
+    m["model_note"] = f"Модель: {model.strip()}." if model else ""
     return m
+
+
+PLACEHOLDER_NAMES = {"", "имя фамилия", "участник", "name surname"}
 
 
 def team(path: Path = ROOT / "docs" / "team.yaml") -> list[dict]:
@@ -45,8 +53,10 @@ def team(path: Path = ROOT / "docs" / "team.yaml") -> list[dict]:
         members = (yaml.safe_load(path.read_text(encoding="utf-8")) or {}).get("team") or []
     out = []
     for x in members[:8]:
-        name = str(x.get("name", "")).strip() or "Участник"
-        initials = "".join(p[0] for p in name.split()[:2]).upper() if name != "Имя Фамилия" else "?"
+        name = str((x or {}).get("name", "")).strip()
+        if name.lower() in PLACEHOLDER_NAMES:
+            continue  # незаполненные заготовки на слайд не попадают
+        initials = "".join(p[0] for p in name.split()[:2]).upper()
         out.append({"name": name, "role": str(x.get("role", "")).strip(), "initials": initials})
     return out
 

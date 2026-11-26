@@ -288,6 +288,10 @@ class Assistant:
             llm = llm_factory()
             if getattr(llm, "provider", "") == "mock":
                 return None
+            # Чат не должен «висеть» минутами на ретраях 429/503 (как полный прогон): одна попытка, короткий таймаут
+            llm.max_retries = 1
+            llm.min_interval = 0
+            llm.timeout = 25.0
             data = llm.generate_json(SYSTEM, f"ДАННЫЕ ОТЧЁТА (JSON):\n{self.context()}\n\nВОПРОС: {q}", task="assistant")
             text = str((data or {}).get("answer", "")).strip()
             return self._reply(text, source="модель") if text else None
