@@ -800,3 +800,17 @@ def test_html_report_has_v7_blocks_and_hides_them_for_old_reports(tmp_path, monk
     assert d["lines"]["accounted"] == d["lines"]["total"] and d["matrix"] and d["acceptance"]["percent"] is not None
     ctx.rv.depth = {}  # отчёт 2.2 без полей глубины — блоки не рисуются (D.depth = null)
     assert build_data(ctx)["depth"] is None
+
+
+def test_tz_self_check_passes_on_submission_report():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("tz_check", ROOT / "scripts" / "tz_check.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    rows = mod.check(ROOT / "reports" / "requirements-report.md")
+    clauses = {r["clause"] for r in rows}
+    assert {"§1", "§2", "§3", "§4", "§5", "§6", "§7"} <= clauses
+    failed = [r["what"] for r in rows if r["required"] and not r["ok"]]
+    assert failed == [], failed
+    assert all(r["evidence"] for r in rows)
