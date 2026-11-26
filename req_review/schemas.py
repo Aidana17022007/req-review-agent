@@ -40,6 +40,10 @@ SCHEMAS = {
         "type": S, "criterion": S, "refs": arr(obj({"id": S, "quote": S}, ["id", "quote"])),
         "problem": S, "severity": SEVERITY, "fix": S,
     }, ["refs", "problem", "severity"]))}, ["findings"]),
+    "gaps": obj({"findings": arr(obj({
+        "type": S, "criterion": S, "refs": arr(obj({"id": S, "quote": S}, ["id", "quote"])),
+        "problem": S, "severity": SEVERITY, "fix": S, "check": S,
+    }, ["type", "refs", "problem", "severity", "fix"]))}, ["findings"]),
     "critic": obj({"verdicts": arr(obj({"n": N, "verdict": {"type": "STRING", "enum": ["keep", "downgrade", "drop"]},
                                         "reason": S}, ["n", "verdict"]))}, ["verdicts"]),
     "extras": obj({

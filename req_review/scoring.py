@@ -24,8 +24,8 @@ METHOD_MD = f"""**Балл требования** (0–100): 100 минус шт
 
 **Балл документа** = 0,7 × средний балл требований + 0,3 × балл набора.
 
-**Готовность к разработке** = доля требований без критичных и существенных замечаний × (1 − 0,1 × число критичных
-замечаний набора), не ниже 0.
+**Готовность к разработке** = доля требований без критичных и существенных замечаний — и не затронутых критичными
+или существенными замечаниями к набору — × (1 − 0,1 × число критичных замечаний набора), не ниже 0.
 
 **Радар**: для каждого критерия — доля требований без нарушений по нему.
 
@@ -63,7 +63,10 @@ def compute(rv: ReviewResult) -> Scores:
     set_score = max(0, 100 - sum(SET_PENALTY[f.severity] for f in rv.set_findings))
     avg = sum(rs.values()) / len(rs) if rs else 0
     doc_score = round(0.7 * avg + 0.3 * set_score)
-    ready = [rr.req.rid for rr in reqs if not any(f.severity in ("critical", "major") for f in rr.findings)]
+    # требование, на которое ссылается критичное/существенное замечание к набору (противоречие, пропуск), тоже не готово
+    blocked = {r.req_id for f in rv.set_findings if f.severity in ("critical", "major") for r in f.refs}
+    ready = [rr.req.rid for rr in reqs
+             if rr.req.rid not in blocked and not any(f.severity in ("critical", "major") for f in rr.findings)]
     set_crit = sum(1 for f in rv.set_findings if f.severity == "critical")
     readiness = round(100 * (len(ready) / len(reqs) if reqs else 0) * max(0.0, 1 - 0.1 * set_crit))
     radar_req = {}

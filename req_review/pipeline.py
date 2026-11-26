@@ -19,6 +19,8 @@ PROFILES = {
     "fast": {"critic": False, "rescore": False},
     "full": {"critic": True, "rescore": True},
     "offline": {"critic": True, "rescore": False},
+    # deep — для финального отчёта: критик на все замечания, повторная проверка исправленного документа
+    "deep": {"critic": True, "rescore": True},
 }
 
 STEPS = ["Чтение", "Нарезка", "Проверка требований", "Проверка набора", "Домен и глоссарий", "Критик", "Отчёты"]
@@ -129,6 +131,12 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
             "major" if len(gaps) >= 3 else "minor",
             "Добавить требования или явно указать, что шаг вне рамок. Вопросы аналитику: "
             + " ".join(f"{s['title']}: {s['question']}" for s in gaps), "карта покрытия"))
+    # v5: покрытие правил критериями приёмки (после перекрёстной проверки — её связи «пример ↔ правило» учитываются)
+    from .depth import acceptance_coverage, acceptance_gap
+
+    acc = acceptance_coverage(rv)
+    if gap := acceptance_gap(rv, acc):
+        rv.set_findings.append(gap)
     critic = PROFILES[opts.profile]["critic"] if opts.critic is None else opts.critic
     step(5)
     if critic:
@@ -154,6 +162,7 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
     if folded:
         log(f"  свёрнуто замечаний об оформлении пунктов без ID: {folded}")
     default_confidence(rv)
+    rv.depth = depth_summary(rv, acc)
     # RAG: основания замечаний из базы знаний (стандарты, нормы РК, шаблоны). RAG=off или нет kb/ — пропускаем
     try:
         from .rag.basis import attach_basis
@@ -167,6 +176,19 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
     except Exception as e:  # RAG никогда не ломает основной прогон
         log(f"база знаний недоступна: {e}")
     return rv
+
+
+def depth_summary(rv, acc: dict | None = None) -> dict:
+    """v5: учёт строк, матрица «требование × критерий», покрытие приёмкой, статистика самопроверки, вердикты, план."""
+    from .depth import acceptance_coverage, criteria_matrix, fix_plan, line_coverage, verdicts
+
+    confirmed = sum(len(rr.findings) for rr in rv.req_results) + len(rv.set_findings)
+    return {"line_coverage": line_coverage(rv.doc, [rr.req for rr in rv.req_results]),
+            "criteria_matrix": criteria_matrix(rv),
+            "acceptance_coverage": acc if acc is not None else acceptance_coverage(rv),
+            "review_stats": {"proposed": confirmed + len(rv.rejected) + len(rv.dropped), "confirmed": confirmed,
+                             "rejected": len(rv.rejected), "unconfirmed_quotes": len(rv.dropped)},
+            "verdict": verdicts(rv), "fix_plan": fix_plan(rv)}
 
 
 def _ctx_info(doc) -> dict:

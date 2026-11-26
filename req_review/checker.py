@@ -85,6 +85,7 @@ class ReviewResult:
     rag: dict = field(default_factory=dict)  # статистика базы знаний: число оснований, режим поиска
     categories: dict = field(default_factory=dict)  # {категория: число требований}
     coverage: list = field(default_factory=list)  # карта покрытия шагов процесса домена
+    depth: dict = field(default_factory=dict)  # v5: учёт строк, матрица критериев, покрытие приёмкой, вердикты, план
 
 
 # ---------------------------------------------------------------- промпты
@@ -399,6 +400,10 @@ def deterministic_set_checks(split: SplitResult, doc: Document) -> list[SetFindi
                 "critical", "Использовать POST/PUT (например, PUT /alerts/limit), параметры передать в теле JSON; "
                 "GET оставить только для чтения настройки.", "правило"))
     out.extend(api_consistency(reqs, doc))
+    from .depth import integration_contract, missing_read_method  # v5: CRUD-полнота API и контракт интеграции
+
+    out.extend(missing_read_method(reqs, doc))
+    out.extend(integration_contract(reqs, doc))
     # незаполненные значения для продуктивной среды («Prod: —»)
     for r in reqs:
         m = re.search(r"\b(?:prod|прод\w*|production)\s*:\s*[—–-](?=\s*(?:$|\.|\||;))", r.text, re.I)
@@ -464,6 +469,9 @@ def check_set(split: SplitResult, doc: Document, llm: BaseLLM, dropped: list[dic
                                 str(f.get("fix", "")).strip(), "LLM"))
     add_numeric_conflicts(found, reqs, log)
     crosscheck(split, doc, llm, dropped, found, log)
+    from .depth import completeness_pass  # v5: узкий проход полноты по чек-листу (1 запрос)
+
+    completeness_pass(split, doc, llm, dropped, found, log)
     found.sort(key=lambda f: {"critical": 0, "major": 1, "minor": 2}[f.severity])
     return found, True
 

@@ -18,7 +18,8 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("output", help="путь к файлу отчёта (.md); остальные артефакты ложатся рядом")
     ap.add_argument("--env", default=None, help="путь к .env (по умолчанию .env в корне проекта)")
     ap.add_argument("--profile", choices=list(PROFILES), default=None,
-                    help="fast — минимум запросов (по умолчанию); full — критик и повторная оценка; offline — локальная модель (Ollama)")
+                    help="fast — минимум запросов (по умолчанию); full — критик и повторная оценка; deep — для финального отчёта "
+                         "(критик на все замечания, повторная оценка); offline — локальная модель (Ollama)")
     ap.add_argument("--domain", default=None, help="доменный чек-лист полноты: fintech (по умолчанию) или none")
     ap.add_argument("--compare", default=None, metavar="СТАРЫЙ", help="предыдущая версия: документ или report.json прошлого прогона")
     ap.add_argument("--critic", dest="critic", action="store_true", default=None, help="включить критик-агента")

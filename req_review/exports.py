@@ -10,7 +10,7 @@ from pathlib import Path
 from .criteria import INDIVIDUAL, SEVERITY, criterion_name, criterion_ref
 from .verify import norm
 
-SCHEMA_VERSION = "2.2"  # 2.1: span, confidence_score, char_start, tests[], values, unified (только добавления)
+SCHEMA_VERSION = "2.3"  # 2.3: line_coverage, criteria_matrix, acceptance_coverage, review_stats, verdict, fix_plan; 2.1: span, confidence_score, char_start, tests[], values, unified (только добавления)
 
 
 # ---------------------------------------------------------------- report.json
@@ -78,6 +78,9 @@ def to_json(ctx) -> dict:
         "domain": asdict(rv.domain) if rv.domain else None,
         "categories": getattr(rv, "categories", {}),
         "coverage_map": getattr(rv, "coverage", []),
+        # 2.3 (v5): учёт строк документа, матрица «требование × критерий», покрытие приёмкой, самопроверка, вердикты, план
+        **{k: (getattr(rv, "depth", None) or {}).get(k) for k in
+           ("line_coverage", "criteria_matrix", "acceptance_coverage", "review_stats", "verdict", "fix_plan")},
         "glossary": asdict(rv.glossary) if rv.glossary else None,
         "questions": [asdict(q) for q in ctx.questions],
         "changes": [asdict(c) for c in ctx.changes],
