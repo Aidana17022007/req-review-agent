@@ -1,0 +1,32 @@
+# Render Blueprint: ReqLens Studio + API v1 (бэкенд). Render → New → Blueprint → этот репозиторий.
+# После этого каждый push в main передеплоит сервис сам (autoDeploy). Ключ модели задаётся в панели Render
+# (Environment → GEMINI_API_KEY) и в репозиторий не попадает. Без ключа Studio работает в режиме «только правила».
+services:
+  - type: web
+    name: reqlens-studio
+    runtime: python
+    plan: free
+    branch: main
+    autoDeploy: true
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m req_review.web
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: STUDIO_HOST
+        value: 0.0.0.0
+      - key: GEMINI_API_KEY
+        sync: false            # вводится в панели Render, в git не хранится
+      - key: GEMINI_MODEL
+        value: gemini-3.8-flash
+      - key: GEMINI_FALLBACK_MODELS
+        value: gemini-3.7-flash,gemini-3.6-flash,gemini-3.5-flash,gemini-3.5-flash-lite
+      - key: LLM_FALLBACK_AFTER
+        value: "3"
+      - key: REQLENS_PROFILE
+        value: fast            # быстрый профиль для посетителей; deep — для отчёта, который сдаётся
+      - key: MAX_JOBS
+        value: "1"             # бесплатный тариф: один прогон за раз, остальные ждут в очереди
+      - key: REQLENS_DATA
+        value: /tmp/reqlens    # история прогонов (на бесплатном тарифе диск не сохраняется между деплоями)

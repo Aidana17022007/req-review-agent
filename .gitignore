@@ -13,3 +13,4 @@ reports/*
 !reports/requirements-report.json
 !reports/requirements-report.html
 data/
+public/

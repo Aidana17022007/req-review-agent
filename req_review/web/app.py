@@ -503,8 +503,9 @@ def main(argv: list[str] | None = None):
     if args.demo:
         d = set_demo(args.demo, args.demo_after).describe()
         print(f"Режим «Демо»: {d['document']} · {d['model']} · {d['started']} — модель не вызывается")
-    host = os.getenv("STUDIO_HOST", "127.0.0.1")
-    port = int(os.getenv("STUDIO_PORT", "8000"))
+    # хостинг (Render, Railway, Fly) задаёт PORT и ждёт сервер на 0.0.0.0; локально — 127.0.0.1:8000
+    host = os.getenv("STUDIO_HOST") or ("0.0.0.0" if os.getenv("PORT") else "127.0.0.1")
+    port = int(os.getenv("STUDIO_PORT") or os.getenv("PORT") or "8000")
     print(f"ReqLens Studio: http://{'localhost' if host in ('127.0.0.1', '0.0.0.0') else host}:{port}")
     uvicorn.run(app, host=host, port=port, log_level="warning")
 
