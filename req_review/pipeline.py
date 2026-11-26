@@ -193,7 +193,9 @@ def build_context(rv, llm, opts: Options, started: datetime, t0: float, input_pa
         "sha256": rv.doc.sha256, "started": started.strftime("%Y-%m-%d %H:%M:%S %Z").strip(),
         "model": llm.label, "agent_version": agent_version(), "profile": opts.profile,
         "mode": "офлайн: документ не передавался третьим лицам" if offline and llm.provider != "mock" else
-                ("тестовый (mock)" if llm.provider == "mock" else "облачная модель"),
+                ("тестовый (mock)" if llm.provider == "mock" else
+                 "только правила: модель не вызывалась, смысловые противоречия не проверялись" if llm.provider == "rules"
+                 else "облачная модель"),
         "calls": llm.stats.calls, "retries": llm.stats.retries, "tokens_in": llm.stats.prompt_tokens,
         "tokens_out": llm.stats.output_tokens, "duration_s": round(time.monotonic() - t0),
         "model_switches": list(getattr(llm.stats, "switches", [])),
@@ -205,8 +207,10 @@ def build_context(rv, llm, opts: Options, started: datetime, t0: float, input_pa
     return ctx
 
 
-def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda i, label="": None, llm_wrap=None) -> Context:
-    """llm_wrap — необязательная обёртка над моделью (Studio наблюдает за пакетами для живой таблицы); логику не меняет."""
+def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda i, label="": None, llm_wrap=None,
+        make_llm=None) -> Context:
+    """llm_wrap — необязательная обёртка над моделью (Studio наблюдает за пакетами для живой таблицы); логику не меняет.
+    make_llm — своя фабрика модели вместо .env (ReqLens App: режим «только правила» для одного прогона)."""
     from .exports import compare, summarize_for_compare, to_json, write_jira_csv, write_json, write_xlsx
     from .llm import build_llm_from_env
     from .report import build_report
@@ -220,7 +224,7 @@ def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda
         timeline.append({"i": i, "t": round(time.monotonic() - t0, 2)})
         step(i, label)
 
-    llm = build_llm_from_env()
+    llm = make_llm() if make_llm else build_llm_from_env()
     if llm_wrap:
         llm = llm_wrap(llm)
     rv = review_document(input_path, llm, opts, log=log, step=tstep)

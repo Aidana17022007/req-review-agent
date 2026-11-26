@@ -321,4 +321,8 @@ def build_llm_from_env() -> BaseLLM:
         from .mock_llm import MockLLM
 
         return MockLLM()
-    raise LLMError(f"Неизвестный LLM_PROVIDER={provider!r}. Допустимо: gemini, openai, mock")
+    if provider == "rules":  # без модели: только детерминированные проверки (квота исчерпана / нет сети)
+        from .rules_llm import RulesOnlyLLM
+
+        return RulesOnlyLLM()
+    raise LLMError(f"Неизвестный LLM_PROVIDER={provider!r}. Допустимо: gemini, openai, rules, mock")
