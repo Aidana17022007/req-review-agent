@@ -521,16 +521,17 @@ pre.code{margin:0;padding:12px 14px;border-radius:12px;background:var(--surface-
 .kb-count{flex:none;font:700 20px/28px var(--font-sans);min-width:32px;text-align:right}
 .kb-reqs summary{cursor:pointer;color:var(--brand);margin-top:6px;list-style:none}
 .kb-reqs summary::-webkit-details-marker{display:none}
-.flowmap{display:flex;align-items:stretch;gap:8px;overflow-x:auto;padding:4px 2px 12px;scrollbar-width:thin}
-.flow-step{flex:0 0 200px;background:var(--surface);border:1px solid var(--border);border-top:4px solid var(--ok-accent);border-radius:16px;padding:14px}
+/* шаги процесса переносятся сеткой 4 / 2 / 1 колонки — без горизонтальной ленты; порядок задают номера шагов */
+.flowmap{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:4px 0 12px}
+@media (max-width:1100px){.flowmap{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){.flowmap{grid-template-columns:1fr}}
+.flow-step{min-width:0;overflow-wrap:anywhere;background:var(--surface);border:1px solid var(--border);border-top:4px solid var(--ok-accent);border-radius:16px;padding:14px}
 .flow-step.gap{border-top-color:var(--critical-accent);background:color-mix(in srgb,var(--critical-soft) 45%,var(--surface))}
 .flow-n{flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--brand);color:var(--on-brand);font:700 11px/1 var(--font-sans)}
 .flow-step.gap .flow-n{background:var(--critical-accent);color:#fff}
-.flow-arrow{flex:none;align-self:center;color:var(--text-3)}
-@media (max-width:760px){.flowmap{flex-direction:column;overflow:visible}.flow-step{flex:none}.flow-arrow{transform:rotate(90deg);align-self:center}}
 .doc-chunk{contain:content}
 .more-rows td{text-align:center;background:var(--surface-2)}
-@media print{.flowmap{flex-wrap:wrap;overflow:visible}.kb-reqs{display:block}.kb-reqs[open] summary,.kb-reqs summary{display:none}}
+@media print{.flowmap{grid-template-columns:repeat(2,minmax(0,1fr))}.flow-step{break-inside:avoid}.kb-reqs{display:block}.kb-reqs[open] summary,.kb-reqs summary{display:none}}
 #view-kb .chip{white-space:normal;height:auto;min-height:24px;padding-top:3px;padding-bottom:3px}
 .kb-row b,.kb-row .muted,.basis-item b{overflow-wrap:anywhere}
 @media (max-width:640px){.kb-row{gap:10px}.kb-count{font-size:16px;min-width:22px}}

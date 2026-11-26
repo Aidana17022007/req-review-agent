@@ -348,7 +348,7 @@
   function renderAnswer(a){const txt=esc(a.answer).replace(/\[\[((?:R|S)-\d+)\]\]/g,(m,id)=>`<button type="button" class="ref" data-ref="${id}" aria-label="Открыть ${id} в отчёте">${id}</button>`);
     return `${txt}${sourcesHTML(a.sources)}<span class="src">${a.source==="модель"?"ответ модели по данным отчёта":a.source==="подсказка"?"подсказка":"по данным отчёта, без обращения к модели"}</span>`;}
   // источники ответа: требования и строки документа открываются в отчёте, фрагменты базы знаний — карточкой с URL
-  const BK={standard:["Стандарт","book"],law:["Закон РК","shield"],template:["Шаблон","file"]};
+  const BK={standard:["Стандарт","book"],law:["Норма РК · пересказ","shield"],template:["Шаблон","file"]};
   function sourcesHTML(ss){
     ss=(ss||[]).filter(s=>s.type!=="req");if(!ss.length)return "";
     return `<div class="srcs"><div class="caption">Источники</div>${ss.map(s=>s.type==="line"

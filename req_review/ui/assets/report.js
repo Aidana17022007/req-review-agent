@@ -246,7 +246,7 @@
         <a class="btn btn-sm btn-primary" style="margin-top:8px" href="http://localhost:8000/" target="_blank" rel="noopener">${ic("arrow-up-right", 14)}Открыть Studio</a></div>`;
     openDrawer($("#btn-ai"));
   };
-  const BKIND = { standard: ["Стандарт", "book"], law: ["Закон РК", "shield"], template: ["Шаблон", "file"] };
+  const BKIND = { standard: ["Стандарт", "book"], law: ["Норма РК · пересказ", "shield"], template: ["Шаблон", "file"] };
   function basisHTML(f, compact) {
     const bs = f.basis || []; if (!bs.length) return "";
     return `<div class="basis"><div class="caption">${ic("book", 13)} Основание</div>${bs.map((b) => `<div class="basis-item">
@@ -976,11 +976,11 @@
     const rows = Object.values(top).sort((a, b) => b.fids.size - a.fids.size || b.rids.size - a.rids.size).slice(0, 10), max = rows.length ? rows[0].fids.size : 1;
     const laws = Object.values(bySrc).filter((x) => x.kind === "law").length, totalF = Object.keys(D.findings).length;
     el.innerHTML = `<div class="section-title" style="margin-top:0"><div><h2 class="h1">База знаний</h2>
-        <p class="small muted" style="margin-top:4px">На какие нормы стандартов, законов РК и шаблонов опираются замечания. Каждое основание — фрагмент базы знаний с источником.</p></div></div>
+        <p class="small muted" style="margin-top:4px">На какие нормы стандартов, нормы РК (пересказ, не текст закона) и шаблоны опираются замечания. Каждое основание — фрагмент базы знаний с источником.</p></div></div>
       <div class="grid g-3" style="margin-bottom:16px">
         <article class="kpi kpi-hero"><span class="lbl">Замечаний с основанием</span><div class="kpi-num">${num(BASIS_FINDINGS.length)}<span class="h2" style="opacity:.85"> из ${totalF}</span></div><div class="sub">каждое — с источником и пунктом</div></article>
-        <article class="kpi"><span class="lbl">Источников</span><div class="kpi-num">${num(Object.keys(bySrc).length)}</div><div class="sub">${ic("book", 14)}стандарты, законы, шаблоны</div></article>
-        <article class="kpi"><span class="lbl">Законов РК</span><div class="kpi-num" style="color:${laws ? "var(--major)" : "var(--text-2)"}">${num(laws)}</div><div class="sub">${ic("shield", 14)}нормативные требования</div></article></div>
+        <article class="kpi"><span class="lbl">Источников</span><div class="kpi-num">${num(Object.keys(bySrc).length)}</div><div class="sub">${ic("book", 14)}стандарты, нормы РК, шаблоны</div></article>
+        <article class="kpi"><span class="lbl">Норм РК (пересказ)</span><div class="kpi-num" style="color:${laws ? "var(--major)" : "var(--text-2)"}">${num(laws)}</div><div class="sub">${ic("shield", 14)}нормативные требования</div></article></div>
       <div class="card"><div class="card-title">${ic("spark")}<span class="h2 grow">Чаще всего нарушены</span><span class="small muted">топ-${rows.length} по числу замечаний</span></div>
         <ol class="kb-top">${rows.map((t, i) => `<li class="kb-row">
           <span class="kb-n">${i + 1}</span>
@@ -1005,7 +1005,7 @@
           <div class="row" style="gap:8px"><span class="flow-n">${i + 1}</span><b class="small grow">${esc(s.title)}</b></div>
           ${s.rids.length ? `<div class="row wrap" style="gap:6px;margin-top:10px">${s.rids.filter((r) => reqById[r]).map((r) => { const q = reqById[r]; return `<a class="chip ${q.worst === "ok" ? "chip-neutral" : "sev-" + q.worst}" href="#${r}" data-go-req="${r}" title="${esc(short(q.text, 120))}">${ic(SEV[q.worst].icon, 12)}${esc(q.doc_id || r)}</a>`; }).join("")}</div>`
             : `<span class="chip sev-critical" style="margin-top:10px">${ic("x", 12)}не покрыто</span>${s.question ? `<p class="small" style="margin-top:8px">${ic("chat", 13)} <b>Вопрос аналитику:</b> ${esc(s.question)}</p>` : ""}`}
-        </article>${i < n - 1 ? `<span class="flow-arrow" aria-hidden="true">${ic("arrow-right", 18)}</span>` : ""}`).join("")}</div>
+        </article>`).join("")}</div>
       <div class="legend small muted"><span>${ic("check", 12)} цвет чипа — статус требования</span><span><span class="chip sev-critical" style="height:20px">не покрыто</span> — шаг процесса без требований: пропуск в наборе</span></div>`;
   }
 

@@ -162,6 +162,22 @@ def test_report_renders_v22_fields_from_fixture():
         assert marker in html, marker
 
 
+def test_kz_norms_are_labelled_as_paraphrase_and_coverage_wraps():
+    """Нормы РК в kb/ — пересказ, не текст закона: подписи UI не должны выдавать их за закон.
+    «Покрытие процесса» — сетка 4/2/1 колонки, без горизонтальной ленты (на 1440 px карточки обрезались)."""
+    import re
+
+    from req_review.ui import asset
+
+    ui = asset("report.js") + Path("req_review/ui/templates/studio.html.j2").read_text(encoding="utf-8")
+    assert "Норма РК · пересказ" in ui and "Норм РК (пересказ)" in ui
+    assert not re.search(r"[\"'>]Закон(ов)? РК[\"'<]", ui)
+    css = asset("base.css")
+    flow = re.search(r"\.flowmap\{([^}]*)\}", css)[1]
+    assert "grid-template-columns:repeat(4" in flow and "overflow-x" not in flow
+    assert "flow-arrow" not in asset("report.js")
+
+
 def test_report_without_v22_fields_hides_new_blocks():
     from req_review.html_report import build_data
     from req_review.ui.preview import build_ctx
