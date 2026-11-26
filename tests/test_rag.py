@@ -60,6 +60,23 @@ def test_basis_quotes_exist_in_kb(tmp_path):
         assert quote_in(b["quote"], (root / b["file"]).read_text(encoding="utf-8"))
     assert "Основание" in out.read_text(encoding="utf-8")
     assert data["schema_version"] == "2.2" and data["categories"] and data["coverage_map"]
+    # шаблон правки соответствует категории требования: «надёжной» у NFR-02 не притягивает шаблон OTP
+    from req_review.rag.basis import pattern_fits
+
+    for r in data["requirements"]:
+        if r.get("rewrite_pattern"):
+            assert pattern_fits(r["rewrite_pattern"]["id"], r.get("category")), (r.get("doc_id"), r["rewrite_pattern"]["id"])
+    nfr2 = next(r for r in data["requirements"] if r.get("doc_id") == "NFR-02")
+    assert (nfr2.get("rewrite_pattern") or {}).get("id") != "otp"
+
+
+def test_pattern_fits_category():
+    from req_review.categories import classify
+    from req_review.rag.basis import pattern_fits
+
+    assert classify("Система должна быть надёжной и работать без сбоев.") == "availability"
+    assert not pattern_fits("otp", "availability") and pattern_fits("sla", "availability")
+    assert pattern_fits("otp", "security") and pattern_fits("otp", None) and pattern_fits("unknown", "data")
 
 
 def test_run_without_rag_still_works(tmp_path, monkeypatch):

@@ -14,6 +14,27 @@ from .index import KB_DIR, Index
 LAW_MIN_SCORE = 6.0  # порог «сырого» BM25 для нормы РК: ниже — норма не релевантна, не притягиваем за уши
 PATTERN_MIN_SCORE = 4.0
 LAW_CRITERIA = {"complete", "verifiable", "unambiguous", "set_complete", "set_consistent", "correct"}
+# Шаблон правки подходит только требованиям своих категорий (categories.CATEGORIES): лексическое совпадение
+# со словом из примера «Плохо: …» (например, «надёжное подтверждение» у otp) не должно притягивать шаблон
+# OTP к требованию «Система должна быть надёжной». Шаблоны без записи здесь подходят любой категории.
+PATTERN_CATEGORIES = {
+    "limit": {"functional", "data", "integration", "interface", "acceptance"},
+    "otp": {"security"},
+    "idempotency": {"functional", "integration"},
+    "status": {"functional", "integration", "interface"},
+    "notify": {"functional", "interface", "performance", "integration"},
+    "threshold": {"functional", "interface", "acceptance"},
+    "timezone": {"functional", "data", "acceptance"},
+    "api_method": {"integration", "interface"},
+    "audit": {"data", "security", "regulatory"},
+    "retention": {"data", "regulatory"},
+    "sla": {"performance", "availability"},
+}
+
+
+def pattern_fits(pattern_id: str, category: str | None) -> bool:
+    allowed = PATTERN_CATEGORIES.get(pattern_id)
+    return not allowed or not category or category == "other" or category in allowed
 
 
 def _key(section: str) -> str:
@@ -67,7 +88,8 @@ def attach_basis(rv, kb: Index, log=print) -> dict:
     for rr in rv.req_results:
         for f in rr.findings:
             link(f, rr.req.text)
-        if rr.findings and rr.rewrite and (pc := best(pat_idx, rr.req.text, PATTERN_MIN_SCORE)):
+        fit = [i for i in pat_idx if pattern_fits(_key(kb.chunks[i].section), getattr(rr, "category", None))]
+        if rr.findings and rr.rewrite and (pc := best(fit, rr.req.text, PATTERN_MIN_SCORE)):
             tpl = next((s for s in re.split(r"(?<=[.!?])\s+", pc.text) if s.startswith("Шаблон")), _first_sentence(pc.text))
             if quote_in(tpl, raw[pc.source]):
                 rr.rewrite_pattern = {"id": _key(pc.section), "title": pc.section.split("·", 1)[-1].strip(), "template": tpl,
