@@ -121,3 +121,23 @@ def test_end_to_end_mock(tmp_path, monkeypatch):
     assert "этой фразы нет в документе" not in rep.split("Отброшенные замечания")[0]  # галлюцинация отброшена
     assert "Противоречие" in rep  # FR-03 vs FR-05 / SEC-01 vs SEC-02
     assert "нельзя" in rep.split("## 6. Итог")[1]
+
+
+def test_mixed_document_units_without_ids(tmp_path):
+    """Смешанный документ: Ф-1 с ID + НФТ, интеграция, критерии приёмки и параметры API без ID — всё нарезается."""
+    p = tmp_path / "mixed.md"
+    p.write_text(
+        "# Задача\n\n## Ревью требований\n\n| Проверка | Да |\n| :--- | :--- |\n| Требование может быть протестировано | Да / Нет |\n\n"
+        "### Функциональные требования\n* **Ф-1.** Клиент задаёт порог от 1 000 до 1 000 000 ₸.\n\n"
+        "### Нефункциональные требования\nСервис передаёт push в течение минуты после события.\n\n"
+        "### Критерии приемки\n\n| Условия | Действие | Результат |\n| :--- | :--- | :--- |\n| Порог 50 000 ₸ | Покупка 1 500 ₸ | Один push |\n\n"
+        "### Общие параметры\n\n| Поле | Значение |\n| :--- | :--- |\n| **REST type** | GET |\n| **Author** | Школа |\n",
+        encoding="utf-8")
+    s = split_requirements(read_document(p))
+    texts = [r.text for r in s.requirements]
+    assert s.method == "ids" and [r.doc_id for r in s.requirements][0] == "Ф-1"
+    assert any("в течение минуты" in t for t in texts)          # НФТ без ID
+    assert any(t.startswith("Порог 50 000 ₸ |") for t in texts)  # строка критериев приёмки
+    assert "REST type | GET" in texts                            # параметр API
+    assert not any("Школа" in t or "протестировано" in t for t in texts)  # метаданные и чек-лист шаблона — не требования
+    assert all(r.rid.startswith("R-") for r in s.requirements)
