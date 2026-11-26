@@ -26,19 +26,24 @@ ReqLens читает готовый документ требований (PDF, 
 
 | | |
 |---|---|
-| Документ | «Уведомление о расходах по карте» (`bench/real/notifications.md` — копия выданного документа, только как вход бенчмарка) |
-| Отчёт для сдачи | [`reports/requirements-report.md`](reports/requirements-report.md) · [`.json`](reports/requirements-report.json) · `.pdf` и `.html` — в релизе и артефакте «Generate report» |
-| Модель и профиль | `gemini-3.5-flash-lite`, профиль `deep` (ReqLens v6.0.0) |
-| Требований / замечаний | 43 требования · 75 подтверждённых замечаний: 🔴 16 критичных, 🟠 39 существенных, 🟡 20 незначительных |
+| Документ | «Уведомление о расходах по карте» (`bench/real/notifications.md`, копия документа организаторов) |
+| Отчёт для сдачи | [`reports/requirements-report.md`](reports/requirements-report.md) · [`report.json`](reports/requirements-report.json) · интерактивный HTML — `reports/requirements-report.html.gz` (на сайте — раздел «Отчёт») |
+| Прогон | ReqLens v8.0.0, профиль `deep`, **свежий прогон**: 33 ответа модели получены во время прогона (кэш выключен, `--no-cache`), код — **чистый коммит** (строка «Подлинность прогона» в паспорте) |
+| Модель | `gemini-3.5-flash-lite` → `gemini-3.1-flash-lite` (дневная квота закончилась в начале прогона; переход записан в паспорте) |
+| Что выделено | **16 требований**; ещё 23 элемента спецификации API, 3 строки критериев приёмки и 1 незаполненное место проверены, но требованиями не считаются |
+| Замечания | 73 подтверждённых: 🔴 6 критичных, 🟠 59 существенных, 🟡 8 незначительных; каждое — с дословной цитатой, проверенной кодом |
 | Вердикт | ❌ разработку начинать нельзя · ❌ тестировать нельзя |
 | Ожидаемые дефекты | **26 из 26**, критичных **7 из 7** (`bench/real_eval.py`; v4 — 15 из 26) |
-| Бенчмарк | 5 документов, 67 дефектов: **recall 100 %, precision 98 %** (`bench/RESULTS.md`) |
+| Бенчмарк | 5 документов, 67 дефектов: **recall 100 %, precision 98 %** (`bench/RESULTS.md`); независимая разметка — `bench/external/` |
 
 Запуск одной строкой (ключ Gemini в `.env`; без ключа — `LLM_PROVIDER=rules`, только правила):
 
 ```bash
-python review.py bench/real/notifications.md reports/report.md --profile deep
+python review.py bench/real/notifications.md reports/report.md --profile deep --no-cache
 ```
+
+**Сайт и Studio:** сайт собирается `scripts/build_site.py` и выкладывается на Cloudflare Pages, Studio и API — на
+Render (`render.yaml`); оба передеплоиваются сами после каждого push в `main` — см. [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 **Чем ReqLens отличается от обычного «LLM-ревьюера»:**
 
