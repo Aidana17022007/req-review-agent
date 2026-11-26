@@ -39,6 +39,11 @@ html,body{height:100%;overflow:hidden}
 .vs .us{background:var(--brand-soft)}
 .y{color:var(--ok);font-weight:700}.n{color:var(--text-3)}.p{color:var(--major);font-weight:600}
 .arch svg{width:100%;height:auto;display:block}
+.trust{width:100%;margin-top:12px;border-collapse:collapse;font:600 15px/1.3 var(--font-sans)}
+.trust th{font:600 11px/1 var(--font-sans);text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.8);text-align:left;padding:0 0 8px}
+.trust td{padding:8px 0;border-top:1px solid rgba(255,255,255,.2)}
+.trust td+td,.trust th+th{text-align:right}
+.trust td:nth-child(2),.trust td:nth-child(3){font:800 24px/1 var(--font-sans)}
 .arch text{font-family:var(--font-sans)}
 .person{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px}
 .avatar{width:84px;height:84px;border-radius:50%;display:grid;place-items:center;background:var(--brand-soft);color:var(--brand);border:3px solid var(--brand);font:800 28px/1 var(--font-sans)}
@@ -144,17 +149,28 @@ html,body{height:100%;overflow:hidden}
     </div>
   </section>
 
-  <!-- 7. Метрики -->
-  <section class="slide" aria-label="Метрики бенчмарка">
-    <div class="caption">Метрики · бенчмарк на документе с известными дефектами</div>
-    <h2 class="k2">Точность измеряется, а не обещается</h2>
-    <div class="cols c4">
-      <div class="card hero"><div class="caption" style="color:rgba(255,255,255,.85)">Recall</div><div class="metric-big" style="color:#fff">{{ bench.recall }}</div><p class="small muted">{{ bench.recall_note }}</p></div>
-      <div class="card"><div class="caption">Precision</div><div class="metric-big">{{ bench.precision }}</div><p class="small muted">доля верных существенных замечаний</p></div>
-      <div class="card"><div class="caption">F1</div><div class="metric-big">{{ bench.f1 }}</div><p class="small muted">гармоническое среднее</p></div>
-      <div class="card"><div class="caption">Ложные срабатывания</div><div class="metric-big">{{ bench.false_pos }}</div><p class="small muted">{{ bench.false_note }}</p></div>
+  <!-- 7. Почему нам можно верить: цитата документа + основание в норме + бенчмарк с/без RAG -->
+  <section class="slide" aria-label="Почему нам можно верить">
+    <div class="caption">Доверие</div>
+    <h2 class="k2">Почему нам можно верить</h2>
+    <div class="cols">
+      <div class="card"><div class="caption">1 · Цитата документа</div>
+        <p class="small" style="margin-top:10px">Каждое замечание — с дословной цитатой и номером строки. Код ищет цитату в документе; не нашёл — замечание отбрасывается и уходит в приложение.</p>
+        <div class="quote small" style="margin-top:12px">FR-06, строка 24: «кодом из SMS, push-уведомлением, биометрией и&nbsp;т.&nbsp;д.»</div></div>
+      <div class="card"><div class="caption">2 · Основание в норме</div>
+        <p class="small" style="margin-top:10px">RAG находит пункт стандарта, закон РК или шаблон и прикладывает фрагмент базы знаний с источником — «по памяти» модель не цитирует.</p>
+        <div class="quote small" style="margin-top:12px">ISO/IEC/IEEE 29148 · п. 5.2.5 d) Complete — пересказ своими словами; законы РК — со ссылкой на adilet.zan.kz</div></div>
+      <div class="card hero"><div class="caption" style="color:rgba(255,255,255,.85)">3 · Бенчмарк: 41 известный дефект</div>
+        <table class="trust" aria-label="Бенчмарк без RAG и с RAG">
+          <thead><tr><th></th><th>без RAG</th><th>с RAG</th></tr></thead>
+          <tbody>
+            <tr><td>Recall</td><td>{{ bench.recall }}</td><td>{{ bench_rag.recall }}</td></tr>
+            <tr><td>Precision</td><td>{{ bench.precision }}</td><td>{{ bench_rag.precision }}</td></tr>
+            <tr><td>F1</td><td>{{ bench.f1 }}</td><td>{{ bench_rag.f1 }}</td></tr>
+          </tbody></table>
+        <p class="small muted" style="margin-top:10px">{{ bench.model_note }}{% if bench_rag.recall == "—" %} Колонка «с RAG» — после прогона <code class="mono">bench/run.py</code> с базой знаний.{% else %} С RAG: {{ bench_rag.model_note }}{% endif %}</p></div>
     </div>
-    <p class="lead small">{{ bench.model_note }} Источник: <code class="mono">bench/RESULTS.md</code>, воспроизводится командой <code class="mono">python bench/run.py</code>.</p>
+    <p class="lead small">Только измеренные цифры: <code class="mono">bench/RESULTS.md</code>{% if bench_rag.recall != "—" %} и <code class="mono">bench/RESULTS_RAG.md</code>{% endif %}, модель и дата прогона указаны в файле. Баллы считает код по формулам из «Методики оценки».</p>
   </section>
 
   <!-- 8. Отличие от конкурентов -->

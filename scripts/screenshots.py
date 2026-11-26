@@ -6,7 +6,8 @@
 Что снимается:
   • все разделы HTML-отчёта (светлая и тёмная темы, 1440×900), включая 3D-граф (WebGL через SwiftShader) и 2D-вид;
   • мобильный вид документа (375×800);
-  • ReqLens Studio: загрузка, живой прогон, отчёт с AI-ассистентом, «До / После» и GIF живого прогона.
+  • разделы схемы 2.2 (RAG) на фикстуре tests/fixtures/report_v22.json: основание, база знаний, шаблоны, покрытие, қазақша;
+  • ReqLens Studio: загрузка, живой прогон, ассистент, «До / После»; режим «Демо» (офлайн) — GIF живого прогона и источники.
 Без аргумента делает mock-прогон на тестовом примере (ключ модели не нужен).
 """
 from __future__ import annotations
@@ -118,7 +119,6 @@ def shoot_studio(b, errors: list):
             if done:
                 break
             page.wait_for_timeout(180)
-        make_gif(frames, OUT / "live-run.gif")
         page.wait_for_timeout(2500)
         # ассистент: подсказка «Почему … критичное?»
         page.click("#chat-sugg button")
@@ -131,6 +131,80 @@ def shoot_studio(b, errors: list):
         page.wait_for_selector("#s-compare.active", timeout=90000)
         page.wait_for_timeout(1600)
         page.screenshot(path=str(OUT / "screenshot-studio-compare.png"))
+        page.close()
+    finally:
+        srv.terminate()
+        srv.wait(timeout=10)
+
+
+def shoot_v22(b, errors: list):
+    """Разделы схемы 2.2 (RAG) на фикстуре: основание, база знаний, шаблоны, покрытие процесса, қазақша."""
+    sys.path.insert(0, str(ROOT))  # скрипт запускается из scripts/ — пакет req_review лежит в корне
+    from req_review.ui.preview import main as preview
+
+    html = preview([str(ROOT / "tests" / "fixtures" / "report_v22.json"), str(ROOT / "reports" / "preview_v22.html")]).resolve().as_uri()
+    page = b.new_page(viewport={"width": 1440, "height": 900}, device_scale_factor=1, reduced_motion="reduce")
+    console_guard(page, errors, "report/v22")
+    for name, hash_ in (("kb", "#kb"), ("coverage", "#coverage")):
+        page.goto(html + hash_)
+        page.wait_for_timeout(900)
+        page.screenshot(path=str(OUT / f"screenshot-{name}-light.png"))
+    page.goto(html + "#doc")
+    page.wait_for_timeout(700)
+    page.evaluate("""() => { const m = document.querySelector('mark.hl[data-f="R-013.1"]'); if (m) { m.scrollIntoView({block: 'center'}); m.click(); } }""")
+    page.wait_for_timeout(700)
+    page.screenshot(path=str(OUT / "screenshot-basis-light.png"))
+    page.goto(html + "#fixes")
+    page.wait_for_timeout(700)
+    page.evaluate("() => { const x = document.querySelector('.pattern'); if (x) x.closest('.card').scrollIntoView({block: 'center'}); }")
+    page.wait_for_timeout(400)
+    page.screenshot(path=str(OUT / "screenshot-pattern-light.png"))
+    page.goto(html + "?lang=kk")
+    page.wait_for_timeout(900)
+    page.screenshot(path=str(OUT / "screenshot-overview-kk.png"))
+    page.close()
+
+
+def shoot_demo(b, errors: list):
+    """Режим «Демо»: GIF живого прогона (проигрывание сохранённого прогона без сети) и ассистент с источниками."""
+    import shutil
+
+    d = ROOT / "reports" / "demo_v22"
+    d.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(ROOT / "tests" / "fixtures" / "report_v22.json", d / "report.json")
+    shutil.copyfile(ROOT / "reports" / "preview_v22.html", d / "report.html")
+    port = free_port()
+    srv = subprocess.Popen([sys.executable, "-m", "req_review.web", "--demo", str(d / "report.json")],
+                           cwd=ROOT, env={**mock_env(), "STUDIO_PORT": str(port)})
+    try:
+        for _ in range(100):
+            try:
+                with socket.create_connection(("127.0.0.1", port), timeout=0.2):
+                    break
+            except OSError:
+                time.sleep(0.1)
+        page = b.new_page(viewport={"width": 1440, "height": 900}, device_scale_factor=1)
+        console_guard(page, errors, "studio/demo")
+        # сеть закрыта: всё, кроме локального Studio, блокируется — демо обязано работать офлайн
+        page.route("**/*", lambda r: r.continue_() if r.request.url.startswith(f"http://127.0.0.1:{port}") else r.abort())
+        page.goto(f"http://127.0.0.1:{port}/")
+        page.wait_for_selector("#demo:not([hidden])", timeout=10000)
+        page.wait_for_timeout(500)
+        page.screenshot(path=str(OUT / "screenshot-studio-demo.png"))
+        frames = [page.screenshot()] * 3
+        page.click("#demo")
+        t0 = time.time()
+        while time.time() - t0 < 60:
+            frames.append(page.screenshot())
+            if page.evaluate("document.getElementById('s-result').classList.contains('active')"):
+                break
+            page.wait_for_timeout(160)
+        page.wait_for_timeout(2500)
+        frames.append(page.screenshot())
+        make_gif(frames, OUT / "live-run.gif")
+        page.click("#chat-sugg button:nth-child(2)")  # «На какую норму опирается замечание к …?»
+        page.wait_for_timeout(1500)
+        page.screenshot(path=str(OUT / "screenshot-studio-sources.png"))
         page.close()
     finally:
         srv.terminate()
@@ -170,10 +244,12 @@ def main():
     with sync_playwright() as p:
         b = p.chromium.launch(args=GL_ARGS)
         shoot_report(b, html, errors)
+        shoot_v22(b, errors)
         b.close()
         if "--no-studio" not in sys.argv:
             b = p.chromium.launch()  # Studio без WebGL: отдельный браузер без SwiftShader
             shoot_studio(b, errors)
+            shoot_demo(b, errors)
             b.close()
     if errors:
         print("Ошибки в консоли браузера:\n  " + "\n  ".join(errors))

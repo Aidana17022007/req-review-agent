@@ -68,7 +68,7 @@ def build(out: Path = OUT) -> Path:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(html, encoding="utf-8")
     slides = ROOT / "docs" / "slides.html"
-    slides.write_text(env().get_template("slides.html.j2").render(bench=bench_metrics(), team=team()), encoding="utf-8")
+    slides.write_text(env().get_template("slides.html.j2").render(bench=bench_metrics(), bench_rag=bench_metrics(ROOT / "bench" / "RESULTS_RAG.md"), team=team()), encoding="utf-8")
     return out
 
 

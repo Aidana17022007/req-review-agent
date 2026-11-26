@@ -633,6 +633,40 @@ pre.code{margin:0;padding:12px 14px;border-radius:12px;background:var(--surface-
 .pagehead.compact .btn{height:36px;padding:0 16px;font-size:13px}
 @media (max-width:640px){.hide-sm{display:none!important}}
 
+/* ============================== v6 (RAG): основание, база знаний, шаблоны, покрытие процесса, большие документы */
+.basis{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:14px;background:var(--surface-2);border:1px solid var(--border)}
+.basis .caption{display:flex;align-items:center;gap:6px}
+.basis-item{display:flex;gap:10px;align-items:flex-start}
+.basis-item .chip{flex:none}
+.basis-standard{background:var(--brand-soft);color:var(--brand)}
+.basis-law{background:var(--major-soft);color:var(--major)}
+.basis-template{background:var(--surface);color:var(--text-2);border-color:var(--border)}
+.hl-pop .basis{padding:10px 12px}
+.cat-chip{height:22px;font-size:11px}
+.pattern{display:flex;gap:12px;align-items:flex-start;margin-top:12px;padding:12px 14px;border-radius:14px;background:var(--brand-soft)}
+.pattern code{font-size:12px;background:var(--surface);padding:1px 6px;border-radius:6px}
+@media (max-width:640px){.pattern{flex-direction:column}}
+.kb-top{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.kb-row{display:flex;gap:14px;align-items:flex-start;padding:12px 0;border-top:1px dashed var(--border)}
+.kb-row:first-child{border-top:0}
+.kb-n{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--surface-2);font:700 12px/1 var(--font-sans);color:var(--text-2)}
+.kb-count{flex:none;font:700 20px/28px var(--font-sans);min-width:32px;text-align:right}
+.kb-reqs summary{cursor:pointer;color:var(--brand);margin-top:6px;list-style:none}
+.kb-reqs summary::-webkit-details-marker{display:none}
+.flowmap{display:flex;align-items:stretch;gap:8px;overflow-x:auto;padding:4px 2px 12px;scrollbar-width:thin}
+.flow-step{flex:0 0 200px;background:var(--surface);border:1px solid var(--border);border-top:4px solid var(--ok-accent);border-radius:16px;padding:14px}
+.flow-step.gap{border-top-color:var(--critical-accent);background:color-mix(in srgb,var(--critical-soft) 45%,var(--surface))}
+.flow-n{flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--brand);color:var(--on-brand);font:700 11px/1 var(--font-sans)}
+.flow-step.gap .flow-n{background:var(--critical-accent);color:#fff}
+.flow-arrow{flex:none;align-self:center;color:var(--text-3)}
+@media (max-width:760px){.flowmap{flex-direction:column;overflow:visible}.flow-step{flex:none}.flow-arrow{transform:rotate(90deg);align-self:center}}
+.doc-chunk{contain:content}
+.more-rows td{text-align:center;background:var(--surface-2)}
+@media print{.flowmap{flex-wrap:wrap;overflow:visible}.kb-reqs{display:block}.kb-reqs[open] summary,.kb-reqs summary{display:none}}
+#view-kb .chip{white-space:normal;height:auto;min-height:24px;padding-top:3px;padding-bottom:3px}
+.kb-row b,.kb-row .muted,.basis-item b{overflow-wrap:anywhere}
+@media (max-width:640px){.kb-row{gap:10px}.kb-count{font-size:16px;min-width:22px}}
+
 html,body{height:100%;overflow:hidden}
 .deck{height:100vh;position:relative}
 .slide{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:6vh 7vw;opacity:0;pointer-events:none;overflow:auto;
@@ -665,6 +699,11 @@ html,body{height:100%;overflow:hidden}
 .vs .us{background:var(--brand-soft)}
 .y{color:var(--ok);font-weight:700}.n{color:var(--text-3)}.p{color:var(--major);font-weight:600}
 .arch svg{width:100%;height:auto;display:block}
+.trust{width:100%;margin-top:12px;border-collapse:collapse;font:600 15px/1.3 var(--font-sans)}
+.trust th{font:600 11px/1 var(--font-sans);text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.8);text-align:left;padding:0 0 8px}
+.trust td{padding:8px 0;border-top:1px solid rgba(255,255,255,.2)}
+.trust td+td,.trust th+th{text-align:right}
+.trust td:nth-child(2),.trust td:nth-child(3){font:800 24px/1 var(--font-sans)}
 .arch text{font-family:var(--font-sans)}
 .person{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px}
 .avatar{width:84px;height:84px;border-radius:50%;display:grid;place-items:center;background:var(--brand-soft);color:var(--brand);border:3px solid var(--brand);font:800 28px/1 var(--font-sans)}
@@ -770,17 +809,28 @@ html,body{height:100%;overflow:hidden}
     </div>
   </section>
 
-  <!-- 7. Метрики -->
-  <section class="slide" aria-label="Метрики бенчмарка">
-    <div class="caption">Метрики · бенчмарк на документе с известными дефектами</div>
-    <h2 class="k2">Точность измеряется, а не обещается</h2>
-    <div class="cols c4">
-      <div class="card hero"><div class="caption" style="color:rgba(255,255,255,.85)">Recall</div><div class="metric-big" style="color:#fff">—</div><p class="small muted">появится после прогона на модели</p></div>
-      <div class="card"><div class="caption">Precision</div><div class="metric-big">—</div><p class="small muted">доля верных существенных замечаний</p></div>
-      <div class="card"><div class="caption">F1</div><div class="metric-big">—</div><p class="small muted">гармоническое среднее</p></div>
-      <div class="card"><div class="caption">Ложные срабатывания</div><div class="metric-big">—</div><p class="small muted">появится после прогона на модели</p></div>
+  <!-- 7. Почему нам можно верить: цитата документа + основание в норме + бенчмарк с/без RAG -->
+  <section class="slide" aria-label="Почему нам можно верить">
+    <div class="caption">Доверие</div>
+    <h2 class="k2">Почему нам можно верить</h2>
+    <div class="cols">
+      <div class="card"><div class="caption">1 · Цитата документа</div>
+        <p class="small" style="margin-top:10px">Каждое замечание — с дословной цитатой и номером строки. Код ищет цитату в документе; не нашёл — замечание отбрасывается и уходит в приложение.</p>
+        <div class="quote small" style="margin-top:12px">FR-06, строка 24: «кодом из SMS, push-уведомлением, биометрией и&nbsp;т.&nbsp;д.»</div></div>
+      <div class="card"><div class="caption">2 · Основание в норме</div>
+        <p class="small" style="margin-top:10px">RAG находит пункт стандарта, закон РК или шаблон и прикладывает фрагмент базы знаний с источником — «по памяти» модель не цитирует.</p>
+        <div class="quote small" style="margin-top:12px">ISO/IEC/IEEE 29148 · п. 5.2.5 d) Complete — пересказ своими словами; законы РК — со ссылкой на adilet.zan.kz</div></div>
+      <div class="card hero"><div class="caption" style="color:rgba(255,255,255,.85)">3 · Бенчмарк: 41 известный дефект</div>
+        <table class="trust" aria-label="Бенчмарк без RAG и с RAG">
+          <thead><tr><th></th><th>без RAG</th><th>с RAG</th></tr></thead>
+          <tbody>
+            <tr><td>Recall</td><td>—</td><td>—</td></tr>
+            <tr><td>Precision</td><td>—</td><td>—</td></tr>
+            <tr><td>F1</td><td>—</td><td>—</td></tr>
+          </tbody></table>
+        <p class="small muted" style="margin-top:10px">Бенчмарк на модели ещё не запускался (есть только mock-прогон словарных правил). Колонка «с RAG» — после прогона <code class="mono">bench/run.py</code> с базой знаний.</p></div>
     </div>
-    <p class="lead small">Бенчмарк на модели ещё не запускался (есть только mock-прогон словарных правил). Источник: <code class="mono">bench/RESULTS.md</code>, воспроизводится командой <code class="mono">python bench/run.py</code>.</p>
+    <p class="lead small">Только измеренные цифры: <code class="mono">bench/RESULTS.md</code>, модель и дата прогона указаны в файле. Баллы считает код по формулам из «Методики оценки».</p>
   </section>
 
   <!-- 8. Отличие от конкурентов -->
