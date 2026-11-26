@@ -211,6 +211,9 @@ def shoot_demo(b, errors: list):
         srv.wait(timeout=10)
 
 
+GIF_BUDGET = 950 * 1024  # правило репозитория: бинарники в git — меньше 1 МБ
+
+
 def make_gif(frames: list[bytes], path: Path, width: int = 960):
     try:
         from PIL import Image
@@ -220,13 +223,14 @@ def make_gif(frames: list[bytes], path: Path, width: int = 960):
     if not frames:
         return
     step = max(1, len(frames) // 40)  # не больше ~40 кадров
-    imgs = []
-    for png in frames[::step] + [frames[-1]] * 3:
-        im = Image.open(io.BytesIO(png)).convert("RGB")
-        im = im.resize((width, round(im.height * width / im.width)), Image.LANCZOS)
-        imgs.append(im.quantize(colors=128, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE))
-    imgs[0].save(path, save_all=True, append_images=imgs[1:], duration=[260] * (len(imgs) - 1) + [2200], loop=0, optimize=True)
-    print(f"GIF: {path} ({len(imgs)} кадров, {path.stat().st_size // 1024} КБ)")
+    src = [Image.open(io.BytesIO(png)).convert("RGB") for png in frames[::step] + [frames[-1]] * 3]
+    for w, colors in ((width, 128), (width, 64), (round(width * 0.85), 64), (round(width * 0.7), 64)):  # ужимаем, пока не влезет в бюджет
+        imgs = [im.resize((w, round(im.height * w / im.width)), Image.LANCZOS)
+                .quantize(colors=colors, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE) for im in src]
+        imgs[0].save(path, save_all=True, append_images=imgs[1:], duration=[260] * (len(imgs) - 1) + [2200], loop=0, optimize=True)
+        if path.stat().st_size <= GIF_BUDGET:
+            break
+    print(f"GIF: {path} ({len(imgs)} кадров, {w}px, {colors} цветов, {path.stat().st_size // 1024} КБ)")
 
 
 def main():
