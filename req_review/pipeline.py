@@ -114,6 +114,21 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
     step(4)
     domain = load_domain(opts.domain)
     run_extras(rv, llm, domain, log=log)
+    # R4: категории требований и карта покрытия процесса (без обращений к модели)
+    from .categories import apply_categories, coverage_map
+    from .checker import SetFinding, SetRef
+    from .extras import _anchor
+
+    rv.categories = apply_categories(rv)
+    rv.coverage = coverage_map(rv, domain)
+    gaps = [s for s in rv.coverage if not s["covered"]]
+    if gaps:
+        rv.set_findings.append(SetFinding(
+            "gap", "set_complete", [SetRef("DOC", _anchor(rv))],
+            "Шаги типового процесса не покрыты ни одним требованием: " + "; ".join(s["title"] for s in gaps) + ".",
+            "major" if len(gaps) >= 3 else "minor",
+            "Добавить требования или явно указать, что шаг вне рамок. Вопросы аналитику: "
+            + " ".join(f"{s['title']}: {s['question']}" for s in gaps), "карта покрытия"))
     critic = PROFILES[opts.profile]["critic"] if opts.critic is None else opts.critic
     step(5)
     if critic:
@@ -123,7 +138,26 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
         # self-consistency: даже в fast критичные замечания перепроверяются вторым проходом (1 запрос)
         run_critic(rv, llm, log=log, only_critical=True)
     default_confidence(rv)
+    # RAG: основания замечаний из базы знаний (стандарты, нормы РК, шаблоны). RAG=off или нет kb/ — пропускаем
+    try:
+        from .rag.basis import attach_basis
+        from .rag.index import get_kb
+
+        kb = get_kb()
+        if kb is not None:
+            st = attach_basis(rv, kb, log=log)
+            rv.rag = {"kb_chunks": len(kb.chunks), "search": kb.mode,
+                      "embedder": kb.embedder.label if kb.embedder else "none", **st}
+    except Exception as e:  # RAG никогда не ломает основной прогон
+        log(f"база знаний недоступна: {e}")
     return rv
+
+
+def _ctx_info(doc) -> dict:
+    st = getattr(doc, "_ctx_stats", None) or {}
+    pc = st.get("prompt_chars") or []
+    return {"mode": "RAG-выборка" if st.get("mode") == "rag" else "полный текст",
+            "avg_prompt_tokens": round(sum(pc) / len(pc) / 4) if pc else 0, "doc_chars": len(doc.text)}
 
 
 def build_context(rv, llm, opts: Options, started: datetime, t0: float, input_path: str) -> Context:
@@ -146,6 +180,9 @@ def build_context(rv, llm, opts: Options, started: datetime, t0: float, input_pa
                 ("тестовый (mock)" if llm.provider == "mock" else "облачная модель"),
         "calls": llm.stats.calls, "retries": llm.stats.retries, "tokens_in": llm.stats.prompt_tokens,
         "tokens_out": llm.stats.output_tokens, "duration_s": round(time.monotonic() - t0),
+        "model_switches": list(getattr(llm.stats, "switches", [])),
+        "rag": getattr(rv, "rag", None) or {"enabled": False},
+        "context": _ctx_info(rv.doc),
         "split_method": rv.split.method, "dropped": len(rv.dropped), "rejected": len(rv.rejected),
         "critic": rv.critic_used, "domain": opts.domain,
     }

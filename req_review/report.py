@@ -60,12 +60,19 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     w(f"| SHA-256 файла | `{doc.sha256[:16]}…` |")
     w(f"| Дата и время прогона | {started.strftime('%Y-%m-%d %H:%M:%S %Z').strip()} |")
     w(f"| Модель | {_cell(model_label)} |")
+    if ctx is not None and ctx.passport.get("model_switches"):
+        w(f"| Переключения модели | {_cell('; '.join(ctx.passport['model_switches']))} |")
     w(f"| Версия агента | {_cell(agent_version)} |")
     cached = getattr(llm_stats, "cached", 0)
     w(f"| Обращений к модели | {llm_stats.calls} (повторов: {llm_stats.retries}"
       + (f", из кэша: {cached}" if cached else "") + ") |")
     if ctx is not None:
         w(f"| Профиль / режим | {ctx.passport['profile']} / {ctx.passport['mode']} |")
+        cx, rg = ctx.passport.get("context") or {}, ctx.passport.get("rag") or {}
+        if cx:
+            w(f"| Контекст запросов | {cx['mode']} · ≈{cx['avg_prompt_tokens']} токенов на запрос (документ {cx['doc_chars']} симв.) |")
+        if rg.get("kb_chunks"):
+            w(f"| База знаний (RAG) | {rg['kb_chunks']} фрагментов · поиск: {rg['search']} · основания у {rg['basis']} замечаний |")
         w(f"| Критик-агент | {'включён' if rv.critic_used else 'выключен (профиль fast)'} |")
         w(f"| **Балл документа** | **{sc.doc_score} / 100** `{bar(sc.doc_score)}` |")
         w(f"| **Готовность к разработке** | **{sc.readiness} %** `{bar(sc.readiness)}` |")
@@ -130,6 +137,7 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
                 w(f"| {i} | {criterion_name(f.criterion)} | {_q(f.quote)} | {_cell(f.problem)} | "
                   f"{ICON[f.severity]} {SEVERITY[f.severity]} | {_cell(f.fix)} | {f.source} |")
             w("")
+            _basis_lines(w, rr.findings)
         bad = {f.criterion for f in rr.findings}
         ok = [v[0] for k, v in INDIVIDUAL.items() if k not in bad]
         if rr.llm_checked:
@@ -138,6 +146,10 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
         if rr.rewrite and rr.findings:
             w(f"**Предлагаемая формулировка:** {_cell(rr.rewrite)}")
             w("")
+            if getattr(rr, "rewrite_pattern", None):
+                p = rr.rewrite_pattern
+                w(f"*Шаблон из базы знаний ({_cell(p['title'])}, `{p['file']}`):* {_cell(p['template'])}")
+                w("")
         if rr.test_possible is True:
             w("<details><summary>🧪 Тест-проба: приёмочный тест составлен</summary>")
             w("")
@@ -188,6 +200,8 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
             w(f"**Проблема:** {_cell(f.problem)}")
             w("")
             w(f"**Как исправить:** {_cell(f.fix)}")
+            w("")
+            _basis_lines(w, [f])
             w("")
             w(f"*Источник: {f.source}*")
             w("")
@@ -246,6 +260,20 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
         w("|---|---|")
         for k, v in sc.radar_req.items():
             w(f"| {INDIVIDUAL[k][0]} | `{bar(v)}` |")
+        w("")
+    if getattr(rv, "categories", None):
+        from .categories import CATEGORIES
+
+        w("**Требования по категориям:** " + " · ".join(f"{CATEGORIES.get(k, k)} — {v}" for k, v in
+                                                       sorted(rv.categories.items(), key=lambda x: -x[1])))
+        w("")
+    if getattr(rv, "coverage", None):
+        w("**Покрытие типового процесса:**")
+        w("")
+        w("| Шаг процесса | Покрыт | Требования |")
+        w("|---|---|---|")
+        for s in rv.coverage:
+            w(f"| {s['title']} | {'✅ да' if s['covered'] else '🔴 нет'} | {', '.join(s['reqs'][:8]) or '—'} |")
         w("")
     w("**Нарушения по критериям:**")
     w("")
@@ -436,4 +464,21 @@ def _extras_tail(w, ctx) -> None:
         w("```mermaid")
         w(mermaid(ctx.graph))
         w("```")
+        w("")
+
+
+def _basis_lines(w, findings) -> None:
+    """«Основание» из базы знаний kb/: пункт стандарта / норма РК с дословной цитатой из kb (без повторов)."""
+    seen, lines = set(), []
+    for f in findings:
+        for b in getattr(f, "basis", None) or []:
+            key = (b["file"], b["section"])
+            if key in seen:
+                continue
+            seen.add(key)
+            kind = {"standards": "стандарт", "law_kz": "норма РК, пересказ", "patterns": "шаблон"}.get(b.get("kind"), "база знаний")
+            lines.append(f"- **Основание ({kind}):** {_cell(b['section'])} — «{_cell(b['quote'])}» (`{b['file']}`)")
+    if lines:
+        for x in lines:
+            w(x)
         w("")

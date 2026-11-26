@@ -27,6 +27,7 @@ class Finding:
     source: str  # "LLM" | "правило" | "LLM + правило" | "тест-проба"
     confidence: str = ""  # high | medium | low (после критика)
     critic_note: str = ""
+    basis: list = field(default_factory=list)  # основания из базы знаний kb/: [{"source","section","quote","url"}]
 
 
 @dataclass
@@ -42,6 +43,8 @@ class ReqResult:
     test_reason: str = ""
     ears: str = ""  # тип по EARS
     test_scenarios: list = field(default_factory=list)  # [{"title", "gherkin"}] — 1–3 сценария
+    rewrite_pattern: dict | None = None  # шаблон хорошего требования из kb/patterns, на который опирается правка
+    category: str = ""  # функциональное / нефункциональное / интерфейс / интеграция / данные / регуляторное
 
 
 @dataclass
@@ -62,6 +65,7 @@ class SetFinding:
     confidence: str = ""
     critic_note: str = ""
     values: list = field(default_factory=list)  # конфликтующие значения: [{"rid", "value", "quote"}]
+    basis: list = field(default_factory=list)
 
 
 @dataclass
@@ -78,6 +82,9 @@ class ReviewResult:
     glossary: object = None  # GlossaryResult
     critic_used: bool = False
     critic_scope: str = ""  # "all" | "critical" (self-consistency в профиле fast)
+    rag: dict = field(default_factory=dict)  # статистика базы знаний: число оснований, режим поиска
+    categories: dict = field(default_factory=dict)  # {категория: число требований}
+    coverage: list = field(default_factory=list)  # карта покрытия шагов процесса домена
 
 
 # ---------------------------------------------------------------- промпты
@@ -109,7 +116,8 @@ ISO/IEC/IEEE 29148:2018 п. 5.2.5 и IEEE Std 830-1998 п. 4.3:
    граничный — если в тексте есть порог, лимит или условие ошибки), у каждого title и gherkin. Если нельзя (нет измеримого критерия, открытый список, TBD,
    субъективная оценка) — possible=false, reason (почему) и blocker_quote — ДОСЛОВНЫЙ фрагмент, который мешает.
 10. Пиши на русском языке. Верни ТОЛЬКО JSON по схеме:
-{{"results":[{{"id":"R-001","ears":"event","findings":[{{"criterion":"<ключ критерия>","quote":"...","problem":"...","severity":"critical|major|minor","fix":"..."}}],"dismissed_hints":["..."],"suggested_rewrite":"...","test":{{"possible":true,"scenarios":[{{"title":"...","gherkin":"Дано ...\\nКогда ...\\nТогда ..."}}],"reason":"","blocker_quote":""}}}}]}}
+category — тип требования: functional | performance | availability | security | data | interface | integration | regulatory | acceptance | other.
+{{"results":[{{"id":"R-001","ears":"event","category":"functional","findings":[{{"criterion":"<ключ критерия>","quote":"...","problem":"...","severity":"critical|major|minor","fix":"..."}}],"dismissed_hints":["..."],"suggested_rewrite":"...","test":{{"possible":true,"scenarios":[{{"title":"...","gherkin":"Дано ...\\nКогда ...\\nТогда ..."}}],"reason":"","blocker_quote":""}}}}]}}
 Ключи критериев: {", ".join(INDIVIDUAL)}."""
 
 SYSTEM_SET = f"""Ты — опытный аналитик требований. Проведи статическое ревью НАБОРА требований целиком по критериям
@@ -120,6 +128,16 @@ ISO/IEC/IEEE 29148:2018 п. 5.2.6 и IEEE Std 830-1998 п. 4.3:
 и единиц измерения (terminology), пропуски — обязательные для такой системы аспекты, которые не покрыты
 (gap: ошибки и исключения, безопасность, производительность, роли и права, журналирование, ограничения, данные),
 неопределённые ссылки и зависимости (dependency), проблемы структуры, приоритизации и трассируемости (structure).
+
+Обязательно сверь между собой (это самые частые критичные дефекты):
+- каждое правило с критериями приёмки и примерами: пример, дающий другой результат, чем правило (дата/период, порог,
+  округление, часовой пояс), — противоречие с цитатами правила и примера;
+- правила между собой: ограничение (например, «не более одного … за период») и исключение из него в другом пункте;
+- спецификацию API саму с собой: назначение метода в описании, тип запроса (GET для изменения данных), URL всех сред,
+  параметры и их форматы в запросе и ответе, заявленный Content-Type и наличие тела, перечень кодов ответа и примеры
+  (код, указанный в одном месте и отличающийся в другом; ошибка внутри успешного кода; описанный, но не используемый код);
+- единицы измерения одной величины в разных разделах (тенге/тиыны, секунды/минуты);
+- незаполненные места шаблона: «—» вместо значения, «заполняется позже/тестировщиками», пустые таблицы и версии документа.
 
 Правила ответа:
 1. Каждое замечание содержит refs — список ссылок {{"id": "R-xxx", "quote": "дословный фрагмент текста этого требования"}}.
@@ -203,14 +221,22 @@ def check_requirements(reqs: list[Requirement], doc: Document, llm: BaseLLM, bat
     hints_by_req = {r.rid: check_requirement(r) for r in reqs}
     results = {r.rid: ReqResult(req=r) for r in reqs}
     llm_out: dict[str, dict] = {}
-    ctx = _doc_context(doc)
+    from .rag.context import context_for, mode_for, record
+
+    mode = mode_for(doc)
+    full_ctx = _doc_context(doc) if mode == "full" else ""
+    if mode == "rag":
+        log(f"  длинный документ ({len(doc.text)} символов): контекст запросов собирается RAG-выборкой")
 
     batches = [reqs[i:i + batch_size] for i in range(0, len(reqs), batch_size)]
     for bi, batch in enumerate(batches, start=1):
         log(f"  проверка требований: пакет {bi}/{len(batches)} ({batch[0].rid}–{batch[-1].rid})")
         payload = [_req_payload(r, hints_by_req[r.rid]) for r in batch]
-        prompt = (f"НАЗВАНИЕ ДОКУМЕНТА: {doc.title}\n\nПОЛНЫЙ ТЕКСТ ДОКУМЕНТА (контекст):\n<<<\n{ctx}\n>>>\n\n"
+        ctx = full_ctx if mode == "full" else context_for(doc, [r.text for r in batch])
+        title = "ПОЛНЫЙ ТЕКСТ ДОКУМЕНТА (контекст)" if mode == "full" else "КОНТЕКСТ ДОКУМЕНТА (оглавление, термины, релевантные фрагменты)"
+        prompt = (f"НАЗВАНИЕ ДОКУМЕНТА: {doc.title}\n\n{title}:\n<<<\n{ctx}\n>>>\n\n"
                   f"ТРЕБОВАНИЯ ДЛЯ ПРОВЕРКИ (JSON):\n{json.dumps(payload, ensure_ascii=False, indent=1)}")
+        record(doc, mode, len(SYSTEM_REQ) + len(prompt))
         try:
             data = llm.generate_json(SYSTEM_REQ, prompt, task="check", context={"reqs": batch, "hints": hints_by_req})
             for item in data.get("results", []):
@@ -240,6 +266,7 @@ def check_requirements(reqs: list[Requirement], doc: Document, llm: BaseLLM, bat
         if item:
             res.rewrite = str(item.get("suggested_rewrite", "") or "").strip()
             res.ears = str(item.get("ears", "") or "").strip().lower()
+            res.category = str(item.get("category", "") or "").strip().lower()
             _apply_test_probe(res, item.get("test") or {}, dropped)
         # срабатывания правил, которые модель не покрыла и не отклонила
         for h in hints_by_req[r.rid]:
@@ -325,7 +352,10 @@ def deterministic_set_checks(split: SplitResult, doc: Document) -> list[SetFindi
             a, b = norm(reqs[i].text), norm(reqs[j].text)
             if min(len(a), len(b)) < 25:
                 continue
-            ratio = difflib.SequenceMatcher(None, a, b).ratio()
+            sm = difflib.SequenceMatcher(None, a, b)
+            if sm.real_quick_ratio() < 0.85 or sm.quick_ratio() < 0.85:  # дешёвые верхние оценки — для длинных документов
+                continue
+            ratio = sm.ratio()
             if ratio >= 0.85:
                 out.append(SetFinding("duplicate", "set_consistent",
                                       [SetRef(reqs[i].rid, reqs[i].text[:100]), SetRef(reqs[j].rid, reqs[j].text[:100])],
@@ -359,7 +389,10 @@ def check_set(split: SplitResult, doc: Document, llm: BaseLLM, dropped: list[dic
     found = deterministic_set_checks(split, doc)
     log("  проверка набора требований целиком")
     payload = [_req_payload(r) for r in reqs]
-    prompt = (f"НАЗВАНИЕ ДОКУМЕНТА: {doc.title}\n\nПОЛНЫЙ ТЕКСТ ДОКУМЕНТА:\n<<<\n{_doc_context(doc)}\n>>>\n\n"
+    from .rag.context import mode_for, outline
+
+    doc_part = _doc_context(doc) if mode_for(doc) == "full" else outline(doc, 8000)  # длинный документ: оглавление + термины
+    prompt = (f"НАЗВАНИЕ ДОКУМЕНТА: {doc.title}\n\nДОКУМЕНТ:\n<<<\n{doc_part}\n>>>\n\n"
               f"НАРЕЗКА ТРЕБОВАНИЙ (JSON):\n{json.dumps(payload, ensure_ascii=False, indent=1)}")
     try:
         data = llm.generate_json(SYSTEM_SET, prompt, task="set", context={"reqs": reqs, "doc": doc})

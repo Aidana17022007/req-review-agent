@@ -630,30 +630,30 @@ pre.code{margin:0;padding:12px 14px;border-radius:12px;background:var(--surface-
 @media (max-width:640px){.tr{grid-template-columns:1fr 70px}.tr .bar{grid-column:1/-1}}</style></head><body>
 <header class="pagebar"><div class="logo"><span class="logo-mark"><svg class="ic " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/><path d="M8 11h6M11 8v6"/></svg></span><span>ReqLens<small>Бенчмарк точности</small></span></div></header>
 <main class="wrap-b">
-<div class="caption">mock / mock-heuristic · v2.0.0, коммит 72293a4 (v2.0.0-6-g72293a4-dirty)</div><h1 class="display" style="margin:8px 0 6px">Насколько точен агент</h1>
+<div class="caption">gemini / gemini-3.5-flash-lite · v2.0.0, коммит 260eb00 (v2.0.0-8-g260eb00)</div><h1 class="display" style="margin:8px 0 6px">Насколько точен агент</h1>
 <p class="muted" style="margin-bottom:24px">3 документа · 41 заранее известных дефектов · 15 заведомо чистых требований</p>
 <div class="grid g-4" style="margin-bottom:24px">
- <article class="kpi kpi-hero"><span class="lbl">Recall</span><div class="kpi-num">71 %</div><div class="sub">найдено 29 из 41</div></article>
- <article class="kpi"><span class="lbl">Precision</span><div class="kpi-num">100 %</div><div class="sub">доля верных существенных замечаний</div></article>
- <article class="kpi"><span class="lbl">F1</span><div class="kpi-num">83 %</div><div class="sub">гармоническое среднее</div></article>
- <article class="kpi"><span class="lbl">Ложные срабатывания</span><div class="kpi-num">0</div><div class="sub">на 15 чистых требованиях</div></article></div>
+ <article class="kpi kpi-hero"><span class="lbl">Recall</span><div class="kpi-num">93 %</div><div class="sub">найдено 38 из 41</div></article>
+ <article class="kpi"><span class="lbl">Precision</span><div class="kpi-num">97 %</div><div class="sub">доля верных существенных замечаний</div></article>
+ <article class="kpi"><span class="lbl">F1</span><div class="kpi-num">95 %</div><div class="sub">гармоническое среднее</div></article>
+ <article class="kpi"><span class="lbl">Ложные срабатывания</span><div class="kpi-num">1</div><div class="sub">на 15 чистых требованиях</div></article></div>
 <div class="grid g-2" style="align-items:start">
 <div class="card"><div class="card-title"><span class="h2">По типам дефектов</span></div>
 <div class="tr"><span class="small">Размытые слова</span><div class="bar"><i style="width:100.0%;background:var(--ok-accent)"></i></div>
 <b class="small" style="text-align:right">5 из 5</b></div><div class="tr"><span class="small">Открытое перечисление</span><div class="bar"><i style="width:100.0%;background:var(--ok-accent)"></i></div>
 <b class="small" style="text-align:right">3 из 3</b></div><div class="tr"><span class="small">TBD / не заполнено</span><div class="bar"><i style="width:100.0%;background:var(--ok-accent)"></i></div>
 <b class="small" style="text-align:right">3 из 3</b></div><div class="tr"><span class="small">«и/или»</span><div class="bar"><i style="width:100.0%;background:var(--ok-accent)"></i></div>
-<b class="small" style="text-align:right">3 из 3</b></div><div class="tr"><span class="small">Условность «при необходимости»</span><div class="bar"><i style="width:100.0%;background:var(--ok-accent)"></i></div>
+<b class="small" style="text-align:right">3 из 3</b></div><div class="tr"><span class="small">Проектное решение</span><div class="bar"><i style="width:100.0%;background:var(--ok-accent)"></i></div>
+<b class="small" style="text-align:right">3 из 3</b></div><div class="tr"><span class="small">Составное требование</span><div class="bar"><i style="width:100.0%;background:var(--ok-accent)"></i></div>
 <b class="small" style="text-align:right">3 из 3</b></div><div class="tr"><span class="small">Субъективная оценка</span><div class="bar"><i style="width:100.0%;background:var(--ok-accent)"></i></div>
+<b class="small" style="text-align:right">3 из 3</b></div><div class="tr"><span class="small">Абсолютная формулировка</span><div class="bar"><i style="width:100.0%;background:var(--ok-accent)"></i></div>
 <b class="small" style="text-align:right">3 из 3</b></div><div class="tr"><span class="small">Противоречие</span><div class="bar"><i style="width:100.0%;background:var(--ok-accent)"></i></div>
 <b class="small" style="text-align:right">3 из 3</b></div><div class="tr"><span class="small">Дубль</span><div class="bar"><i style="width:100.0%;background:var(--ok-accent)"></i></div>
 <b class="small" style="text-align:right">3 из 3</b></div><div class="tr"><span class="small">Цель без механизма</span><div class="bar"><i style="width:100.0%;background:var(--ok-accent)"></i></div>
-<b class="small" style="text-align:right">2 из 2</b></div><div class="tr"><span class="small">Нет значений / единиц</span><div class="bar"><i style="width:33.0%;background:var(--major-accent)"></i></div>
-<b class="small" style="text-align:right">1 из 3</b></div><div class="tr"><span class="small">Проектное решение</span><div class="bar"><i style="width:0.0%;background:var(--critical-accent)"></i></div>
-<b class="small" style="text-align:right">0 из 3</b></div><div class="tr"><span class="small">Составное требование</span><div class="bar"><i style="width:0.0%;background:var(--critical-accent)"></i></div>
-<b class="small" style="text-align:right">0 из 3</b></div><div class="tr"><span class="small">Абсолютная формулировка</span><div class="bar"><i style="width:0.0%;background:var(--critical-accent)"></i></div>
-<b class="small" style="text-align:right">0 из 3</b></div><div class="tr"><span class="small">Пассив без субъекта</span><div class="bar"><i style="width:0.0%;background:var(--critical-accent)"></i></div>
-<b class="small" style="text-align:right">0 из 1</b></div></div>
+<b class="small" style="text-align:right">2 из 2</b></div><div class="tr"><span class="small">Пассив без субъекта</span><div class="bar"><i style="width:100.0%;background:var(--ok-accent)"></i></div>
+<b class="small" style="text-align:right">1 из 1</b></div><div class="tr"><span class="small">Условность «при необходимости»</span><div class="bar"><i style="width:67.0%;background:var(--major-accent)"></i></div>
+<b class="small" style="text-align:right">2 из 3</b></div><div class="tr"><span class="small">Нет значений / единиц</span><div class="bar"><i style="width:33.0%;background:var(--major-accent)"></i></div>
+<b class="small" style="text-align:right">1 из 3</b></div></div>
 <div class="card"><div class="card-title"><span class="h2">Все дефекты</span></div>
 <div class="table-wrap"><table class="tbl"><thead><tr><th>Документ</th><th>Тип</th><th>Требования</th><th>Найден</th></tr></thead><tbody>
 <tr><td class="small">Оплата услуг</td><td class="small">Размытые слова</td><td class="small">PAY-01</td>
@@ -664,10 +664,10 @@ pre.code{margin:0;padding:12px 14px;border-radius:12px;background:var(--surface-
 <td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Оплата услуг</td><td class="small">«и/или»</td><td class="small">PAY-09</td>
 <td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Оплата услуг</td><td class="small">Условность «при необходимости»</td><td class="small">PAY-03</td>
 <td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Оплата услуг</td><td class="small">Проектное решение</td><td class="small">PAY-13</td>
-<td><span class="chip sev-critical">✕ нет</span></td></tr><tr><td class="small">Оплата услуг</td><td class="small">Составное требование</td><td class="small">PAY-12</td>
-<td><span class="chip sev-critical">✕ нет</span></td></tr><tr><td class="small">Оплата услуг</td><td class="small">Субъективная оценка</td><td class="small">NFR-06</td>
+<td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Оплата услуг</td><td class="small">Составное требование</td><td class="small">PAY-12</td>
+<td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Оплата услуг</td><td class="small">Субъективная оценка</td><td class="small">NFR-06</td>
 <td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Оплата услуг</td><td class="small">Абсолютная формулировка</td><td class="small">NFR-02</td>
-<td><span class="chip sev-critical">✕ нет</span></td></tr><tr><td class="small">Оплата услуг</td><td class="small">Противоречие</td><td class="small">PAY-05, SEC-01</td>
+<td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Оплата услуг</td><td class="small">Противоречие</td><td class="small">PAY-05, SEC-01</td>
 <td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Оплата услуг</td><td class="small">Дубль</td><td class="small">PAY-02, PAY-15</td>
 <td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Онлайн-кредит</td><td class="small">Размытые слова</td><td class="small">CR-03</td>
 <td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Онлайн-кредит</td><td class="small">Нет значений / единиц</td><td class="small">CR-11</td>
@@ -676,10 +676,10 @@ pre.code{margin:0;padding:12px 14px;border-radius:12px;background:var(--surface-
 <td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Онлайн-кредит</td><td class="small">«и/или»</td><td class="small">CR-13</td>
 <td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Онлайн-кредит</td><td class="small">Условность «при необходимости»</td><td class="small">CR-05</td>
 <td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Онлайн-кредит</td><td class="small">Проектное решение</td><td class="small">CR-07</td>
-<td><span class="chip sev-critical">✕ нет</span></td></tr><tr><td class="small">Онлайн-кредит</td><td class="small">Составное требование</td><td class="small">CR-12</td>
-<td><span class="chip sev-critical">✕ нет</span></td></tr><tr><td class="small">Онлайн-кредит</td><td class="small">Субъективная оценка</td><td class="small">CNF-01</td>
+<td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Онлайн-кредит</td><td class="small">Составное требование</td><td class="small">CR-12</td>
+<td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Онлайн-кредит</td><td class="small">Субъективная оценка</td><td class="small">CNF-01</td>
 <td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Онлайн-кредит</td><td class="small">Абсолютная формулировка</td><td class="small">CNF-02</td>
-<td><span class="chip sev-critical">✕ нет</span></td></tr><tr><td class="small">Онлайн-кредит</td><td class="small">Цель без механизма</td><td class="small">CNF-03</td>
+<td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Онлайн-кредит</td><td class="small">Цель без механизма</td><td class="small">CNF-03</td>
 <td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Онлайн-кредит</td><td class="small">Размытые слова</td><td class="small">CR-06</td>
 <td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Онлайн-кредит</td><td class="small">Противоречие</td><td class="small">CR-01, CR-15</td>
 <td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Онлайн-кредит</td><td class="small">Дубль</td><td class="small">CR-02, CR-16</td>
@@ -688,16 +688,16 @@ pre.code{margin:0;padding:12px 14px;border-radius:12px;background:var(--surface-
 <td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Открытие счёта</td><td class="small">TBD / не заполнено</td><td class="small">ON-10</td>
 <td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Открытие счёта</td><td class="small">«и/или»</td><td class="small">ON-12</td>
 <td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Открытие счёта</td><td class="small">Условность «при необходимости»</td><td class="small">ON-13</td>
-<td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Открытие счёта</td><td class="small">Проектное решение</td><td class="small">ON-14</td>
-<td><span class="chip sev-critical">✕ нет</span></td></tr><tr><td class="small">Открытие счёта</td><td class="small">Составное требование</td><td class="small">ON-08</td>
-<td><span class="chip sev-critical">✕ нет</span></td></tr><tr><td class="small">Открытие счёта</td><td class="small">Субъективная оценка</td><td class="small">ONF-03</td>
+<td><span class="chip sev-critical">✕ нет</span></td></tr><tr><td class="small">Открытие счёта</td><td class="small">Проектное решение</td><td class="small">ON-14</td>
+<td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Открытие счёта</td><td class="small">Составное требование</td><td class="small">ON-08</td>
+<td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Открытие счёта</td><td class="small">Субъективная оценка</td><td class="small">ONF-03</td>
 <td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Открытие счёта</td><td class="small">Абсолютная формулировка</td><td class="small">ON-05</td>
-<td><span class="chip sev-critical">✕ нет</span></td></tr><tr><td class="small">Открытие счёта</td><td class="small">Цель без механизма</td><td class="small">ONF-02</td>
+<td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Открытие счёта</td><td class="small">Цель без механизма</td><td class="small">ONF-02</td>
 <td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Открытие счёта</td><td class="small">Нет значений / единиц</td><td class="small">ONF-01</td>
 <td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Открытие счёта</td><td class="small">Пассив без субъекта</td><td class="small">ON-11</td>
-<td><span class="chip sev-critical">✕ нет</span></td></tr><tr><td class="small">Открытие счёта</td><td class="small">Противоречие</td><td class="small">ON-09, ON-15</td>
+<td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Открытие счёта</td><td class="small">Противоречие</td><td class="small">ON-09, ON-15</td>
 <td><span class="chip sev-ok">✓ да</span></td></tr><tr><td class="small">Открытие счёта</td><td class="small">Дубль</td><td class="small">ON-07, ON-16</td>
 <td><span class="chip sev-ok">✓ да</span></td></tr>
 </tbody></table></div></div></div>
-<div class="banner-mock" style="margin-top:24px">Режим mock: работают только правила и эвристики. Итоговые цифры — после прогона на модели.</div>
+
 </main></body></html>
