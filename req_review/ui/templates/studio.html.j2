@@ -11,23 +11,42 @@
 .drop{display:block;position:relative;border:2px dashed color-mix(in srgb,var(--brand) 45%,var(--border));border-radius:var(--r-card);padding:48px 24px;text-align:center;
   background:var(--surface);cursor:pointer;transition:border-color var(--motion-base),background var(--motion-base)}
 .drop:hover,.drop.over{border-color:var(--brand);background:var(--brand-soft)}
+.drop:focus-within{outline:2px solid var(--brand);outline-offset:2px}
 .drop .big{width:68px;height:68px;border-radius:50%;display:grid;place-items:center;margin:0 auto 16px;color:#fff;background:var(--grad-hero)}
 .drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
-.fmt{display:flex;gap:8px;justify-content:center;margin-top:14px}
+.fmt{display:flex;gap:8px;justify-content:center;margin-top:14px;flex-wrap:wrap}
 .screen{display:none}.screen.active{display:block;animation:fade var(--motion-base) var(--motion-ease)}
-#frame{width:100%;height:82vh;border:0;border-radius:var(--r-card);background:var(--surface)}
-.log{font:400 12px/18px var(--font-mono);color:var(--text-2);max-height:160px;overflow:auto;white-space:pre-wrap;margin-top:12px}
+#frame{width:100%;height:82vh;border:0;border-radius:var(--r-card);background:var(--surface);display:block}
+.log{font:400 12px/18px var(--font-mono);color:var(--text-2);max-height:160px;overflow:auto;white-space:pre-wrap;margin-top:8px}
 .feat .ic{color:var(--brand)}
+#res-grid{grid-template-columns:minmax(0,1fr) minmax(300px,380px);align-items:start}
+.side-col{display:flex;flex-direction:column;gap:16px;position:sticky;top:16px}
+.err-card{display:flex;gap:16px;align-items:flex-start}
+.err-card .empty-ic{margin:0;flex:none}
+.err-card.key .empty-ic{background:var(--major-soft);color:var(--major)}
+.err-card.quota .empty-ic,.err-card.error .empty-ic{background:var(--critical-soft);color:var(--critical)}
+.lv-st{display:inline-flex;align-items:center;gap:6px}
+.lv-spin{width:12px;height:12px;border-radius:50%;border:2px solid var(--brand);border-right-color:transparent;animation:spin .8s linear infinite;display:inline-block}
+.live-tbl td:nth-child(3){min-width:220px}.live-tbl td:first-child,.live-tbl td:nth-child(2){white-space:nowrap}
+.mini-cmp{display:flex;gap:10px;align-items:center}
+.ba-card{display:flex;flex-direction:column;align-items:center;gap:4px}
+.ba-lbl{font:var(--t-caption);text-transform:uppercase;letter-spacing:.06em;color:var(--text-3)}
+.def-list{display:flex;flex-direction:column;gap:8px;max-height:420px;overflow:auto}
+.def{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:10px 12px;border-radius:14px;background:var(--surface-2);align-items:start}
+@media (max-width:640px){.side-col{position:static}#frame{height:72vh}}
 </style>
 <script>(function(){try{var t=localStorage.getItem("reqlens-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}})()</script>
 </head>
 <body>
+<a class="sr-only" href="#content">Перейти к содержимому</a>
 <div class="app">
   <aside class="sidebar" id="sidebar" aria-label="Навигация">
     <div class="logo"><span class="logo-mark">{{ icon("lens", 18) }}</span><span>ReqLens<small>Studio</small></span></div>
     <div class="nav-label">Меню</div>
     <button class="nav-item" aria-current="page" type="button" id="nav-new">{{ icon("upload") }}<span>Новая проверка</span></button>
-    <button class="nav-item" type="button" id="nav-report" disabled style="opacity:.5">{{ icon("file") }}<span>Отчёт</span></button>
+    <button class="nav-item" type="button" id="nav-run" disabled>{{ icon("play") }}<span>Живой прогон</span></button>
+    <button class="nav-item" type="button" id="nav-report" disabled>{{ icon("file") }}<span>Отчёт</span></button>
+    <button class="nav-item" type="button" id="nav-compare" disabled>{{ icon("compare") }}<span>До / После</span></button>
     <div class="nav-label">Общее</div>
     <button class="nav-item" id="btn-theme" type="button">{{ icon("moon") }}<span>Тёмная тема</span></button>
     <div class="promo" style="margin-top:auto">
@@ -38,23 +57,24 @@
 
   <div class="main">
     <div class="topbar">
-      <button class="btn btn-round burger" id="burger" aria-label="Открыть меню">{{ icon("menu") }}</button>
+      <button class="btn btn-round burger" id="burger" aria-label="Открыть меню" aria-controls="sidebar">{{ icon("menu") }}</button>
       <span class="small muted grow">ИИ-ревью требований по ISO/IEC/IEEE 29148 и IEEE 830</span>
-      <span class="chip chip-brand">{{ icon("shield", 13) }}локальный сервер</span>
+      <span class="chip chip-brand" id="model-chip">{{ icon("shield", 13) }}локальный сервер</span>
     </div>
-    <div class="content">
+    <div class="content" id="content">
       <!-- Экран 1: загрузка -->
-      <section class="screen active" id="s-upload">
-        <header class="pagehead"><div><div class="caption">Новая проверка</div><h1 class="display" style="margin-top:6px">Загрузите документ требований</h1>
+      <section class="screen active" id="s-upload" aria-labelledby="h-upload">
+        <header class="pagehead"><div><div class="caption">Новая проверка</div><h1 class="display" style="margin-top:6px" id="h-upload">Загрузите документ требований</h1>
           <p class="muted" style="margin-top:6px">Агент выделит требования, проверит каждое и набор целиком, попробует написать тесты и предложит правки.</p></div></header>
+        <div id="health"></div>
         <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(260px,340px);align-items:start" id="up-grid">
           <form id="form" class="card stack">
             <label class="drop" id="drop">
-              <input type="file" id="file" name="file" accept="{{ formats }}" required>
+              <input type="file" id="file" name="file" accept="{{ formats }}" aria-describedby="drop-hint">
               <div class="big">{{ icon("upload", 28) }}</div>
               <div class="h2" id="drop-title">Перетащите файл сюда или нажмите, чтобы выбрать</div>
               <div class="fmt"><span class="chip chip-outline">.md</span><span class="chip chip-outline">.pdf</span><span class="chip chip-outline">.docx</span><span class="chip chip-outline">.txt</span></div>
-              <div class="small faint" style="margin-top:10px">до 20 МБ</div>
+              <div class="small faint" style="margin-top:10px" id="drop-hint">до 20 МБ · проверка начнётся сразу после выбора файла</div>
             </label>
             <div class="row wrap between">
               <div class="row wrap">
@@ -67,106 +87,296 @@
                   <button type="button" data-v="fintech" aria-pressed="true">Финтех</button><button type="button" data-v="none" aria-pressed="false">Без домена</button>
                 </div>
               </div>
-              <button class="btn btn-primary" id="go" type="submit" disabled>{{ icon("play", 16) }}Запустить проверку</button>
+              <div class="row wrap">
+                <button class="btn btn-outline" id="sample" type="button">{{ icon("file", 16) }}Демо-документ</button>
+                <button class="btn btn-primary" id="go" type="submit" disabled>{{ icon("play", 16) }}Запустить проверку</button>
+              </div>
             </div>
             <p class="small faint">Быстрый — минимум обращений к модели (бесплатный тариф). Полный — плюс критик-агент и повторная оценка исправленного документа. Офлайн — локальная модель через Ollama.</p>
           </form>
           <div class="stack">
             <article class="kpi kpi-hero"><span class="lbl">Что получите</span><div class="kpi-num">6</div><div class="sub">артефактов: отчёт .md, HTML, JSON, Excel, CSV для Jira, исправленный документ</div></article>
-            <div class="card feat">{{ icon("flask") }}<div class="h3" style="margin-top:6px">Тест-проба</div><p class="small muted">Gherkin-тест к каждому требованию — или доказательство, что он невозможен.</p></div>
-            <div class="card feat">{{ icon("bank") }}<div class="h3" style="margin-top:6px">Финтех-полнота</div><p class="small muted">2FA, лимиты, идемпотентность, AML, персональные данные, SLA.</p></div>
+            <div class="card feat">{{ icon("bot") }}<div class="h3" style="margin-top:6px">AI-ассистент</div><p class="small muted">Спросите «Почему R-006 критичное?» — ответ со ссылками на требования.</p></div>
+            <div class="card feat">{{ icon("compare") }}<div class="h3" style="margin-top:6px">До / После</div><p class="small muted">Проверьте исправленную версию и сравните балл и дефекты.</p></div>
           </div>
         </div>
       </section>
 
-      <!-- Экран 2: агент работает -->
-      <section class="screen" id="s-progress">
-        <header class="pagehead"><div><div class="caption">Проверка</div><h1 class="display" style="margin-top:6px" id="p-name">документ</h1></div></header>
+      <!-- Экран 2: живой прогон -->
+      <section class="screen" id="s-progress" aria-labelledby="p-name">
+        <header class="pagehead"><div><div class="caption" id="p-caption">Живой прогон</div><h1 class="display" style="margin-top:6px" id="p-name">документ</h1></div></header>
         <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(260px,360px);align-items:start" id="pr-grid">
-          <article class="agent">
-            <span class="status st-run" id="p-status">{{ icon("play", 11) }}ВЫПОЛНЯЕТСЯ</span>
-            <div class="vis" id="p-vis"></div>
-            <div class="info">
-              <div class="h2">Агент проверки требований</div>
-              <div class="metrics">
-                <div class="metric"><div class="kpi-num" id="p-step">0/7</div><div class="small muted">шагов выполнено</div></div>
-                <div class="metric"><div class="kpi-num" style="color:var(--text)" id="p-time">0<span class="h3 faint"> с</span></div><div class="small muted">время прогона</div></div>
+          <div class="col-fill">
+            <article class="agent">
+              <span class="status st-run" id="p-status">{{ icon("play", 11) }}ВЫПОЛНЯЕТСЯ</span>
+              <div class="vis" id="p-vis"></div>
+              <div class="info">
+                <div class="h2">Агент проверки требований</div>
+                <div class="metrics">
+                  <div class="metric"><div class="kpi-num" id="p-step">0/7</div><div class="small muted">шагов выполнено</div></div>
+                  <div class="metric"><div class="kpi-num" style="color:var(--text)" id="p-done">0</div><div class="small muted">требований проверено</div></div>
+                  <div class="metric"><div class="kpi-num" style="color:var(--text)" id="p-time">0<span class="h3 faint"> с</span></div><div class="small muted">время прогона</div></div>
+                </div>
+                <div class="bar" style="height:10px" role="progressbar" aria-label="Прогресс прогона" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="p-barwrap"><i id="p-bar" style="width:0%"></i></div>
               </div>
-              <div class="bar" style="height:10px"><i id="p-bar" style="width:0%"></i></div>
-              <div class="log" id="log" aria-live="polite"></div>
-            </div>
-            <div class="foot"><span class="live"><i></i>LIVE</span><span class="small muted grow" id="p-cur">Подготовка…</span></div>
-          </article>
-          <div class="card"><div class="card-title">{{ icon("trace") }}<span class="h2">Трассировка агента</span></div>
-            <ol class="trace" id="trace">{% for s in steps %}<li class="skip" data-i="{{ loop.index0 }}"><time>—</time><span class="dot" aria-hidden="true"></span><div><div class="t">{{ s }}</div><div class="d">ожидает</div></div></li>{% endfor %}</ol></div>
+              <div class="foot"><span class="live" id="p-live"><i></i>LIVE</span><span class="small muted grow" id="p-cur" aria-live="polite">Подготовка…</span></div>
+            </article>
+            <div class="card"><div class="card-title">{{ icon("list") }}<span class="h2 grow">Требования</span><span class="chip chip-brand" id="lv-count">ждём нарезку</span></div>
+              <div class="table-wrap"><table class="tbl live-tbl"><thead><tr><th scope="col">ID</th><th scope="col">В документе</th><th scope="col">Формулировка</th><th scope="col">Статус</th><th scope="col">Балл</th></tr></thead>
+                <tbody id="lv-body"><tr><td colspan="5"><div class="skel" style="width:60%"></div></td></tr></tbody></table></div>
+              <p class="small faint" style="margin-top:10px">Статус «предварительно» — по ответу модели до проверки цитат; итог появится по завершении.</p></div>
+          </div>
+          <div class="stack">
+            <div class="card"><div class="card-title">{{ icon("trace") }}<span class="h2">Трассировка агента</span></div>
+              <ol class="trace" id="trace">{% for s in steps %}<li class="skip" data-i="{{ loop.index0 }}"><time>—</time><span class="dot" aria-hidden="true"></span><div><div class="t">{{ s }}</div><div class="d">ожидает</div></div></li>{% endfor %}</ol></div>
+            <details class="card more"><summary>Журнал агента</summary><div class="log" id="log" aria-live="off"></div></details>
+          </div>
         </div>
       </section>
 
-      <!-- Экран 3: результат -->
-      <section class="screen" id="s-result">
+      <!-- Экран 3: результат + ассистент -->
+      <section class="screen" id="s-result" aria-labelledby="r-title">
         <header class="pagehead" style="flex-direction:column;align-items:stretch"><div><div class="caption">Готово</div><h1 class="h1" style="margin-top:6px" id="r-title">Отчёт</h1></div>
           <div class="row wrap" id="downloads"></div></header>
-        <iframe id="frame" title="Интерактивный отчёт"></iframe>
+        <div class="grid" id="res-grid">
+          <iframe id="frame" title="Интерактивный отчёт"></iframe>
+          <div class="side-col">
+            <section class="card chat" id="chat" aria-label="AI-ассистент">
+              <div class="card-title" style="margin-bottom:0">{{ icon("bot") }}<span class="h2 grow">AI Assistant</span><span class="chip chip-brand">по отчёту</span></div>
+              <div class="chat-log" id="chat-log" aria-live="polite"><div class="msg ai">Здравствуйте! Я отвечаю по данным этого отчёта. Нажмите на подсказку или задайте свой вопрос — ссылки на требования открывают их в отчёте.</div></div>
+              <div class="chips-q" id="chat-sugg"></div>
+              <form class="chat-form" id="chat-form"><label class="sr-only" for="chat-q">Вопрос ассистенту</label>
+                <input id="chat-q" autocomplete="off" maxlength="500" placeholder="Например: почему FR-06 критичное?">
+                <button class="btn btn-primary btn-icon" type="submit" aria-label="Отправить вопрос">{{ icon("send", 16) }}</button></form>
+            </section>
+            <section class="card" id="cmp-card" aria-label="Сравнение версий">
+              <div class="card-title">{{ icon("compare") }}<span class="h2">Сравнить версии</span></div>
+              <p class="small muted">Исправили документ? Проверьте новую версию — покажем балл до и после, исправленные и новые дефекты.</p>
+              <div class="row wrap" style="margin-top:12px">
+                <button class="btn btn-sm btn-primary" id="cmp-fixed" type="button">{{ icon("wand", 14) }}Проверить исправленный агентом</button>
+                <label class="btn btn-sm btn-outline" style="position:relative">{{ icon("upload", 14) }}Загрузить новую версию<input type="file" id="cmp-file" accept="{{ formats }}" style="position:absolute;inset:0;opacity:0;cursor:pointer" aria-label="Загрузить новую версию документа"></label>
+              </div>
+            </section>
+          </div>
+        </div>
       </section>
-      <div class="card" id="err" style="display:none;margin-top:16px;border-color:var(--critical-accent)"></div>
+
+      <!-- Экран 4: до / после -->
+      <section class="screen" id="s-compare" aria-labelledby="c-title">
+        <header class="pagehead"><div class="grow"><div class="caption">Сравнение версий</div><h1 class="display" style="margin-top:6px" id="c-title">До / После</h1>
+          <p class="muted" style="margin-top:6px" id="c-sub"></p></div>
+          <div class="row wrap"><button class="btn btn-outline" id="c-open-new" type="button">{{ icon("file", 16) }}Отчёт новой версии</button></div></header>
+        <div id="c-body"></div>
+      </section>
+      <div id="err"></div>
     </div>
   </div>
 </div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
 (function(){
-  const $=s=>document.querySelector(s);
+  "use strict";
+  const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+  const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const ICONS={{ ICONS|tojson }};
+  const ic=(n,s=16)=>`<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]||""}</svg>`;
+  const REDUCED=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const SEV={critical:["Критичный","alert"],major:["Существенный","alert"],minor:["Незначительный","chat"],ok:["Без замечаний","check"]};
+  const chip=(s,t)=>s==="ok"?`<span class="chip chip-neutral">${ic("check",13)}${esc(t||SEV.ok[0])}</span>`:`<span class="chip sev-${s}">${ic(SEV[s][1],13)}${esc(t||SEV[s][0])}</span>`;
+  const scoreColor=v=>v>=80?"var(--ok-accent)":v>=50?"var(--major-accent)":"var(--critical-accent)";
+  const ring=v=>`<div class="mini-ring" style="--v:${v};--c:${v>=100?"var(--neutral-bar)":scoreColor(v)}"><span>${v}</span></div>`;
+  let toastT;const toast=m=>{const t=$("#toast");t.innerHTML=ic("check",16)+esc(m);t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),2200);};
+  function countUp(el,to,dur=1100){to=+to;if(REDUCED||!isFinite(to)){el.textContent=to;return;}const t0=performance.now();
+    const st=t=>{const k=Math.min(1,(t-t0)/dur);el.textContent=Math.round(to*(1-Math.pow(1-k,3)));if(k<1)requestAnimationFrame(st);};requestAnimationFrame(st);}
+
+  // ---------------- тема, меню, экраны
   const cur=()=>document.documentElement.dataset.theme||"light";
-  $("#btn-theme").onclick=()=>{const n=cur()==="dark"?"light":"dark";document.documentElement.dataset.theme=n;try{localStorage.setItem("reqlens-theme",n)}catch(e){}};
+  const themeBtn=()=>{const d=cur()==="dark";$("#btn-theme").innerHTML=ic(d?"sun":"moon",18)+`<span>${d?"Светлая тема":"Тёмная тема"}</span>`;};
+  $("#btn-theme").onclick=()=>{const n=cur()==="dark"?"light":"dark";document.documentElement.dataset.theme=n;try{localStorage.setItem("reqlens-theme",n)}catch(e){}themeBtn();
+    try{const f=$("#frame").contentDocument;if(f){f.documentElement.dataset.theme=n;}}catch(e){}};themeBtn();
   $("#burger").onclick=()=>$("#sidebar").classList.toggle("open");
-  $("#nav-new").onclick=()=>location.reload();
-  const state={profile:"fast",domain:"fintech"};
-  for(const id of ["seg-profile","seg-domain"]) $("#"+id).addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+  const NAV={"s-upload":"#nav-new","s-progress":"#nav-run","s-result":"#nav-report","s-compare":"#nav-compare"};
+  function show(id){$$(".screen").forEach(s=>s.classList.toggle("active",s.id===id));
+    Object.entries(NAV).forEach(([s,n])=>{const b=$(n);if(s===id)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current");});
+    $("#sidebar").classList.remove("open");window.scrollTo({top:0});}
+  const enable=(n,fn)=>{const b=$(n);b.disabled=false;b.onclick=fn;};
+  $("#nav-new").onclick=()=>{clearErr();show("s-upload");};
+
+  // ---------------- состояние модели: нет ключа — предупреждаем до запуска
+  fetch("/api/health").then(r=>r.json()).then(h=>{
+    $("#model-chip").innerHTML=ic(h.mock?"flask":"cpu",13)+esc(h.mock?"mock-режим (без модели)":h.model);
+    if(!h.key_ok)$("#health").innerHTML=`<div class="banner-err banner-warn" role="alert">${ic("key",18)}<div><b>Ключ модели не найден.</b> Проверка завершится ошибкой: в .env сервера не задан ${esc(h.key_name||"ключ API")}.
+      <div class="small" style="margin-top:4px">Скопируйте .env.example в .env, впишите ${esc(h.key_name||"ключ")} и перезапустите Studio. Для демо без ключа: <code class="mono">LLM_PROVIDER=mock</code>.</div></div></div>`;
+    else if(h.mock)$("#health").innerHTML=`<div class="banner-err banner-warn">${ic("flask",18)}<div><b>Тестовый режим (mock).</b> Модель не вызывается: замечания строятся эвристиками — удобно для демо живого прогона, но не для сдачи.</div></div>`;
+  }).catch(()=>{});
+
+  // ---------------- загрузка
+  const state={profile:"fast",domain:"fintech",job:null,reportJob:null,src:null};
+  for(const id of ["seg-profile","seg-domain"])$("#"+id).addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
     [...$("#"+id).children].forEach(x=>x.setAttribute("aria-pressed",x===b));state[id==="seg-profile"?"profile":"domain"]=b.dataset.v;});
   const file=$("#file"),drop=$("#drop");
-  const pick=()=>{const f=file.files[0];$("#go").disabled=!f;$("#drop-title").textContent=f?`${f.name} · ${(f.size/1024).toFixed(0)} КБ`:"Перетащите файл сюда или нажмите, чтобы выбрать";};
-  file.onchange=pick;
+  const pick=()=>{const f=file.files[0];$("#go").disabled=!f;$("#drop-title").textContent=f?`${f.name} · ${Math.max(1,Math.round(f.size/1024))} КБ`:"Перетащите файл сюда или нажмите, чтобы выбрать";};
+  file.onchange=()=>{pick();};
   ["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over")}));
   ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,()=>drop.classList.remove("over")));
-  drop.addEventListener("drop",e=>{e.preventDefault();if(e.dataTransfer.files.length){file.files=e.dataTransfer.files;pick();}});
-  const show=id=>document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("active",s.id===id));
-  const err=m=>{const e=$("#err");e.style.display="block";e.innerHTML=`<b style="color:var(--critical)">Ошибка:</b> ${m.replace(/[<>&]/g,"")}`;$("#go").classList.remove("loading");
-    $("#p-status").className="status st-fail";$("#p-status").textContent="ОШИБКА";};
-  // декоративная «сфера агента»
+  // drag-and-drop: файл бросили — проверка стартует сразу (ключевой момент демо)
+  drop.addEventListener("drop",e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(!f)return;try{file.files=e.dataTransfer.files;}catch(x){}pick();launch(f);});
+  $("#form").onsubmit=e=>{e.preventDefault();if(file.files[0])launch(file.files[0]);};
+  $("#sample").onclick=async()=>{const b=$("#sample");b.classList.add("loading");
+    try{const t=await (await fetch("/api/sample")).text();launch(new File([t],"Пример_P2P-переводы.md",{type:"text/markdown"}));}catch(x){showErr("error","Не удалось загрузить демо-документ.");}
+    finally{b.classList.remove("loading");}};
+
+  function clearErr(){$("#err").innerHTML="";}
+  const ERR={key:["key","Нет ключа API","Модель не приняла запрос: ключ не задан или неверный.",["Откройте .env на сервере и впишите GEMINI_API_KEY (или OPENAI_API_KEY).","Перезапустите Studio: python -m req_review.web","Для демо без ключа: LLM_PROVIDER=mock в .env."]],
+    quota:["clock","Лимит API исчерпан","Модель отказала из-за квоты (429). Уже полученные ответы сохранены в кэше — повторный запуск продолжит с того же места.",["Подождите сброса квоты или смените GEMINI_MODEL / ключ.","Увеличьте LLM_BATCH_SIZE — меньше запросов на документ.","Профиль «Офлайн» работает с локальной моделью без лимитов."]],
+    noreqs:["file","Требования не найдены","Похоже, это не документ требований (ТЗ, SRS): агент не нашёл ни идентификаторов вида FR-01 / 3.1.2, ни формулировок «должен», «необходимо», «shall».",
+      ["Загрузите техническое задание или спецификацию требований — например, «Демо-документ».","Оформите требования пунктами с ID (FR-01, NFR-02 …) или модальными словами («Система должна …»).",
+       "В mock-режиме нарезка «моделью» ищет только русские и английские модальные слова; с настоящей моделью (ключ Gemini) нарезка идёт по смыслу."],true],
+    error:["alert","Проверка не удалась","",["Проверьте, что файл открывается и содержит текст требований.","Повторите запуск; при повторной ошибке — смотрите журнал агента."]]};
+  function showErr(code,msg){const e=ERR[code]||ERR.error,noRetry=!!e[4];
+    // карточку ошибки показываем сразу под заголовком текущего экрана, а не внизу страницы
+    const scr=document.querySelector(".screen.active"),errEl=$("#err");
+    if(scr&&scr.querySelector(".pagehead"))scr.querySelector(".pagehead").after(errEl);
+    errEl.innerHTML=`<div class="card err-card ${code}" role="alert" style="margin:0 0 16px"><span class="empty-ic">${ic(e[0],26)}</span><div class="grow">
+      <div class="h2">${esc(e[1])}</div><p class="small muted" style="margin-top:4px">${esc(e[2]||"")}</p>${msg?`<pre class="code small" style="margin-top:10px">${esc(msg)}</pre>`:""}
+      <ul class="small" style="margin:10px 0 0;padding-left:18px">${e[3].map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
+      <div class="row wrap" style="margin-top:12px">${noRetry?`<button class="btn btn-sm btn-primary" type="button" id="err-new">${ic("upload",14)}Загрузить другой файл</button><button class="btn btn-sm btn-outline" type="button" id="err-sample">${ic("file",14)}Демо-документ</button>`
+        :`<button class="btn btn-sm btn-primary" type="button" id="err-retry">${ic("refresh",14)}Попробовать снова</button><button class="btn btn-sm btn-outline" type="button" id="err-new">Новая проверка</button>`}</div></div></div>`;
+    if($("#err-retry"))$("#err-retry").onclick=()=>{clearErr();if(state.src)launch(state.src.file,state.src.cmp);};
+    if($("#err-sample"))$("#err-sample").onclick=()=>{clearErr();$("#sample").click();};
+    $("#err-new").onclick=()=>{clearErr();show("s-upload");};
+    $("#go").classList.remove("loading");$("#p-status").className="status st-fail";$("#p-status").innerHTML=ic("x",11)+"ОШИБКА";
+    $("#p-cur").textContent=e[1];$("#p-live").innerHTML="СТОП";$("#p-live").style.color="var(--critical)";
+    // таблица не должна «ждать нарезку» вечно
+    if(!document.querySelector("#lv-body tr:not(.sk) td:nth-child(2)"))$("#lv-body").innerHTML=`<tr><td colspan="5" class="small muted">${ic("x",14)} ${code==="noreqs"?"В документе не найдено требований — таблица пуста.":"Прогон остановлен — таблица не заполнена."}</td></tr>`;
+    $("#lv-count").textContent="остановлено";
+    errEl.scrollIntoView({behavior:REDUCED?"auto":"smooth",block:"start"});}
+
+  // ---------------- декоративная «сфера агента»
   (function(){let s=7;const r=()=>((s=(s*9301+49297)%233280)/233280);const w=320,h=260,cx=170,cy=130,R=100,fx=cx-72,fy=cy+5;let l="",d="";const ga=Math.PI*(3-Math.sqrt(5));
     for(let i=0;i<480;i++){const rr=R*Math.sqrt((i+.5)/480)*(.92+r()*.12),a=i*ga,x=cx+Math.cos(a)*rr*(.78+.22*Math.abs(Math.sin(a))),y=cy+Math.sin(a)*rr,e=rr/R;
       d+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(.7+e*1.3).toFixed(2)}" fill="var(--brand)" opacity="${(.25+e*.7).toFixed(2)}"/>`;
       if(i%4===0&&e>.45)l+=`<line x1="${fx}" y1="${fy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--brand)" stroke-width=".5" opacity="${(.12+e*.25).toFixed(2)}"/>`;}
     $("#p-vis").innerHTML=`<svg viewBox="0 0 ${w} ${h}" aria-hidden="true"><g style="transform-origin:${cx}px ${cy}px;animation:spin 18s linear infinite">${l}${d}</g></svg>`;})();
-  const ICO={ok:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m5 12 4.5 4.5L19 7"/></svg>'};
-  $("#form").onsubmit=async e=>{
-    e.preventDefault();$("#err").style.display="none";$("#go").classList.add("loading");
-    const fd=new FormData();fd.append("file",file.files[0]);fd.append("profile",state.profile);fd.append("domain",state.domain);
-    let r;try{r=await fetch("/api/review",{method:"POST",body:fd});}catch(x){return err("сервер недоступен");}
-    if(!r.ok){const j=await r.json().catch(()=>({detail:r.statusText}));return err(j.detail||"не удалось начать проверку");}
-    const {job}=await r.json();$("#p-name").textContent=file.files[0].name;show("s-progress");
-    const t0=Date.now();let curI=-1;const items=[...document.querySelectorAll("#trace li")];
+
+  // ---------------- живой прогон: шаги, пакеты требований, лог (SSE)
+  const items=[...document.querySelectorAll("#trace li")];
+  function resetProgress(name,caption){
+    $("#p-name").textContent=name;$("#p-caption").textContent=caption;$("#p-status").className="status st-run";$("#p-status").innerHTML=ic("play",11)+"ВЫПОЛНЯЕТСЯ";
+    $("#p-step").textContent=`0/${items.length}`;$("#p-done").textContent="0";$("#p-bar").style.width="0%";$("#p-cur").textContent="Подготовка…";$("#p-live").innerHTML="<i></i>LIVE";$("#p-live").style.color="";$("#log").textContent="";
+    $("#lv-body").innerHTML=`<tr><td colspan="5"><div class="skel" style="width:60%"></div></td></tr>`;$("#lv-count").textContent="ждём нарезку";
+    items.forEach(it=>{it.className="skip";it.querySelector("time").textContent="—";it.querySelector(".dot").innerHTML="";it.querySelector(".d").textContent="ожидает";});
+  }
+  async function launch(f,cmp){
+    clearErr();state.src={file:f,cmp};$("#go").classList.add("loading");
+    const fd=new FormData();let url="/api/review";
+    if(cmp){url=`/api/jobs/${state.reportJob}/compare`;if(cmp==="fixed")fd.append("use_fixed","true");else fd.append("file",f);}
+    else{fd.append("file",f);fd.append("profile",state.profile);fd.append("domain",state.domain);}
+    let r;try{r=await fetch(url,{method:"POST",body:fd});}catch(x){$("#go").classList.remove("loading");return showErr("error","Сервер Studio недоступен.");}
+    $("#go").classList.remove("loading");
+    if(!r.ok){const j=await r.json().catch(()=>({detail:r.statusText}));show(cmp?"s-result":"s-upload");return showErr("error",String(j.detail||"не удалось начать проверку"));}
+    const {job}=await r.json();state.job=job;
+    resetProgress(cmp==="fixed"?"Исправленная версия документа":f.name,cmp?"Проверка новой версии":"Живой прогон");
+    enable("#nav-run",()=>show("s-progress"));show("s-progress");follow(job,!!cmp);
+  }
+  function follow(job,isCompare){
+    const t0=Date.now();let curI=-1,total=0,done=0;const rows={};
     const tick=setInterval(()=>{$("#p-time").innerHTML=Math.round((Date.now()-t0)/1000)+'<span class="h3 faint"> с</span>';},500);
     const clock=()=>new Date().toTimeString().slice(0,8);
+    const setDone=()=>{$("#p-done").textContent=done;$("#lv-count").textContent=total?`проверено ${done} из ${total}`:`проверено ${done}`;};
+    const body=$("#lv-body");
+    const rowHTML=(r,st)=>`<td><b>${esc(r.rid)}</b></td><td>${r.doc_id?`<span class="chip chip-brand">${esc(r.doc_id)}</span>`:'<span class="small faint">—</span>'}</td><td class="small">${esc(r.text)}</td><td>${st}</td><td class="lv-score">${r.score!=null?ring(r.score):'<span class="faint">—</span>'}</td>`;
+    function upsert(r,st,flash){let tr=rows[r.rid];
+      if(!tr){if(!Object.keys(rows).length)body.innerHTML="";tr=document.createElement("tr");tr.id="lv-"+r.rid;rows[r.rid]=tr;
+        const sk=body.querySelector("tr.sk");if(sk)body.insertBefore(tr,sk);else body.appendChild(tr);if(sk)sk.remove();}
+      tr.innerHTML=rowHTML(r,st);if(flash){tr.classList.remove("new");void tr.offsetWidth;tr.classList.add("new");}}
     const es=new EventSource(`/api/jobs/${job}/events`);
+    es.onerror=()=>{if(es.readyState===2){clearInterval(tick);}};
     es.onmessage=m=>{const ev=JSON.parse(m.data);
       if(ev.kind==="step"){
-        if(curI>=0&&items[curI]){items[curI].className="ok";items[curI].querySelector(".dot").innerHTML=ICO.ok;items[curI].querySelector(".d").textContent="готово · "+((Date.now()-t0)/1000).toFixed(1)+" с";}
+        if(curI>=0&&items[curI]){items[curI].className="ok";items[curI].querySelector(".dot").innerHTML=ic("check",12);items[curI].querySelector(".d").textContent="готово · "+((Date.now()-t0)/1000).toFixed(1)+" с";}
         for(let k=curI+1;k<ev.i;k++){if(items[k]){items[k].className="skip";items[k].querySelector(".d").textContent="пропущен";}}
         curI=ev.i;const it=items[ev.i];if(it){it.className="run";it.querySelector("time").textContent=clock();it.querySelector(".d").textContent="выполняется…";$("#p-cur").textContent=it.querySelector(".t").textContent+"…";}
-        $("#p-step").textContent=`${ev.i}/${items.length}`;$("#p-bar").style.width=(100*ev.i/items.length)+"%";}
+        $("#p-step").textContent=`${Math.min(ev.i,items.length)}/${items.length}`;const pct=Math.round(100*ev.i/items.length);$("#p-bar").style.width=pct+"%";$("#p-barwrap").setAttribute("aria-valuenow",pct);}
+      else if(ev.kind==="split"){total=ev.total;setDone();
+        body.innerHTML=Array.from({length:Math.min(total,8)},()=>`<tr class="sk"><td colspan="5"><div class="skel" style="width:${40+Math.random()*50}%"></div></td></tr>`).join("");}
+      else if(ev.kind==="batch_start"){ev.reqs.forEach(r=>upsert(r,`<span class="lv-st small muted"><span class="lv-spin" aria-hidden="true"></span>проверяется…</span>`,true));
+        $("#p-cur").textContent=`Проверка требований: ${ev.reqs[0].rid}–${ev.reqs[ev.reqs.length-1].rid}…`;}
+      else if(ev.kind==="batch_done"){ev.results.forEach(r=>{const tr=rows[r.rid];if(!tr)return;const w=SEV[r.worst]?r.worst:"ok";
+          tr.children[3].innerHTML=`${chip(w,w==="ok"?"нет замечаний":SEV[w][0]+(r.n>1?` · ${r.n}`:""))} <span class="small faint">предварительно</span>`;tr.classList.remove("new");void tr.offsetWidth;tr.classList.add("new");done++;});setDone();}
+      else if(ev.kind==="batch_fail"){ev.rids.forEach(rid=>{const tr=rows[rid];if(tr)tr.children[3].innerHTML=`<span class="chip sev-major">${ic("alert",13)}модель не ответила</span>`;});}
       else if(ev.kind==="log"){const l=$("#log");l.textContent+=ev.msg+"\n";l.scrollTop=l.scrollHeight;}
-      else if(ev.kind==="error"){es.close();clearInterval(tick);if(items[curI]){items[curI].className="err";items[curI].querySelector(".d").textContent=ev.msg;}err(ev.msg);}
+      else if(ev.kind==="error"){es.close();clearInterval(tick);if(items[curI]){items[curI].className="err";items[curI].querySelector(".dot").innerHTML=ic("x",12);items[curI].querySelector(".d").textContent="ошибка";}showErr(ev.code||"error",ev.msg);}
       else if(ev.kind==="done"){es.close();clearInterval(tick);
-        items.forEach(it=>{if(it.className==="run"){it.className="ok";it.querySelector(".dot").innerHTML=ICO.ok;it.querySelector(".d").textContent="готово";}});
-        $("#p-status").className="status st-done";$("#p-status").textContent="ЗАВЕРШЁН";$("#p-step").textContent=`${items.length}/${items.length}`;$("#p-bar").style.width="100%";
-        const a=ev.artifacts,html=Object.entries(a).find(([k,v])=>v.endsWith(".html"));
-        $("#r-title").textContent=`${file.files[0].name} — балл ${ev.summary.score}/100, готовность ${ev.summary.readiness}%`;
-        $("#downloads").innerHTML=Object.entries(a).map(([k,v],i)=>`<a class="btn btn-sm ${v.endsWith(".md")&&i===0?"btn-primary":"btn-outline"}" href="/jobs/${job}/${v}" ${v.endsWith(".html")?'target="_blank"':"download"}>${k}</a>`).join("");
-        if(html)$("#frame").src=`/jobs/${job}/${html[1]}`;
-        const nr=$("#nav-report");nr.disabled=false;nr.style.opacity=1;nr.onclick=()=>show("s-result");
-        setTimeout(()=>{show("s-result");$("#nav-new").removeAttribute("aria-current");nr.setAttribute("aria-current","page");},900);}
+        items.forEach(it=>{if(it.className==="run"){it.className="ok";it.querySelector(".dot").innerHTML=ic("check",12);it.querySelector(".d").textContent="готово";}});
+        $("#p-status").className="status st-done";$("#p-status").innerHTML=ic("check",11)+"ЗАВЕРШЁН";$("#p-step").textContent=`${items.length}/${items.length}`;$("#p-bar").style.width="100%";$("#p-cur").textContent="Готово: отчёт сформирован";
+        const s=ev.summary;total=s.reqs;done=s.reqs;setDone();
+        s.rows.forEach(r=>{upsert(r,chip(r.worst,r.worst==="ok"?"Без замечаний":SEV[r.worst][0]+(r.n>1?` · ${r.n}`:"")),false);});
+        setTimeout(()=>isCompare?openCompare(job,ev):openResult(job,ev),REDUCED?200:1400);}
     };
-  };
+  }
+
+  // ---------------- результат: отчёт в iframe + ассистент
+  function openResult(job,ev){
+    state.reportJob=job;const a=ev.artifacts,s=ev.summary,html=Object.values(a).find(v=>v.endsWith(".html"));
+    $("#r-title").textContent=`${s.document||"Документ"} — балл ${s.score}/100, готовность ${s.readiness}%`;
+    $("#downloads").innerHTML=Object.entries(a).map(([k,v],i)=>`<a class="btn btn-sm ${i===0?"btn-primary":"btn-outline"}" href="/jobs/${job}/${encodeURIComponent(v)}" ${v.endsWith(".html")?'target="_blank" rel="noopener"':"download"}>${ic(v.endsWith(".html")?"arrow-up-right":"download",14)}${esc(k)}</a>`).join("");
+    if(html)$("#frame").src=`/jobs/${job}/${encodeURIComponent(html)}?embed=studio`;
+    $("#cmp-fixed").disabled=!s.has_fixed;$("#cmp-fixed").title=s.has_fixed?"":"Агент не предложил исправлений";
+    $("#chat-log").innerHTML=`<div class="msg ai">Отчёт готов: ${s.reqs} требований, критичных дефектов — ${s.critical}. Спросите о любом требовании или нажмите подсказку.</div>`;
+    loadSuggest();enable("#nav-report",()=>show("s-result"));show("s-result");
+  }
+  function frameGo(ref){try{const w=$("#frame").contentWindow;w.location.hash=ref;$("#frame").scrollIntoView({behavior:REDUCED?"auto":"smooth",block:"start"});toast("Открыто в отчёте: "+ref);}catch(e){}}
+  function renderAnswer(a){const txt=esc(a.answer).replace(/\[\[((?:R|S)-\d+)\]\]/g,(m,id)=>`<button type="button" class="ref" data-ref="${id}" aria-label="Открыть ${id} в отчёте">${id}</button>`);
+    return `${txt}<span class="src">${a.source==="модель"?"ответ модели по данным отчёта":a.source==="подсказка"?"подсказка":"по данным отчёта, без обращения к модели"}</span>`;}
+  function sugg(list){$("#chat-sugg").innerHTML=(list||[]).map(q=>`<button type="button" data-q="${esc(q)}">${esc(q)}</button>`).join("");}
+  async function ask(q){
+    if(!q||!state.reportJob)return;const log=$("#chat-log");
+    log.insertAdjacentHTML("beforeend",`<div class="msg me">${esc(q)}</div><div class="msg ai typing" id="typing">Думаю…</div>`);log.scrollTop=log.scrollHeight;
+    try{const r=await fetch(`/api/jobs/${state.reportJob}/ask`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({q})});
+      const a=await r.json();$("#typing").remove();if(!r.ok)throw new Error(a.detail||"ошибка");
+      log.insertAdjacentHTML("beforeend",`<div class="msg ai">${renderAnswer(a)}</div>`);sugg(a.suggest);}
+    catch(e){const t=$("#typing");if(t)t.remove();log.insertAdjacentHTML("beforeend",`<div class="msg ai">Не удалось получить ответ: ${esc(e.message)}</div>`);}
+    log.scrollTop=log.scrollHeight;}
+  async function loadSuggest(){try{const r=await fetch(`/api/jobs/${state.reportJob}/ask`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({q:"помощь"})});sugg((await r.json()).suggest);}catch(e){}}
+  $("#chat-form").onsubmit=e=>{e.preventDefault();const q=$("#chat-q").value.trim();$("#chat-q").value="";ask(q);};
+  $("#chat-sugg").onclick=e=>{const b=e.target.closest("[data-q]");if(b)ask(b.dataset.q);};
+  $("#chat-log").onclick=e=>{const b=e.target.closest("[data-ref]");if(b)frameGo(b.dataset.ref);};
+  $("#cmp-fixed").onclick=()=>launch(null,"fixed");
+  $("#cmp-file").onchange=e=>{const f=e.target.files[0];if(f)launch(f,"file");e.target.value="";};
+
+  // ---------------- До / После
+  function openCompare(job,ev){
+    const c=ev.summary.compare,a=ev.artifacts,html=Object.values(a).find(v=>v.endsWith(".html"));
+    if(!c){showErr("error","Сравнение не построено.");return;}
+    const B=c.before,A=c.after,d=A.score-B.score,dr=A.readiness-B.readiness;
+    $("#c-sub").textContent=`${B.document||"Исходная версия"} → новая версия · ${A.reqs} требований`;
+    const stLbl={fixed:["ok","исправлено"],improved:["ok","улучшено"],new:["major","новые"],worse:["critical","хуже"],same:["minor","без изменений"]};
+    const def=(x)=>`<div class="def">${chip(x.severity)}<div><div class="small"><b>${x.rid?`<a href="#" data-cref="${esc(x.rid)}">${esc(x.label)}</a>`:esc(x.label)}</b> · ${esc(x.cname)}</div><div class="small muted" style="margin-top:2px">${esc(x.problem.slice(0,200))}</div></div></div>`;
+    $("#c-body").innerHTML=`<div class="grid g-3">
+        <article class="card"><div class="ba"><div class="ba-card"><span class="ba-lbl">Было</span><span class="big" style="color:var(--text-2)" data-to="${B.score}">0</span></div>
+          <span class="arrow">${ic("arrow-right",36)}</span><div class="ba-card"><span class="ba-lbl">Стало</span><span class="big" style="color:${d>=0?"var(--ok)":"var(--critical)"}" data-to="${A.score}">0</span></div></div>
+          <div class="row" style="justify-content:center;margin-top:10px"><span class="small muted">балл документа</span><span class="delta ${d>=0?"up":"down"}">${d>=0?"▲ +":"▼ "}${d}</span></div></article>
+        <article class="kpi kpi-hero"><span class="lbl">Готовность к разработке</span><div class="kpi-num"><span data-to="${B.readiness}">0</span>% → <span data-to="${A.readiness}">0</span>%</div><div class="sub">${dr>=0?"▲ +":"▼ "}${dr} п.п. · тестируемо ${A.tests_ok} из ${A.tests_total}</div></article>
+        <article class="kpi"><span class="lbl">Критичных дефектов</span><div class="kpi-num"><span data-to="${B.counts.critical}">0</span> → <span style="color:${A.counts.critical?"var(--critical)":"var(--ok)"}" data-to="${A.counts.critical}">0</span></div>
+          <div class="sub">существенных ${B.counts.major} → ${A.counts.major} · всего ${B.findings} → ${A.findings}</div></article></div>
+      <div class="grid g-2" style="margin-top:16px;align-items:start">
+        <div class="card"><div class="card-title">${ic("check")}<span class="h2 grow">Исправлено</span><span class="chip sev-ok">${c.fixed.length}</span></div>
+          <div class="def-list">${c.fixed.map(def).join("")||'<p class="small muted">Исправленных дефектов нет.</p>'}</div></div>
+        <div class="card"><div class="card-title">${ic("alert")}<span class="h2 grow">Новые дефекты</span><span class="chip ${c.new.length?"sev-major":"sev-ok"}">${c.new.length}</span></div>
+          <div class="def-list">${c.new.map(def).join("")||'<p class="small muted">Новых дефектов не появилось.</p>'}</div></div></div>
+      <div class="section-title"><h2 class="h2">Требования</h2><div class="row wrap">${Object.entries(c.counts).filter(([,n])=>n).map(([k,n])=>chip(stLbl[k][0],`${stLbl[k][1]}: ${n}`)).join("")}</div></div>
+      <div class="table-wrap"><table class="tbl"><thead><tr><th scope="col">ID</th><th scope="col">Формулировка</th><th scope="col">Изменение</th><th scope="col">Балл до</th><th scope="col">Балл после</th></tr></thead><tbody>
+        ${c.rows.map(r=>`<tr><td><b>${esc(r.label)}</b></td><td class="small">${esc(r.text)}</td><td>${chip(stLbl[r.status][0],stLbl[r.status][1])}</td><td>${r.before==null?"—":r.before}</td><td>${ring(r.after)}</td></tr>`).join("")}</tbody></table></div>`;
+    $$("#c-body [data-to]").forEach(el=>countUp(el,el.dataset.to));
+    $("#c-body").onclick=e=>{const l=e.target.closest("[data-cref]");if(l){e.preventDefault();openNew(l.dataset.cref);}};
+    const openNew=(ref)=>{state.reportJob=job;if(html)$("#frame").src=`/jobs/${job}/${encodeURIComponent(html)}?embed=studio${ref?"#"+ref:""}`;
+      $("#r-title").textContent=`Новая версия — балл ${A.score}/100, готовность ${A.readiness}%`;
+      $("#downloads").innerHTML=Object.entries(a).map(([k,v],i)=>`<a class="btn btn-sm ${i===0?"btn-primary":"btn-outline"}" href="/jobs/${job}/${encodeURIComponent(v)}" ${v.endsWith(".html")?'target="_blank" rel="noopener"':"download"}>${esc(k)}</a>`).join("");
+      $("#chat-log").innerHTML=`<div class="msg ai">Теперь я отвечаю по отчёту новой версии.</div>`;loadSuggest();show("s-result");};
+    $("#c-open-new").onclick=()=>openNew("");
+    enable("#nav-compare",()=>show("s-compare"));show("s-compare");
+  }
 })();
 </script>
 </body>
