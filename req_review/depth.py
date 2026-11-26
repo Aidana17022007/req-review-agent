@@ -467,10 +467,65 @@ def refund_edges(reqs: list[Requirement], doc: Document) -> list[SetFinding]:
         "меняет только счётчик того месяца».", "правило")]
 
 
+_TERM_ADJ = r"(?:активн|действующ|проведённ|проведенн|подтверждённ|подтвержденн|заблокированн|просроченн|верифицированн)\w*"
+_TERM_NOUN = r"(?:карт|покупк|операци|сч[её]т|клиент|плат[её]ж|договор|заявк|сесси|пользовател|транзакци)\w*"
+_TERM_RE = re.compile(rf"(?<![\w-]){_TERM_ADJ}\s+{_TERM_NOUN}(?:\s+(?:KZT|USD|EUR|RUB)\b)?|(?<![\w-])исходн\w*\s+(?:итог|состояни|значени)\w*|"
+                      rf"(?<![\w-])(?:карт|сч[её]т)\w*\s+(?:KZT|USD|EUR|RUB)\b", re.I)
+_DEF_WORDS = r"(?:—\s*это|-\s*это|\bэто\b|означает|считается|понимается|определяется как|называется|относятся|включает)"
+
+
+def _stem(phrase: str) -> list[str]:
+    return [w[:4].lower() for w in re.findall(r"[\wёЁ]+", phrase)]  # 4 буквы: «карты» и «карта», «активной» и «активная»
+
+
+def _defined(phrase: str, doc: Document, sec: dict) -> bool:
+    """Термин определён: строка глоссария с ним или формулировка «… — это / означает / считается …» рядом с ним."""
+    stems = _stem(phrase)
+    pat = re.compile(r"\s+".join(re.escape(st) + r"[\wёЁ]*" for st in stems), re.I)
+    for ln in doc.lines:
+        m = pat.search(ln.text)
+        if not m:
+            continue
+        if _GLOSSARY.search(sec.get(ln.lineno, "")) and re.match(r"^\s*(?:[-*•]\s*|\|\s*)?\**" + pat.pattern, ln.text, re.I):
+            return True
+        if re.search(_DEF_WORDS, ln.text[m.end():m.end() + 50], re.I) or re.search(pat.pattern + r"\W{0,3}\)?\s*[—:]\s", ln.text, re.I):
+            return True
+    return False
+
+
+def undefined_terms(reqs: list[Requirement], doc: Document) -> list[SetFinding]:
+    """Термин-ограничение («активная карта», «карта KZT», «проведённая покупка», «исходный итог») используется как
+    условие правила, но нигде не определён — разработчик и тестировщик проверят разное."""
+    sec = _section_of(doc)
+    found: dict[str, tuple[Requirement, str]] = {}
+    for r in reqs:
+        if _GLOSSARY.search(r.section or "") or (r.section and _DESCRIPTIVE.search(r.section)):
+            continue
+        for m in _TERM_RE.finditer(r.text):
+            key = " ".join(_stem(m.group(0)))
+            if key not in found and not _defined(m.group(0), doc, sec):
+                found[key] = (r, m.group(0))
+    if not found:
+        return []
+    items = list(found.values())
+    names = ", ".join(f"«{q}»" for _, q in items[:6])
+    owners = sorted({r.doc_id or r.rid for r, _ in items})
+    return [SetFinding(
+        "terminology", "set_comprehensible", [SetRef(r.rid, _ctx(r.text, q)) for r, q in items[:4]],
+        f"Термины-условия {names} не определены ни в глоссарии, ни в тексте ({', '.join(owners)}): не сказано, какие "
+        "статусы карты считаются активными, что значит «KZT» (валюта карты или счёта), какая покупка считается проведённой "
+        "(авторизация или клиринг). От толкования зависит, сработает ли правило, — разработчик и тестировщик проверят "
+        "разное.", "major",
+        "Добавить глоссарий с определениями через проверяемые признаки, например: «Активная карта — карта в статусе "
+        "„Действует“, не заблокированная и не просроченная»; «Проведённая покупка — операция покупки в статусе клиринга».",
+        "правило")]
+
+
 def completeness_rules(reqs: list[Requirement], doc: Document) -> list[SetFinding]:
     """Детерминированные проверки полноты v5 (подключаются в checker.deterministic_set_checks)."""
     out: list[SetFinding] = []
-    for fn in (limit_vs_exception, api_codes_and_body, session_lifecycle, missing_default, refund_edges, unit_mix, nfr_metric,
+    for fn in (limit_vs_exception, api_codes_and_body, session_lifecycle, missing_default, refund_edges, undefined_terms,
+               unit_mix, nfr_metric,
                state_after_error, message_texts, acceptance_preconditions, template_unfilled):
         out.extend(fn(reqs, doc))
     return out

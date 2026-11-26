@@ -20,6 +20,7 @@ from req_review.depth import (
     session_lifecycle,
     state_after_error,
     template_unfilled,
+    undefined_terms,
     unit_mix,
 )
 from req_review.reader import read_document
@@ -231,7 +232,7 @@ def test_completeness_rules_on_organizers_document():
     doc = read_document(REAL)
     s = split_requirements(doc)
     for fn in (nfr_metric, state_after_error, message_texts, acceptance_preconditions, template_unfilled, unit_mix,
-               limit_vs_exception, session_lifecycle, missing_default, refund_edges):
+               limit_vs_exception, session_lifecycle, missing_default, refund_edges, undefined_terms):
         found = fn(s.requirements, doc)
         assert len(found) == 1, fn.__name__
         assert _quotes_ok(found, s, doc), fn.__name__
@@ -483,3 +484,25 @@ def test_model_answers_off_schema_do_not_crash(tmp_path):
     found, dropped = [], []
     completeness_pass(s, doc, Fake(), dropped, found, log=lambda *a: None)
     assert len(found) == 1 and found[0].refs[0].quote == "Сохранение порога" and _quotes_ok(found, s, doc)
+
+
+def test_undefined_condition_terms_on_organizers_document():
+    """N24: «активная карта KZT», «проведённые покупки», «исходный итог» используются как условия, но не определены."""
+    doc = read_document(REAL)
+    s = split_requirements(doc)
+    f = undefined_terms(s.requirements, doc)[0]
+    assert f.severity == "major" and f.criterion == "set_comprehensible" and _quotes_ok([f], s, doc)
+    assert "активной карты KZT" in f.problem and "проведённые покупки" in f.problem
+
+
+@pytest.mark.parametrize("definition", [
+    "## 1. Термины\n\n- Активная карта — карта в статусе «Действует».\n",
+    "## Пояснения\nАктивная карта — это карта в статусе «Действует».\n",
+    "## Пояснения\nПод активной картой понимается карта в статусе «Действует»; активная карта означает статус «Действует».\n",
+])
+def test_defined_condition_term_is_not_flagged(tmp_path, definition):
+    rule = "## 2. Функциональные требования\n\n- **Ф-1.** Держатель активной карты задаёт порог.\n"
+    d1, s1 = _doc(tmp_path, "# Д\n\n" + rule, "a.md")
+    d2, s2 = _doc(tmp_path, "# Д\n\n" + definition + "\n" + rule, "b.md")
+    assert len(undefined_terms(s1.requirements, d1)) == 1
+    assert undefined_terms(s2.requirements, d2) == []
