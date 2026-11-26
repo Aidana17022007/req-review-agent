@@ -36,6 +36,7 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     by_rid = {r.rid: r for r in reqs}
     L: list[str] = []
     w = L.append
+    _BASIS_SEEN.clear()
 
     all_f = [f for rr in rv.req_results for f in rr.findings]
     sev_counts = Counter(f.severity for f in all_f) + Counter(f.severity for f in rv.set_findings)
@@ -412,6 +413,7 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     w("---")
     w("")
     _tests_appendix(w, rv)
+    _basis_appendix(w)
     w("### Приложение. Критерии проверки")
     w("")
     w("| Ключ | Критерий | Источник |")
@@ -599,18 +601,36 @@ def _extras_tail(w, ctx) -> None:
         w("")
 
 
+_BASIS_SEEN: dict = {}  # основания текущего отчёта: (file, section) → запись (цитата — один раз, в приложении)
+
+
 def _basis_lines(w, findings) -> None:
-    """«Основание» из базы знаний kb/: пункт стандарта / норма РК с дословной цитатой из kb (без повторов)."""
-    seen, lines = set(), []
+    """«Основание» из базы знаний kb/ у замечания — короткая ссылка (вид, пункт, файл); дословная цитата из kb/ —
+    один раз, в приложении «Основания из базы знаний» (без повторов по всему отчёту)."""
+    seen, refs = set(), []
     for f in findings:
         for b in getattr(f, "basis", None) or []:
             key = (b["file"], b["section"])
             if key in seen:
                 continue
             seen.add(key)
+            _BASIS_SEEN.setdefault(key, b)
             kind = {"standards": "стандарт", "law_kz": "норма РК, пересказ", "patterns": "шаблон"}.get(b.get("kind"), "база знаний")
-            lines.append(f"- **Основание ({kind}):** {_cell(b['section'])} — «{_cell(b['quote'])}» (`{b['file']}`)")
-    if lines:
-        for x in lines:
-            w(x)
+            refs.append(f"{kind}: {_cell(b['section'])} (`{b['file']}`)")
+    if refs:
+        w("**Основание:** " + "; ".join(refs))
         w("")
+
+
+def _basis_appendix(w) -> None:
+    if not _BASIS_SEEN:
+        return
+    w(f"### Приложение. Основания из базы знаний ({len(_BASIS_SEEN)})")
+    w("")
+    w("Дословные фрагменты файлов `kb/`, на которые ссылаются замечания (нормы РК — пересказ, не текст закона).")
+    w("")
+    for (file, section), b in sorted(_BASIS_SEEN.items()):
+        w(f"- **{_cell(section)}** (`{file}`): «{_cell(b['quote'])}»")
+    w("")
+
+
