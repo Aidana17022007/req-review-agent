@@ -80,7 +80,8 @@ def to_json(ctx) -> dict:
         "coverage_map": getattr(rv, "coverage", []),
         # 2.3 (v5): учёт строк документа, матрица «требование × критерий», покрытие приёмкой, самопроверка, вердикты, план
         **{k: (getattr(rv, "depth", None) or {}).get(k) for k in
-           ("line_coverage", "criteria_matrix", "acceptance_coverage", "review_stats", "verdict", "fix_plan")},
+           ("line_coverage", "criteria_matrix", "acceptance_coverage", "review_stats", "verdict", "fix_plan",
+            "citation_audit")},
         "glossary": asdict(rv.glossary) if rv.glossary else None,
         "questions": [asdict(q) for q in ctx.questions],
         "changes": [asdict(c) for c in ctx.changes],

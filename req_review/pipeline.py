@@ -22,7 +22,7 @@ PROFILES = {
     # deep — для финального отчёта: малые пакеты (6 требований — модель внимательнее к каждому), критик на все
     # замечания (дубли, калибровка), повторная проверка исправленного документа
     # v6: + узкие проходы (по одному классу дефектов на запрос) и самосогласованность (повторная проверка требований)
-    "deep": {"critic": True, "rescore": True, "batch_size": 6, "focused": True, "self_check": True},
+    "deep": {"critic": True, "rescore": True, "batch_size": 6, "focused": True, "self_check": True, "pdf": True},
 }
 
 STEPS = ["Чтение", "Нарезка", "Проверка требований", "Проверка набора", "Домен и глоссарий", "Критик", "Отчёты"]
@@ -42,6 +42,7 @@ class Options:
     domain: str = "fintech"
     compare: str | None = None
     batch_size: int = 8
+    pdf: bool | None = None  # PDF-версия отчёта; None — по профилю (deep — да)
 
 
 @dataclass
@@ -204,7 +205,7 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
 
 def depth_summary(rv, acc: dict | None = None) -> dict:
     """v5: учёт строк, матрица «требование × критерий», покрытие приёмкой, статистика самопроверки, вердикты, план."""
-    from .depth import acceptance_coverage, criteria_matrix, fix_plan, line_coverage, verdicts
+    from .depth import acceptance_coverage, citation_audit, criteria_matrix, fix_plan, line_coverage, verdicts
 
     confirmed = sum(len(rr.findings) for rr in rv.req_results) + len(rv.set_findings)
     return {"line_coverage": line_coverage(rv.doc, [rr.req for rr in rv.req_results]),
@@ -212,7 +213,7 @@ def depth_summary(rv, acc: dict | None = None) -> dict:
             "acceptance_coverage": acc if acc is not None else acceptance_coverage(rv),
             "review_stats": {"proposed": confirmed + len(rv.rejected) + len(rv.dropped), "confirmed": confirmed,
                              "rejected": len(rv.rejected), "unconfirmed_quotes": len(rv.dropped)},
-            "verdict": verdicts(rv), "fix_plan": fix_plan(rv)}
+            "verdict": verdicts(rv), "fix_plan": fix_plan(rv), "citation_audit": citation_audit(rv)}
 
 
 def _ctx_info(doc) -> dict:
@@ -317,6 +318,14 @@ def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda
                                  duration_s=time.monotonic() - t0, llm_stats=llm.stats, input_path=input_path, ctx=ctx)
     out.write_text(ctx.report_md, encoding="utf-8")
     ctx.artifacts["Отчёт (Markdown)"] = out
+    if opts.pdf if opts.pdf is not None else PROFILES.get(opts.profile, {}).get("pdf", False):
+        try:  # v7: PDF-версия для сдачи и печати; без шрифта или reportlab прогон не падает
+            from .pdf_report import PdfFontError, markdown_to_pdf
+
+            ctx.artifacts["Отчёт (PDF)"] = markdown_to_pdf(ctx.report_md, out.with_suffix(".pdf"),
+                                                          f"Отчёт ReqLens — {rv.doc.title}")
+        except PdfFontError as e:
+            log(f"PDF не создан: {e}")
     if opts.fixed and ctx.changes:
         p = out.parent / f"{stem.name}_requirements_fixed.md"
         p.write_text(ctx.fixed_text, encoding="utf-8")

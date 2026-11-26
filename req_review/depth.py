@@ -879,3 +879,38 @@ def llm_set_pass(split, doc: Document, llm, dropped: list[dict], found: list[Set
         added += 1
     log(f"  {label}: добавлено замечаний {added}")
     return added
+
+
+# ---------------------------------------------------------------- v7: аудит цитат
+
+def citation_audit(rv) -> dict:
+    """Каждая цитата каждого подтверждённого замечания сверяется с текстом документа кодом (verify).
+    exact — дословная подстрока (после нормализации пробелов, кавычек, «ё»); fuzzy — с пропусками «…» в том же
+    порядке; missing — не найдена (не должно быть: такие замечания отбрасываются раньше); dropped — замечания модели,
+    отброшенные на этапе проверки как выдуманные (их цитаты в отчёт не попали)."""
+    from .verify import norm, quote_in
+
+    by_rid = {rr.req.rid: rr.req.text for rr in rv.req_results}
+    out = {"total": 0, "exact": 0, "fuzzy": 0, "missing": 0, "without_quote": 0, "dropped": len(rv.dropped)}
+
+    def check(q: str, src: str):
+        if not (q or "").strip():
+            out["without_quote"] += 1
+            return
+        out["total"] += 1
+        if norm(q).strip(" .,;:\"'") in norm(src):
+            out["exact"] += 1
+        elif quote_in(q, src):
+            out["fuzzy"] += 1
+        else:
+            out["missing"] += 1
+
+    for rr in rv.req_results:
+        for f in rr.findings:
+            check(f.quote, rr.req.text)
+    for f in rv.set_findings:
+        for r in f.refs:
+            check(r.quote, by_rid.get(r.req_id, rv.doc.text) if r.req_id != "DOC" else rv.doc.text)
+    out["verified"] = out["exact"] + out["fuzzy"]
+    out["percent"] = round(100 * out["verified"] / out["total"]) if out["total"] else 100
+    return out

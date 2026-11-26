@@ -682,3 +682,47 @@ def test_critical_rule_marker_kept_when_model_uses_other_criterion(tmp_path):
     rr = check_requirements(s.requirements, doc, Fake(), 6, [], log=lambda *a: None)[0]
     crits = {(f.criterion, f.source) for f in rr.findings}
     assert ("unambiguous", "LLM + правило") in crits and ("complete", "правило") in crits
+
+
+def test_citation_audit_counts_and_header(tmp_path, monkeypatch):
+    from req_review.cli import main
+
+    monkeypatch.setenv("LLM_PROVIDER", "mock")
+    out = tmp_path / "r.md"
+    assert main([str(ROOT / "tests" / "fixtures" / "sample_requirements.md"), str(out), "--env", str(tmp_path / "x.env"),
+                 "--quiet", "--no-xlsx", "--no-jira"]) == 0
+    d = json.loads((tmp_path / "r.json").read_text(encoding="utf-8"))
+    ca = d["citation_audit"]
+    refs = sum(1 for r in d["requirements"] for f in r["findings"] if f["quote"]) + \
+        sum(1 for f in d["set_findings"] for x in f["refs"] if x["quote"])
+    assert ca["total"] == refs and ca["verified"] == ca["exact"] + ca["fuzzy"] == ca["total"] and ca["missing"] == 0
+    assert ca["dropped"] == len(d["dropped"]) >= 1  # выдуманная цитата mock-модели отброшена
+    head = out.read_text(encoding="utf-8").split("## 1. Паспорт прогона")[0]
+    assert "Аудит цитат" in head and f"**{ca['verified']}**" in head
+
+
+def test_pdf_report_is_readable(tmp_path, monkeypatch):
+    pytest.importorskip("reportlab")
+    from req_review.cli import main
+    from req_review.pdf_report import PdfFontError, find_font
+
+    try:
+        find_font()
+    except PdfFontError:
+        pytest.skip("нет шрифта с кириллицей")
+    import pdfplumber
+
+    monkeypatch.setenv("LLM_PROVIDER", "rules")
+    out = tmp_path / "r.md"
+    assert main([str(ROOT / "bench" / "real" / "notifications.md"), str(out), "--env", str(tmp_path / "x.env"),
+                 "--quiet", "--no-xlsx", "--no-jira", "--pdf"]) == 0
+    pdf = out.with_suffix(".pdf")
+    assert pdf.exists() and pdf.stat().st_size < 1024 * 1024
+    with pdfplumber.open(pdf) as p:
+        text = "".join(pg.extract_text() or "" for pg in p.pages)
+    for marker in ("Паспорт прогона", "Нарезка требований", "Проверка каждого требования", "Сводка", "Итог", "Аудит цитат"):
+        assert marker in text, marker
+    assert "reqlens:summary" not in text and r"\|" not in text
+    assert main([str(ROOT / "tests" / "fixtures" / "sample_requirements.md"), str(tmp_path / "n.md"),
+                 "--env", str(tmp_path / "x.env"), "--quiet", "--no-xlsx", "--no-jira"]) == 0
+    assert not (tmp_path / "n.pdf").exists()  # профиль fast без --pdf — PDF не создаётся
