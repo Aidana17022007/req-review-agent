@@ -70,6 +70,8 @@
     "foot.team": "BCC-HUB × MNU хакатонының командасы", "foot.report": "Есеп", "foot.slides": "Слайдтар",
     "foot.license": "Код — жоба лицензиясы; Inter қарпі — SIL OFL 1.1; ISO/IEC/IEEE 29148 және IEEE 830 — мазмұндамасы, мәтіні емес."
   };
+  // v15: подписи, которые собирает scripts/build_site.py из файлов репозитория (раздел «Доказательства»)
+  try { var extra = document.getElementById("rl-kk"); if (extra) { var X = JSON.parse(extra.textContent); for (var xk in X) KK[xk] = X[xk]; } } catch (e) {}
   var nodes = document.querySelectorAll("[data-i18n]");
   var RU = {};
   nodes.forEach(function (n) { RU[n.dataset.i18n] = n.textContent; });
@@ -107,10 +109,20 @@
     es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add("on"); io.unobserve(e.target); } });
   }, { rootMargin: "0px 0px -8% 0px" });
   items.forEach(function (n) { io.observe(n); });
-  var screens = document.querySelector(".screens");
+  // параллакс — не чаще одного раза за кадр и только пока hero виден; «дыхание» зари вне экрана на паузе
+  var screens = document.querySelector(".screens"), hero = document.querySelector(".hero"), heroOn = true, ticking = false;
+  var dawnIo = new IntersectionObserver(function (es) {
+    es.forEach(function (e) { e.target.classList.toggle("off", !e.isIntersecting); if (e.target === hero) heroOn = e.isIntersecting; });
+  });
+  document.querySelectorAll(".dawn").forEach(function (n) { dawnIo.observe(n.parentElement); });
   if (screens) window.addEventListener("scroll", function () {
-    var y = Math.min(window.scrollY, 600);
-    screens.style.transform = "translateY(" + (y * -0.08).toFixed(1) + "px)";
+    if (ticking || !heroOn) return;
+    ticking = true;
+    requestAnimationFrame(function () {
+      ticking = false;
+      var y = Math.min(window.scrollY, 600);
+      screens.style.transform = "translateY(" + (y * -0.08).toFixed(1) + "px)";
+    });
   }, { passive: true });
 
   // «Проверьте одну фразу»: словарные правила агента (вшиты при сборке, scripts/build_site.py) — в браузере, без сервера
