@@ -306,6 +306,26 @@
         const parts = refs.slice(0, 3).map((x) => (D.findings[x] ? { html: `<p><b>${esc(x)}</b>: ${esc(D.findings[x].problem)}</p><p class="small"><b>Как исправить:</b> ${esc(D.findings[x].fix)}</p>`, src: [srcF(x), ...(D.findings[x].refs || []).filter((r) => r.line).slice(0, 3).map((r) => srcL(r.line))] } : explainReq(x)));
         return { html: parts.map((p) => p.html).join(""), src: parts.flatMap((p) => p.src) };
       }
+      // v9: вопросы аналитику, что закрыли ответы, решения для владельца продукта
+      if (has(q, "закрыл", "закрыт", "ответы аналит", "ответам", "было и стало", "было → стало")) {
+        if (!ANS) return { html: `<p>В этом прогоне ответов аналитика нет. Впишите ответы в шаблон${SIBLING.template ? ` <a href="${esc(SIBLING.template)}" download>${esc(SIBLING.template)}</a>` : " «…_answers_template.md»"} и перепроверьте: <code>python review.py &lt;документ&gt; &lt;отчёт&gt;.md --answers &lt;шаблон&gt;</code> — или «Ответить на вопросы» в Studio.</p>`, src: [] };
+        const B = ANS.before || {}, A = ANS.after || {};
+        const row = (x) => `<li><b>${esc(x.qid)}</b> · ${esc(ATYPE[x.type] ? ATYPE[x.type][2] : x.type)}: ${x.closes.length ? `закрыто ${esc(x.closes.join(", "))}` : "осталось открытым"}${x.note ? ` — <span class="faint">${esc(short(x.note, 140))}</span>` : ""}</li>`;
+        return { html: `<p>Учтено ответов: <b>${ANS.items.length}</b>, закрыто замечаний: <b>${CLOSED.length}</b>. Критичных: ${B.critical} → <b>${A.critical}</b>, готовность: ${B.readiness}% → <b>${A.readiness}%</b>.</p><ul class="ask-list">${ANS.items.map(row).join("")}</ul>`,
+          src: CLOSED.filter((r) => reqById[r.where]).slice(0, 4).map((r) => srcR(r.where)) };
+      }
+      if (has(q, "вопрос") && has(q, "аналит", "уточн", "задать")) {
+        const qs = D.questions;
+        if (!qs.length) return { html: "<p>Вопросов аналитику нет — агент не нашёл мест, где нужно уточнение.</p>", src: [] };
+        const answered = new Set(ANS ? ANS.items.map((x) => x.qid) : []);
+        return { html: `<p>Вопросов аналитику: <b>${qs.length}</b>${answered.size ? `, из них с ответом: <b>${answered.size}</b>` : ""}. Первые:</p><ol class="ask-list">${qs.slice(0, 8).map((x) => `<li>${x.qid ? `<b class="mono">${esc(x.qid)}</b> · ` : ""}${refLinks(x.ref || "")}${answered.has(x.qid) ? ' <span class="faint">(есть ответ)</span>' : ""}: ${esc(short(x.text || "", 170))}</li>`).join("")}</ol>${qs.length > 8 ? `<div class="small faint">и ещё ${qs.length - 8}</div>` : ""}${SIBLING.template ? `<p class="small"><a href="${esc(SIBLING.template)}" download>Скачать шаблон ответов</a></p>` : ""}`,
+          src: [...new Set(qs.map((x) => x.rid).filter((r) => reqById[r]))].slice(0, 4).map(srcR) };
+      }
+      if (has(q, "решени", "владел", "развилк")) {
+        if (!DEC.length) return { html: "<p>Решений для владельца продукта нет: в документе не нашлось развилок, которые нельзя закрыть ответом аналитика.</p>", src: [] };
+        return { html: `<ol class="ask-list">${DEC.map((d) => `<li><b>${esc(d.title)}</b>${d.options.length ? `<div class="faint">Варианты: ${d.options.map(esc).join(" · ")}</div>` : ""}</li>`).join("")}</ol>`,
+          src: DEC.flatMap((d) => d.where.filter((w) => w.line).map((w) => srcL(w.line))).slice(0, 4) };
+      }
       if (has(q, "первым", "первую очередь", "приоритет", "с чего начать", "важн")) {
         const plan = (DP && DP.fix_plan) || [];
         if (plan.length) return { html: `<ol class="ask-list">${plan.slice(0, 8).map((p) => { const f = fidFor((p.ids || [])[0], p.severity); return `<li>${f ? `<a href="#" data-open="${esc(f)}"><b>${esc((p.ids || []).slice(0, 3).join(", "))}</b></a>` : ""} ${esc(short(p.title || "", 160))}${p.example ? `<div class="faint">Пример: «${esc(short(p.example, 160))}»</div>` : ""}</li>`; }).join("")}</ol>`, src: plan.slice(0, 4).map((p) => srcF(fidFor((p.ids || [])[0], p.severity))) };
@@ -344,7 +364,8 @@
   })();
   const askLog = [];
   const askSuggest = () => [`Почему ${worstReq() ? worstReq().rid : "R-001"} критичное?`, "Что исправить первым?", "Какие есть противоречия?",
-    "Можно ли начинать разработку?", "Сколько требований тестируемо?", "Насколько можно доверять цитатам?"];
+    "Можно ли начинать разработку?", "Сколько требований тестируемо?", "Насколько можно доверять цитатам?",
+    ...(D.questions.length ? ["Какие вопросы аналитику?"] : []), ...(ANS ? ["Что закрыли ответы?"] : []), ...(DEC.length ? ["Какие решения нужны от владельца продукта?"] : [])];
   function askRender() {
     $("#drawer-title").textContent = "Спроси отчёт";
     $("#drawer-body").innerHTML = `<div class="ai-teaser"><span class="logo-mark">${ic("bot", 20)}</span>
@@ -469,12 +490,13 @@
       <p class="small faint" style="margin-top:10px">${esc(v.rule || "")}</p></div>`;
   }
   function trustHTML() {
-    if (!DP) return "";
-    const ca = DP.citation_audit, ln = DP.lines, st = DP.review_stats, ens = P.ensemble;
+    if (!DP && !CASC) return "";
+    const ca = DP && DP.citation_audit, ln = DP && DP.lines, st = DP && DP.review_stats, ens = P.ensemble;
     const items = [];
     if (ca) items.push(`<span class="chip chip-outline" title="Цитаты подтверждённых замечаний сверены с текстом документа кодом">${ic("shield", 13)}Аудит цитат: ${ca.verified} из ${ca.total} подтверждены · отброшено выдуманных: ${ca.dropped}</span>`);
     if (ln && ln.total) items.push(`<span class="chip chip-outline">${ic("file", 13)}Учтено строк документа: ${ln.accounted} из ${ln.total}</span>`);
     if (st) items.push(`<span class="chip chip-outline">${ic("layers", 13)}Предложено ${st.proposed} · подтверждено ${st.confirmed} · отклонено критиком ${st.rejected}</span>`);
+    if (CASC) items.push(`<span class="chip chip-outline" title="Быстрая модель проверяет всё, сильная — подозрительные требования и набор">${ic("cpu", 13)}Каскад моделей: на сильную ${CASC.strong_reqs} из ${CASC.checked_reqs} треб.</span>`);
     if (ens) items.push(`<span class="chip chip-outline">${ic("cpu", 13)}Ансамбль моделей: обе — ${ens.both}, только A — ${ens.only_a}, только B — ${ens.only_b}</span>`);
     return items.length ? `<div class="row wrap" id="trust" data-block="trust" style="gap:8px;margin:0 0 16px">${items.join("")}</div>` : "";
   }
@@ -498,6 +520,86 @@
       <tbody>${rows.map((r) => `<tr><td><a href="#" data-go-req="${esc(r.rid)}">${esc(reqById[r.rid] ? label(reqById[r.rid]) : r.rid)}</a></td>${cs.map((c) => cell(r, c)).join("")}</tr>`).join("")}</tbody></table></div>
       <p class="small faint" style="margin-top:8px">${cs.map((c, i) => `${i + 1}. ${esc(c.name.replace(/\s*\(.*\)/, ""))}`).join(" · ")}. Клик по клетке — замечание.</p></details>`;
   }
+  // ------------------------------------------------------------ v9 (SCHEMA 2.4): ответы аналитика, решения, журнал, каскад
+  const ANS = D.answers && (D.answers.items || []).length ? D.answers : null;
+  const DEC = (D.decisions || []).filter((d) => d && d.title);
+  const CLOSED = (D.rejected || []).filter((r) => r.closed_by);
+  const CASC = P.cascade && P.cascade.calls ? P.cascade : null;
+  const CRITIC_REJ = (D.rejected || []).filter((r) => !r.closed_by);
+  const ATYPE = { concrete: ["sev-ok", "check", "конкретный"], evasive: ["sev-major", "clock", "уклончивый"], contradictory: ["sev-critical", "x", "противоречивый"] };
+  // файлы рядом с отчётом: имя журнала <stem>.log → <stem>_answers_template.md / <stem>_decisions.md.
+  // В готовом примере Studio (/api/v1/example/files/…) соседних файлов нет — ссылки не показываем, чтобы не было 404
+  const IN_EXAMPLE = /\/api\/v1\/example\//.test(location.pathname);
+  const STEM = P.log && !IN_EXAMPLE ? String(P.log).replace(/\.log$/, "") : "";
+  const SIBLING = { log: STEM ? P.log : "", template: STEM && D.questions.length ? `${STEM}_answers_template.md` : "",
+    decisions: STEM && DEC.length ? `${STEM}_decisions.md` : "" };
+  const typeChip = (t) => { const m = ATYPE[t] || ATYPE.evasive; return `<span class="chip ${m[0]}">${ic(m[1], 13)}${m[2]}</span>`; };
+  const verdChip = (v) => { const m = VERD[v] || VERD["с оговорками"]; return `<span class="chip ${m[0]}">${ic(m[1], 13)}${esc(v || "—")}</span>`; };
+  // ответ с подсвеченной цитатой, на которой основан вывод (quote — подстрока answer)
+  function quoted(answer, quote) {
+    const i = quote ? answer.indexOf(quote) : -1;
+    return i < 0 ? esc(answer) : `${esc(answer.slice(0, i))}<mark class="ans-q">${esc(quote)}</mark>${esc(answer.slice(i + quote.length))}`;
+  }
+  function baItem(lbl, b, a, lowerBetter, unit) {
+    if (b == null || a == null) return "";
+    const d = a - b, good = lowerBetter ? d < 0 : d > 0;
+    return `<div class="ans-ba-item"><span class="small muted">${esc(lbl)}</span>
+      <div class="ans-ba-v"><span class="was">${b}${unit || ""}</span><span class="arr" aria-hidden="true">${ic("arrow-right", 16)}</span>
+        <span class="now"><span data-count="${a}">${a}</span>${unit || ""}</span>${d ? `<span class="delta ${good ? "up" : "down"}">${d > 0 ? "+" : ""}${d}${unit || ""}</span>` : ""}</div></div>`;
+  }
+  function verdPair(lbl, b, a) {
+    if (!b && !a) return "";
+    return `<div class="ans-ba-item"><span class="small muted">${esc(lbl)}</span><div class="ans-ba-v">${b === a ? `${verdChip(a)}<span class="small faint">без изменений</span>`
+      : `${verdChip(b)}<span class="arr" aria-hidden="true">${ic("arrow-right", 16)}</span><span class="now">${verdChip(a)}</span>`}</div></div>`;
+  }
+  function answersHTML() {
+    if (!ANS) return "";
+    const B = ANS.before || {}, A = ANS.after || {}, vb = B.verdict || {}, va = A.verdict || {};
+    const n = { concrete: 0, evasive: 0, contradictory: 0 }; ANS.items.forEach((x) => (n[x.type] = (n[x.type] || 0) + 1));
+    const newSet = (qid) => D.set.find((sid) => D.findings[sid].source === `ответ ${qid}`);
+    const result = (x) => {
+      const ns = x.type === "contradictory" ? newSet(x.qid) : "";
+      return `${x.closes.length ? `<div class="row wrap" style="gap:4px">${x.closes.map((c) => `<span class="chip sev-ok mono" title="закрыто ответом ${esc(x.qid)}">${ic("check", 12)}${esc(c)}</span>`).join("")}</div>` : ""}
+        ${x.note ? `<div class="small muted" style="margin-top:4px">${esc(x.note)}</div>` : ""}
+        ${ns ? `<a href="#" class="chip chip-outline" style="margin-top:6px" data-open="${esc(ns)}">${ic("alert", 12)}${esc(ns)}</a>` : ""}`;
+    };
+    return `<div class="card" id="answers" data-block="answers"><div class="card-title">${ic("chat")}<span class="h2 grow">Ответы аналитика</span>
+        ${ANS.source ? `<span class="chip chip-outline">${ic("file", 13)}${esc(ANS.source)}</span>` : ""}</div>
+      <div class="ans-ba" aria-label="Было и стало после учёта ответов">
+        ${baItem("Критичные", B.critical, A.critical, true)}${baItem("Существенные", B.major, A.major, true)}${baItem("Готовность", B.readiness, A.readiness, false, "%")}
+        ${verdPair("Разработка", vb.development, va.development)}${verdPair("Тестирование", vb.testing, va.testing)}</div>
+      <div class="row wrap" style="gap:8px;margin:14px 0 4px">${Object.keys(ATYPE).filter((t) => n[t]).map((t) => `${typeChip(t)}<b class="small">${n[t]}</b>`).join(" ")}
+        <span class="small faint grow" style="text-align:right">закрыто замечаний: <b>${CLOSED.length}</b></span></div>
+      <div class="table-wrap"><table class="tbl ans-tbl"><thead><tr><th scope="col">Вопрос</th><th scope="col">Ответ</th><th scope="col">Тип ответа</th><th scope="col">Что закрыто / осталось</th></tr></thead>
+        <tbody>${ANS.items.map((x) => `<tr class="ans-${esc(x.type)}"><td><b class="mono">${esc(x.qid)}</b><div class="small muted" style="margin-top:2px">${esc(short(x.question, 160))}</div></td>
+          <td class="small">${quoted(x.answer, x.quote)}</td><td>${typeChip(x.type)}</td><td class="small">${result(x)}</td></tr>`).join("")}</tbody></table></div>
+      ${CLOSED.length ? `<details class="ans-closed" style="margin-top:12px"><summary class="small" style="cursor:pointer"><b>Закрытые ответами замечания</b> <span class="faint">(${CLOSED.length})</span></summary>
+        <ul class="small" style="margin:8px 0 0;padding-left:18px">${CLOSED.map((r) => `<li style="margin:6px 0"><span class="chip sev-ok">${ic("check", 12)}закрыто ответом ${esc(r.closed_by)}</span>
+          ${reqById[r.where] ? `<a href="#" data-go-req="${esc(r.where)}"><b>${esc(label(reqById[r.where]))}</b></a>` : `<b>${esc(r.where)}</b>`} — ${esc(short(r.problem || "", 160))}</li>`).join("")}</ul></details>` : ""}
+      <p class="small faint" style="margin-top:10px"><span>Ничего не закрывается без цитаты ответа: выделенный фрагмент — основание вывода.</span> <span>Уклончивый ответ оставляет замечание открытым, противоречивый — добавляет новое замечание к набору.</span></p></div>`;
+  }
+  function decisionsHTML() {
+    if (!DEC.length) return "";
+    const where = (w) => {
+      const lbl = esc(w.doc_id || (reqById[w.rid] ? label(reqById[w.rid]) : w.rid) || "документ");
+      return w.line ? `<a href="#L${+w.line}" class="chip chip-outline" data-go-line="${+w.line}">${ic("file", 12)}${lbl}<span class="faint">·</span><span>строка</span><b>${+w.line}</b></a>`
+        : reqById[w.rid] ? `<a href="#" class="chip chip-outline" data-go-req="${esc(w.rid)}">${ic("list", 12)}${lbl}</a>` : `<span class="chip chip-outline">${lbl}</span>`;
+    };
+    const src = (id) => {
+      const fid = fidFor(id) || (D.findings[id] ? id : "");
+      return fid ? `<a href="#" class="chip chip-outline mono" data-open="${esc(fid)}">${esc(id)}</a>` : `<span class="chip chip-outline mono">${esc(id)}</span>`;
+    };
+    return `<div class="card" id="decisions" data-block="decisions"><div class="card-title">${ic("bank")}<span class="h2 grow">Решения для владельца продукта</span><span class="chip chip-brand">${DEC.length}</span></div>
+      <p class="small muted">Развилки, которые аналитик не закроет сам: документ допускает разные варианты, а от выбора зависят клиент, разработка и тесты.</p>
+      <ol class="dec-list">${DEC.map((d) => `<li class="dec">
+        <div class="dec-head"><span class="chip chip-outline mono">${esc(d.id)}</span><div class="h3 grow">${esc(d.title)}</div></div>
+        ${d.where.length ? `<div class="dec-row"><span class="caption">Где расходится</span><div class="row wrap" style="gap:6px">${d.where.map(where).join("")}</div></div>` : ""}
+        ${d.impact ? `<div class="dec-row"><span class="caption">Что меняется для клиента и разработки</span><p class="small">${esc(d.impact)}</p></div>` : ""}
+        ${d.options.length ? `<div class="dec-row"><span class="caption">Варианты</span><ul class="dec-opts">${d.options.map((o) => `<li class="small">${esc(o)}</li>`).join("")}</ul></div>` : ""}
+        <div class="row wrap dec-foot">${d.source_ids.length ? `<span class="small faint">Основание:</span>${d.source_ids.map(src).join("")}` : ""}
+          <span class="small faint grow" style="text-align:right">${d.wording === "модель" ? "перефразировано моделью" : "сформулировано кодом"}</span></div></li>`).join("")}</ol>
+      ${SIBLING.decisions ? `<a class="btn btn-sm btn-ghost" href="${esc(SIBLING.decisions)}" download>${ic("download", 14)}Повестка решений (.md)</a>` : ""}</div>`;
+  }
   function renderOverview(el) {
     const s = D.scores;
     const failedSteps = D.trace.filter((t) => t.status === "err").length;
@@ -506,6 +608,7 @@
     const tPct = s.tests_total ? Math.round((100 * s.tests_ok) / s.tests_total) : 0;
     const crit = D.counts.critical;
     el.innerHTML = `${errorBanner()}${trustHTML()}${summary30HTML() ? `<div style="margin-bottom:16px">${summary30HTML()}</div>` : ""}
+      ${ANS ? `<div style="margin-bottom:16px">${answersHTML()}</div>` : ""}${DEC.length ? `<div style="margin-bottom:16px">${decisionsHTML()}</div>` : ""}
       <div class="grid g-4">
         ${kpi("Всего требований", num(N_REQ), N_OTHER ? `<b>+${N_OTHER}</b>строк API и критериев приёмки проверены отдельно` : `<b>${D.split_method === "ids" ? "ID" : "R"}</b>нарезка ${D.split_method === "ids" ? "по ID документа" : "с номерами агента"}`, true, "reqs")}
         ${kpi("Нарушений", num(totalFindings), `<b>${reqFindings}</b>по требованиям · <b>${D.set.length}</b>по набору`, false, "doc")}
@@ -1109,6 +1212,10 @@
     const files = [["md", "Отчёт (Markdown)", "Основной отчёт на русском по ТЗ", "file"], ["json", "Данные (JSON)", "Все результаты для интеграций", "layers"],
       ["fixed", "Исправленный документ", `${D.changes.length} исправленных формулировок`, "wand"], ["feature", "tests.feature", `${D.scores.tests_ok} сценариев Gherkin`, "flask"],
       ["questions", "Вопросы аналитику", `${D.questions.length} вопросов, Markdown`, "chat"]];
+    // v9: файлы рядом с отчётом (шаблон ответов, повестка решений, журнал) — только если отчёт лежит рядом с ними
+    const sib = [[SIBLING.template, "Шаблон ответов аналитика", "Впишите ответы под «### Q-xx» и перепроверьте: --answers", "chat"],
+      [SIBLING.decisions, "Решения для владельца продукта", `${DEC.length} пунктов повестки, Markdown`, "bank"],
+      [SIBLING.log, "Журнал прогона", "Этапы, длительности, модель, обращения — без ключей и текста документа", "trace", true]].filter((f) => f[0]);
     const rows = [["Документ", P.document], ["Файл", `${P.file} (${P.format}${P.pages ? ", " + P.pages + " стр." : ""})`], ["SHA-256", P.sha256], ["Дата и время", P.started], ["Модель", P.model],
       ["Версия агента", P.agent_version], ["Профиль / режим", `${P.profile} · ${P.mode}`], ["Обращений к модели", `${P.calls} (повторов: ${P.retries})`],
       ...(CTX ? [["Контекст модели", CTX_RAG ? "RAG-выборка — в запрос попадают релевантные фрагменты документа" : "полный текст документа в каждом запросе"]] : []),
@@ -1116,17 +1223,24 @@
       ...(RAG ? [["База знаний (RAG)", `${RAG.kb_chunks} фрагментов kb/ · поиск: ${RAG.search || "—"} · эмбеддинги: ${RAG.embedder || "—"}`],
         ["Основания в отчёте", `${RAG.basis || 0} (нормы РК: ${RAG.law || 0}, шаблоны: ${RAG.patterns || 0})`]] : P.rag && P.rag.enabled === false ? [["База знаний (RAG)", "выключена (RAG=off)"]] : []), ["Токены (вход / выход)", P.tokens_in ? `${P.tokens_in} / ${P.tokens_out}` : "—"],
       ["Длительность", P.duration_s + " с"], ["Способ нарезки", { ids: "по идентификаторам документа", modal: "по модальным формулировкам", llm: "моделью" }[P.split_method]],
-      ["Критик-агент", P.critic ? "включён" : "выключен"], ["Отброшено неподтверждённых цитат", P.dropped], ["Отклонено критиком", P.rejected], ["Критерии", "ISO/IEC/IEEE 29148:2018 п. 5.2.5, 5.2.6; IEEE Std 830-1998 п. 4.3"]];
-    const tbl = (title, items, cols) => items.length ? `<div class="section-title"><h3 class="h2">${title} <span class="faint">(${items.length})</span></h3></div><div class="table-wrap"><table class="tbl"><thead><tr>${cols.map((c) => `<th>${c[0]}</th>`).join("")}</tr></thead><tbody>${items.map((d) => `<tr>${cols.map((c) => `<td class="small">${esc(d[c[1]])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` : "";
+      ["Критик-агент", P.critic ? "включён" : "выключен"], ["Отброшено неподтверждённых цитат", P.dropped], ["Отклонено критиком", P.rejected],
+      ...(CASC ? [["Каскад моделей", `быстрая: ${CASC.fast} · сильная: ${CASC.strong} · на сильную модель ушло ${CASC.strong_reqs} из ${CASC.checked_reqs} требований · обращения: быстрая ${CASC.calls.fast}, сильная ${CASC.calls.strong}`]] : []),
+      ...(P.answers && P.answers.file ? [["Ответы аналитика", `${P.answers.file}: ответов ${P.answers.items}, закрыто замечаний ${P.answers.closed}`]] : []),
+      ["Критерии", "ISO/IEC/IEEE 29148:2018 п. 5.2.5, 5.2.6; IEEE Std 830-1998 п. 4.3"]];
+    if (P.log) rows.push(["Журнал прогона", SIBLING.log ? { html: `<a href="${esc(SIBLING.log)}" target="_blank" rel="noopener">${ic("file", 13)} ${esc(P.log)}</a>` } : `${P.log} (рядом с отчётом)`]);
+    const tbl =(title, items, cols) => items.length ? `<div class="section-title"><h3 class="h2">${title} <span class="faint">(${items.length})</span></h3></div><div class="table-wrap"><table class="tbl"><thead><tr>${cols.map((c) => `<th>${c[0]}</th>`).join("")}</tr></thead><tbody>${items.map((d) => `<tr>${cols.map((c) => `<td class="small">${esc(d[c[1]])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` : "";
     el.innerHTML = `<div class="section-title" style="margin-top:0"><h2 class="h1">Экспорт</h2></div>
       <div class="grid g-files">${files.map((f, i) => `<article class="kpi ${i === 0 ? "kpi-hero" : ""}"><div class="row between"><span class="lbl">${f[1]}</span>${ic(f[3], 20)}</div>
-        <div class="sub" style="margin:12px 0">${esc(f[2])}</div><button class="btn btn-sm ${i === 0 ? "btn-outline" : "btn-primary"}" style="align-self:flex-start" data-dl="${f[0]}">${ic("download", 14)}Скачать</button></article>`).join("")}</div>
+        <div class="sub" style="margin:12px 0">${esc(f[2])}</div><button class="btn btn-sm ${i === 0 ? "btn-outline" : "btn-primary"}" style="align-self:flex-start" data-dl="${f[0]}">${ic("download", 14)}Скачать</button></article>`).join("")}
+        ${sib.map((f) => `<article class="kpi"><div class="row between"><span class="lbl">${f[1]}</span>${ic(f[3], 20)}</div>
+        <div class="sub" style="margin:12px 0">${esc(f[2])}</div><a class="btn btn-sm btn-outline" style="align-self:flex-start" href="${esc(f[0])}" ${f[4] ? 'target="_blank" rel="noopener"' : "download"}>${ic(f[4] ? "arrow-up-right" : "download", 14)}${f[4] ? "Открыть" : "Скачать"}</a></article>`).join("")}</div>
       <div class="grid g-2" style="margin-top:24px;align-items:start">
-        <div class="card"><div class="card-title">${ic("id")}<span class="h2">Паспорт прогона</span></div><dl class="kv">${rows.map((r) => `<dt>${r[0]}</dt><dd ${r[0] === "SHA-256" ? 'class="mono"' : ""}>${esc(r[1])}</dd>`).join("")}</dl></div>
+        <div class="card"><div class="card-title">${ic("id")}<span class="h2">Паспорт прогона</span></div><dl class="kv">${rows.map((r) => `<dt>${r[0]}</dt><dd ${r[0] === "SHA-256" ? 'class="mono"' : ""}>${r[1] && r[1].html ? r[1].html : esc(r[1])}</dd>`).join("")}</dl></div>
         <div class="card"><div class="card-title">${ic("book")}<span class="h2">Методика оценки</span></div>${md(D.method)}
           ${D.notes.length ? `<div class="h3" style="margin:16px 0 8px">Примечания</div>${D.notes.map((n) => `<p class="small" style="color:var(--major)">${ic("alert", 14)} ${esc(n)}</p>`).join("")}` : ""}</div></div>
       ${tbl("Отброшенные замечания модели (цитата не найдена)", D.dropped, [["Где", "where"], ["Цитата модели", "quote"], ["Суть", "problem"]])}
-      ${tbl("Отклонены критиком", D.rejected, [["Где", "where"], ["Цитата", "quote"], ["Суть", "problem"], ["Причина", "reason"]])}`;
+      ${tbl("Закрыты ответами аналитика", CLOSED, [["Где", "where"], ["Цитата", "quote"], ["Суть", "problem"], ["Закрыто ответом", "closed_by"]])}
+      ${tbl("Отклонены критиком", CRITIC_REJ, [["Где", "where"], ["Цитата", "quote"], ["Суть", "problem"], ["Причина", "reason"]])}`;
   }
 
   function empty(title, text, iconName) {
