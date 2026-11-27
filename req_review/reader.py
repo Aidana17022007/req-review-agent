@@ -90,7 +90,8 @@ def _read_pdf(path: Path) -> tuple[list[tuple[str, int | None]], int]:
     for t, i, sz in raw:
         prev = joined[-1] if joined else None
         if (prev and t[:1].islower() and prev[0].strip() and prev[1] == i and not prev[0].lstrip().startswith("|")
-                and not prev[0].rstrip().endswith((".", ":", ";", "!", "?")) and (sz is None or round(sz, 1) not in big)):
+                and not prev[0].rstrip().endswith((".", ":", ";", "!", "?")) and (sz is None or round(sz, 1) not in big)
+                and (prev[2] is None or round(prev[2], 1) not in big)):  # v13+: к заголовку текст не приклеивается
             joined[-1] = (prev[0].rstrip() + " " + t.strip(), i, prev[2])
         else:
             joined.append((t, i, sz))

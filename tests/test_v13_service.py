@@ -52,7 +52,7 @@ def test_verify_ok_on_fresh_report_and_detects_tampering(tmp_path, mock_env, cap
 def test_doctor_does_not_print_key(tmp_path, monkeypatch, capsys):
     from req_review.cli import main
 
-    secret = "AIzaSy-SECRET-should-not-appear-123456"
+    secret = "dummy-test-value-not-a-real-key-0001"
     monkeypatch.setenv("LLM_PROVIDER", "gemini")
     monkeypatch.setenv("GEMINI_API_KEY", secret)
     assert main(["doctor", "--env", str(tmp_path / "x.env")]) == 0

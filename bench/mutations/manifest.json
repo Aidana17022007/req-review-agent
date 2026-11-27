@@ -1,0 +1,701 @@
+{
+ "seed": 13,
+ "per_base": 4,
+ "variants": [
+  {
+   "name": "api_payments__01_andor",
+   "base": "api_payments",
+   "file": "bench/mutations/api_payments__01_andor.md",
+   "defects": [
+    {
+     "type": "andor",
+     "anchors": [
+      52
+     ],
+     "ids": [
+      "ANF-08"
+     ],
+     "criteria": [
+      "unambiguous"
+     ],
+     "severity": "major",
+     "anchor_text": [
+      "| ANF-08 | Тексты сообщений об ошибках возвращаются на казахском и/или русском языке по заголовку Accept-Language. | Низкий |"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "api_payments__02_vague",
+   "base": "api_payments",
+   "file": "bench/mutations/api_payments__02_vague.md",
+   "defects": [
+    {
+     "type": "vague",
+     "anchors": [
+      45
+     ],
+     "ids": [
+      "ANF-01"
+     ],
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ],
+     "severity": "major",
+     "anchor_text": [
+      "| ANF-01 | POST /v1/payments отвечает без заметной задержки при нагрузке до 200 запросов в секунду. | Высокий |"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "api_payments__03_contradiction",
+   "base": "api_payments",
+   "file": "bench/mutations/api_payments__03_contradiction.md",
+   "defects": [
+    {
+     "type": "contradiction",
+     "anchors": [
+      51,
+      53
+     ],
+     "ids": [
+      "ANF-07",
+      "ANF-99"
+     ],
+     "criteria": [
+      "set_consistent"
+     ],
+     "severity": "critical",
+     "anchor_text": [
+      "| ANF-07 | Резервная копия платежей создаётся каждый час; RTO — 2 часа, RPO — 5 минут. | Средний |",
+      "| ANF-99 | Резервная копия платежей создаётся каждый час; RTO — 4часа, RPO — 5 минут. | Высокий |"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "api_payments__04_status",
+   "base": "api_payments",
+   "file": "bench/mutations/api_payments__04_status.md",
+   "defects": [
+    {
+     "type": "status",
+     "anchors": [
+      34,
+      35
+     ],
+     "ids": [
+      "400",
+      "409"
+     ],
+     "criteria": [
+      "set_consistent"
+     ],
+     "severity": "critical",
+     "anchor_text": [
+      "| 400 | Параметр отсутствует или неверного формата | {\"code\":\"VALIDATION_ERROR\",\"field\":\"amount\",\"message\":\"…\"} |",
+      "| 409 | Параметр отсутствует или неверного формата | {\"code\":\"VALIDATION_ERROR\",\"field\":\"amount\",\"message\":\"…\"} |"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "cards__01_vague",
+   "base": "cards",
+   "file": "bench/mutations/cards__01_vague.md",
+   "defects": [
+    {
+     "type": "vague",
+     "anchors": [
+      27
+     ],
+     "ids": [
+      "CRD-08"
+     ],
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ],
+     "severity": "major",
+     "anchor_text": [
+      "| CRD-08 | Карта готова к выдаче в разумные сроки после заказа; держатель получает push-уведомление о готовности. | Средний |"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "cards__03_tbd",
+   "base": "cards",
+   "file": "bench/mutations/cards__03_tbd.md",
+   "defects": [
+    {
+     "type": "tbd",
+     "anchors": [
+      21
+     ],
+     "ids": [
+      "CRD-02"
+     ],
+     "criteria": [
+      "complete"
+     ],
+     "severity": "major",
+     "anchor_text": [
+      "| CRD-02 | Перевыпуск по сроку действия доступен не ранее чем за TBD до окончания срока карты. | Высокий |"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "cards__04_contradiction",
+   "base": "cards",
+   "file": "bench/mutations/cards__04_contradiction.md",
+   "defects": [
+    {
+     "type": "contradiction",
+     "anchors": [
+      40,
+      42
+     ],
+     "ids": [
+      "KNF-06",
+      "KNF-99"
+     ],
+     "criteria": [
+      "set_consistent"
+     ],
+     "severity": "critical",
+     "anchor_text": [
+      "| KNF-06 | Резервная копия данных заказов создаётся каждые 24 часа; RTO — 8 часов, RPO — 1 час. | Низкий |",
+      "| KNF-99 | Резервная копия данных заказов создаётся каждые 48часа; RTO — 8 часов, RPO — 1 час. | Высокий |"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "cards__05_units",
+   "base": "cards",
+   "file": "bench/mutations/cards__05_units.md",
+   "defects": [
+    {
+     "type": "units",
+     "anchors": [
+      26
+     ],
+     "ids": [
+      "CRD-07"
+     ],
+     "criteria": [
+      "unambiguous",
+      "complete",
+      "correct",
+      "verifiable"
+     ],
+     "severity": "major",
+     "anchor_text": [
+      "| CRD-07 | Комиссия за перевыпуск по сроку действия — 0 тенге, по остальным причинам — 1 000, списывается при подтверждении заказа. | Высокий |"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "cashback__02_vague",
+   "base": "cashback",
+   "file": "bench/mutations/cashback__02_vague.md",
+   "defects": [
+    {
+     "type": "vague",
+     "anchors": [
+      33
+     ],
+     "ids": [
+      "CBN-01"
+     ],
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ],
+     "severity": "major",
+     "anchor_text": [
+      "| CBN-01 | Экран выбора категорий загружается в разумные сроки при нагрузке до 200 запросов в секунду. | Средний |"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "cashback__03_units",
+   "base": "cashback",
+   "file": "bench/mutations/cashback__03_units.md",
+   "defects": [
+    {
+     "type": "units",
+     "anchors": [
+      23
+     ],
+     "ids": [
+      "CB-04"
+     ],
+     "criteria": [
+      "unambiguous",
+      "complete",
+      "correct",
+      "verifiable"
+     ],
+     "severity": "major",
+     "anchor_text": [
+      "| CB-04 | Кэшбэк за расчётный месяц не превышает 20 000 на одного держателя. | Высокий |"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "cashback__05_open_list+contradiction",
+   "base": "cashback",
+   "file": "bench/mutations/cashback__05_open_list+contradiction.md",
+   "defects": [
+    {
+     "type": "open_list",
+     "anchors": [
+      27
+     ],
+     "ids": [
+      "CB-08"
+     ],
+     "criteria": [
+      "complete"
+     ],
+     "severity": "major",
+     "anchor_text": [
+      "| CB-08 | Экран «Кэшбэк» показывает сумму, ожидающую зачисления, с точностью до 1 тенге, историю и т. д. начислений за 12 месяцев. | Низкий |"
+     ]
+    },
+    {
+     "type": "contradiction",
+     "anchors": [
+      22,
+      28
+     ],
+     "ids": [
+      "CB-03",
+      "CB-99"
+     ],
+     "criteria": [
+      "set_consistent"
+     ],
+     "severity": "critical",
+     "anchor_text": [
+      "| CB-03 | Кэшбэк — 5 % от суммы покупки в выбранных категориях и 0,5 % в остальных; сумма округляется вниз до 1 тенге. | Высокий |",
+      "| CB-99 | Кэшбэк — 10% от суммы покупки в выбранных категориях и 0,5 % в остальных; сумма округляется вниз до 1 тенге. | Высокий |"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "credit__01_boundary",
+   "base": "credit",
+   "file": "bench/mutations/credit__01_boundary.md",
+   "defects": [
+    {
+     "type": "boundary",
+     "anchors": [
+      20
+     ],
+     "ids": [
+      "CR-01"
+     ],
+     "criteria": [
+      "unambiguous",
+      "verifiable"
+     ],
+     "severity": "major",
+     "anchor_text": [
+      "| CR-01 | Заявитель выбирает сумму кредита — целое число тенге от 50 000 до 5 000 000. | Высокий |"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "credit__04_tbd",
+   "base": "credit",
+   "file": "bench/mutations/credit__04_tbd.md",
+   "defects": [
+    {
+     "type": "tbd",
+     "anchors": [
+      22
+     ],
+     "ids": [
+      "CR-03"
+     ],
+     "criteria": [
+      "complete"
+     ],
+     "severity": "major",
+     "anchor_text": [
+      "| CR-03 | До отправки заявки система показывает ежемесячный платёж по аннуитетной схеме с точностью до TBD. | Высокий |"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "credit__05_contradiction",
+   "base": "credit",
+   "file": "bench/mutations/credit__05_contradiction.md",
+   "defects": [
+    {
+     "type": "contradiction",
+     "anchors": [
+      28,
+      31
+     ],
+     "ids": [
+      "CR-09",
+      "CR-99"
+     ],
+     "criteria": [
+      "set_consistent"
+     ],
+     "severity": "critical",
+     "anchor_text": [
+      "| CR-09 | Кредит зачисляется на карту заявителя не позднее 15 минут после подписания договора. | Высокий |",
+      "| CR-99 | Кредит зачисляется на карту заявителя не позднее 30минут после подписания договора. | Высокий |"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "deposit_kk__01_contradiction",
+   "base": "deposit_kk",
+   "file": "bench/mutations/deposit_kk__01_contradiction.md",
+   "defects": [
+    {
+     "type": "contradiction",
+     "anchors": [
+      32,
+      39
+     ],
+     "ids": [
+      "DNF-01",
+      "DNF-99"
+     ],
+     "criteria": [
+      "set_consistent"
+     ],
+     "severity": "critical",
+     "anchor_text": [
+      "| DNF-01 | Депозит ашу сұрауына жауап сұраулардың 95 %-ы үшін секундына 100 сұрауға дейінгі жүктемеде 2 секундтан аспайды. | Жоғары |",
+      "| DNF-99 | Депозит ашу сұрауына жауап сұраулардың 190%-ы үшін секундына 100 сұрауға дейінгі жүктемеде 2 секундтан аспайды. | Высокий |"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "deposit_kk__05_contradiction",
+   "base": "deposit_kk",
+   "file": "bench/mutations/deposit_kk__05_contradiction.md",
+   "defects": [
+    {
+     "type": "contradiction",
+     "anchors": [
+      21,
+      27
+     ],
+     "ids": [
+      "DEP-03",
+      "DEP-99"
+     ],
+     "criteria": [
+      "set_consistent"
+     ],
+     "severity": "critical",
+     "anchor_text": [
+      "| DEP-03 | Мөлшерлеме мерзімге байланысты: 3 ай — жылдық 12 %, 6 ай — жылдық 13 %, 12 ай — жылдық 14 %. | Жоғары |",
+      "| DEP-99 | Мөлшерлеме мерзімге байланысты: 3 ай — жылдық 24%, 6 ай — жылдық 13 %, 12 ай — жылдық 14 %. | Высокий |"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "notifications__01_open_list",
+   "base": "notifications",
+   "file": "bench/mutations/notifications__01_open_list.md",
+   "defects": [
+    {
+     "type": "open_list",
+     "anchors": [
+      26
+     ],
+     "ids": [
+      "NT-06"
+     ],
+     "criteria": [
+      "complete"
+     ],
+     "severity": "major",
+     "anchor_text": [
+      "| NT-06 | Push-уведомление содержит порог, расходы месяца, последние и т. д. 4 цифры карты. | Средний |"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "notifications__03_contradiction",
+   "base": "notifications",
+   "file": "bench/mutations/notifications__03_contradiction.md",
+   "defects": [
+    {
+     "type": "contradiction",
+     "anchors": [
+      62,
+      65
+     ],
+     "ids": [
+      "NNF-06",
+      "NNF-99"
+     ],
+     "criteria": [
+      "set_consistent"
+     ],
+     "severity": "critical",
+     "anchor_text": [
+      "| NNF-06 | При задержке событий процессинга дольше 5 минут мониторинг отправляет оповещение дежурной смене. | Средний |",
+      "| NNF-99 | При задержке событий процессинга дольше 10минут мониторинг отправляет оповещение дежурной смене. | Высокий |"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "notifications__04_vague",
+   "base": "notifications",
+   "file": "bench/mutations/notifications__04_vague.md",
+   "defects": [
+    {
+     "type": "vague",
+     "anchors": [
+      57
+     ],
+     "ids": [
+      "NNF-01"
+     ],
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ],
+     "severity": "major",
+     "anchor_text": [
+      "| NNF-01 | Push передаётся сервису отправки в разумные сроки после получения события о покупке для 99 % событий при нагрузке до 300 событий в секунду. | Высокий |"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "notifications__05_tbd",
+   "base": "notifications",
+   "file": "bench/mutations/notifications__05_tbd.md",
+   "defects": [
+    {
+     "type": "tbd",
+     "anchors": [
+      57
+     ],
+     "ids": [
+      "NNF-01"
+     ],
+     "criteria": [
+      "complete"
+     ],
+     "severity": "major",
+     "anchor_text": [
+      "| NNF-01 | Push передаётся сервису отправки не позднее TBD после получения события о покупке для 99 % событий при нагрузке до 300 событий в секунду. | Высокий |"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "onboarding__01_open_list",
+   "base": "onboarding",
+   "file": "bench/mutations/onboarding__01_open_list.md",
+   "defects": [
+    {
+     "type": "open_list",
+     "anchors": [
+      23
+     ],
+     "ids": [
+      "ON-04"
+     ],
+     "criteria": [
+      "complete"
+     ],
+     "severity": "major",
+     "anchor_text": [
+      "| ON-04 | Система получает фамилию, имя, дату рождения, адрес и т. д. регистрации из государственной базы и показывает их заявителю для подтверждения. | Высокий |"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "onboarding__02_tbd",
+   "base": "onboarding",
+   "file": "bench/mutations/onboarding__02_tbd.md",
+   "defects": [
+    {
+     "type": "tbd",
+     "anchors": [
+      26
+     ],
+     "ids": [
+      "ON-07"
+     ],
+     "criteria": [
+      "complete"
+     ],
+     "severity": "major",
+     "anchor_text": [
+      "| ON-07 | Счёт в тенге открывается не позднее TBD после подписания договора; заявитель получает push-уведомление с последними 4 цифрами номера счёта. | Высокий |"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "onboarding__03_vague",
+   "base": "onboarding",
+   "file": "bench/mutations/onboarding__03_vague.md",
+   "defects": [
+    {
+     "type": "vague",
+     "anchors": [
+      33
+     ],
+     "ids": [
+      "ONF-01"
+     ],
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ],
+     "severity": "major",
+     "anchor_text": [
+      "| ONF-01 | Биометрическая проверка отвечает в приемлемое время при нагрузке до 50 запросов в секунду. | Высокий |"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "transfers__01_andor",
+   "base": "transfers",
+   "file": "bench/mutations/transfers__01_andor.md",
+   "defects": [
+    {
+     "type": "andor",
+     "anchors": [
+      31
+     ],
+     "ids": [
+      "TR-11"
+     ],
+     "criteria": [
+      "unambiguous"
+     ],
+     "severity": "major",
+     "anchor_text": [
+      "| TR-11 | История переводов показывает дату, сумму, имя получателя и статус «Выполнен» и/или «Отклонён» за последние 12 месяцев. | Низкий |"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "transfers__02_boundary",
+   "base": "transfers",
+   "file": "bench/mutations/transfers__02_boundary.md",
+   "defects": [
+    {
+     "type": "boundary",
+     "anchors": [
+      24
+     ],
+     "ids": [
+      "TR-04"
+     ],
+     "criteria": [
+      "unambiguous",
+      "verifiable"
+     ],
+     "severity": "major",
+     "anchor_text": [
+      "| TR-04 | Сумма перевода — целое число тенге от 100 до 500 000. | Высокий |"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "transfers__04_vague",
+   "base": "transfers",
+   "file": "bench/mutations/transfers__04_vague.md",
+   "defects": [
+    {
+     "type": "vague",
+     "anchors": [
+      28
+     ],
+     "ids": [
+      "TR-08"
+     ],
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ],
+     "severity": "major",
+     "anchor_text": [
+      "| TR-08 | Деньги зачисляются на активную карту получателя в приемлемое время после подтверждения для 99 % переводов. | Высокий |"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "transfers__05_open_list+units",
+   "base": "transfers",
+   "file": "bench/mutations/transfers__05_open_list+units.md",
+   "defects": [
+    {
+     "type": "open_list",
+     "anchors": [
+      31
+     ],
+     "ids": [
+      "TR-11"
+     ],
+     "criteria": [
+      "complete"
+     ],
+     "severity": "major",
+     "anchor_text": [
+      "| TR-11 | История переводов показывает дату, сумму, имя получателя, статус и т. д. «Выполнен» или «Отклонён» за последние 12 месяцев. | Низкий |"
+     ]
+    },
+    {
+     "type": "units",
+     "anchors": [
+      25
+     ],
+     "ids": [
+      "TR-05"
+     ],
+     "criteria": [
+      "unambiguous",
+      "complete",
+      "correct",
+      "verifiable"
+     ],
+     "severity": "major",
+     "anchor_text": [
+      "| TR-05 | Сумма переводов одного отправителя за календарные сутки по времени Алматы не превышает 1 000 000. | Высокий |"
+     ]
+    }
+   ]
+  }
+ ],
+ "total_defects": 29
+}
