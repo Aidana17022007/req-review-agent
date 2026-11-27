@@ -1,10 +1,10 @@
 <p align="center"><img src="docs/assets/banner.svg" alt="ReqLens — ИИ-ревью требований по ISO/IEC/IEEE 29148" width="100%"></p>
 
 <p align="center">
-  <img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10%2B-0B5FFF">
-  <img alt="ISO/IEC/IEEE 29148" src="https://img.shields.io/badge/ISO%2FIEC%2FIEEE-29148%3A2018-12B76A">
-  <img alt="IEEE 830" src="https://img.shields.io/badge/IEEE-830--1998-8B5CF6">
-  <img alt="LLM" src="https://img.shields.io/badge/LLM-Gemini%20%7C%20OpenAI--compatible%20%7C%20Ollama-F59E0B">
+  <img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10%2B-3B4CB6?labelColor=02030C">
+  <img alt="ISO/IEC/IEEE 29148" src="https://img.shields.io/badge/ISO%2FIEC%2FIEEE-29148%3A2018-4459C8?labelColor=02030C">
+  <img alt="IEEE 830" src="https://img.shields.io/badge/IEEE-830--1998-8E9BFF?labelColor=02030C">
+  <img alt="LLM" src="https://img.shields.io/badge/LLM-Gemini%20%7C%20OpenAI--compatible%20%7C%20Ollama-D9C6DA?labelColor=02030C">
 </p>
 
 # ReqLens — ИИ-агент статической проверки требований
@@ -66,20 +66,20 @@ Render (`render.yaml`); оба передеплоиваются сами пос�
 
 | Документ: дефекты подчёркнуты в тексте | 3D-граф: противоречия и цепочка конфликта |
 |---|---|
-| ![Документ с подсветкой дефектов, миникартой и карточкой замечания](docs/assets/screenshot-doc-light.png) | ![3D-граф требований с боковой панелью деталей](docs/assets/screenshot-graph-light.png) |
+| ![Документ с подсветкой дефектов, миникартой и карточкой замечания](docs/assets/screenshot-doc-dark.png) | ![3D-граф требований с боковой панелью деталей](docs/assets/screenshot-graph-dark.png) |
 | **Тесты: Gherkin и покрытие «тестируемо X из N»** | **Исправления: diff «было → стало» и вопросы аналитику** |
-| ![Тест-кейсы Gherkin с подсветкой синтаксиса](docs/assets/screenshot-tests-light.png) | ![Side-by-side diff исправленных формулировок](docs/assets/screenshot-fixes-light.png) |
+| ![Тест-кейсы Gherkin с подсветкой синтаксиса](docs/assets/screenshot-tests-dark.png) | ![Side-by-side diff исправленных формулировок](docs/assets/screenshot-fixes-dark.png) |
 | **Studio: AI-ассистент рядом с отчётом** | **Studio: «До / После» для новой версии** |
 | ![AI-ассистент отвечает со ссылками на требования](docs/assets/screenshot-studio-assistant.png) | ![Экран сравнения версий: балл, исправленные и новые дефекты](docs/assets/screenshot-studio-compare.png) |
 
-<details><summary>Ещё скриншоты: обзор, требования, набор, трассировка, экспорт, тёмная тема, мобильный вид</summary>
+<details><summary>Ещё скриншоты: обзор, требования, набор, трассировка, экспорт, светлая тема, мобильный вид</summary>
 
 | | |
 |---|---|
-| ![Обзор](docs/assets/screenshot-overview-light.png) | ![Обзор, тёмная тема](docs/assets/screenshot-overview-dark.png) |
-| ![Требования](docs/assets/screenshot-requirements-light.png) | ![Проверка набора](docs/assets/screenshot-set-light.png) |
-| ![Трассировка](docs/assets/screenshot-trace-light.png) | ![Экспорт](docs/assets/screenshot-export-light.png) |
-| ![Граф 2D](docs/assets/screenshot-graph2d-light.png) | ![Документ, тёмная тема](docs/assets/screenshot-doc-dark.png) |
+| ![Обзор, тёмная тема (по умолчанию)](docs/assets/screenshot-overview-dark.png) | ![Обзор, светлая тема](docs/assets/screenshot-overview-light.png) |
+| ![Требования](docs/assets/screenshot-requirements-dark.png) | ![Проверка набора](docs/assets/screenshot-set-dark.png) |
+| ![Трассировка](docs/assets/screenshot-trace-dark.png) | ![Экспорт](docs/assets/screenshot-export-dark.png) |
+| ![Граф 2D](docs/assets/screenshot-graph2d-light.png) | ![Документ, светлая тема](docs/assets/screenshot-doc-light.png) |
 | ![Studio: загрузка](docs/assets/screenshot-studio-upload.png) | ![Studio: живой прогон](docs/assets/screenshot-studio-live.png) |
 | ![Мобильный вид: документ](docs/assets/screenshot-mobile-doc.png) | ![Мобильный вид: обзор](docs/assets/screenshot-mobile-overview.png) |
 | ![Основание замечания: пункт стандарта и закон РК](docs/assets/screenshot-basis-light.png) | ![База знаний: чаще всего нарушенные нормы](docs/assets/screenshot-kb-light.png) |

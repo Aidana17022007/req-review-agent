@@ -63,6 +63,8 @@ def shoot_report(b, html: Path, errors: list):
                 page.keyboard.press("j")
                 page.wait_for_timeout(600)
             page.screenshot(path=str(OUT / f"screenshot-{name}-{theme}.png"), full_page=full)
+            if full:
+                fit_budget(OUT / f"screenshot-{name}-{theme}.png")
         if theme == "light":
             page.goto(html.resolve().as_uri() + "#graph")
             page.wait_for_timeout(1500)
@@ -77,6 +79,18 @@ def shoot_report(b, html: Path, errors: list):
         page.wait_for_timeout(900)
         page.screenshot(path=str(OUT / f"screenshot-mobile-{name}.png"))
     page.close()
+
+
+def fit_budget(path: Path, budget: int = 950 * 1024):
+    """Полностраничный скриншот больше бюджета — палитра 256 цветов (правило репозитория: файлы < 1 МБ)."""
+    if path.stat().st_size <= budget:
+        return
+    try:
+        from PIL import Image
+    except ImportError:
+        return
+    im = Image.open(path).convert("RGB")
+    im.quantize(colors=256, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).save(path, optimize=True)
 
 
 def free_port() -> int:
