@@ -24,14 +24,20 @@ def err(status: int, code: str, message: str, headers: dict | None = None, **ext
     return HTTPException(status, {"code": code, "message": message, **extra}, headers=headers)
 
 
-def enforce_limit(request) -> None:
-    """v9: лимит загрузок демо-сервера (DEMO_UPLOADS_PER_IP / DEMO_UPLOADS_TOTAL) → 429 со ссылкой на готовый пример."""
-    from .limits import check_and_count, client_ip, message
+def enforce_limit(request) -> dict | None:
+    """v9: лимит загрузок демо-сервера (DEMO_UPLOADS_PER_IP / DEMO_UPLOADS_TOTAL, v13: DEMO_UPLOADS_PER_IP_HOUR) →
+    429 со ссылкой на готовый пример. v13: при DEMO_LIMIT_FALLBACK=rules вместо отказа возвращает
+    {"code": "limit", "message", "scope", "retry_after", "fallback": "rules"} — прогон идёт только правилами."""
+    from .limits import check_and_count, client_ip, fallback, message
 
     hit = check_and_count(client_ip(request))
-    if hit:
-        raise err(429, "limit", message(hit), headers={"Retry-After": str(hit["retry_after"])}, scope=hit["scope"],
-                  retry_after=hit["retry_after"], example="/?example=1")
+    if not hit:
+        return None
+    if fallback() == "rules":
+        return {"code": "limit", "message": message(hit) + " Этот файл проверен только правилами — без модели и без квоты.",
+                "scope": hit["scope"], "retry_after": hit["retry_after"], "fallback": "rules", "example": "/?example=1"}
+    raise err(429, "limit", message(hit), headers={"Retry-After": str(hit["retry_after"])}, scope=hit["scope"],
+              retry_after=hit["retry_after"], example="/?example=1")
 
 
 def _app():
@@ -87,9 +93,13 @@ def _live(run: dict) -> dict:
 @router.get("/health", summary="Состояние модели (без ключа)")
 def health():
     """Провайдер, модель и признак «ключ задан» — сам ключ никогда не возвращается."""
+    from .limits import fallback, hour_limit, limits
     from .live import provider_status
 
-    return {**provider_status(), "steps": STEPS, "profiles": list(PROFILES), "max_upload_mb": _app().MAX_BYTES // 2**20}
+    per_ip, total = limits()
+    return {**provider_status(), "steps": STEPS, "profiles": list(PROFILES), "max_upload_mb": _app().MAX_BYTES // 2**20,
+            "limits": {"per_hour": hour_limit(), "per_day": per_ip, "total": total, "fallback": fallback()},
+            "purge_minutes": purge_minutes()}
 
 
 @router.get("/sample", summary="Демо-документ")
@@ -155,8 +165,9 @@ async def create_run(pid: str, request: Request, file: UploadFile = File(...), p
     if not force and (same := st.find_same(pid, sha)):
         return {"duplicate": True, "run": same,
                 "message": "Этот файл уже проверялся — открыт прошлый результат. Чтобы проверить заново, передайте force=true."}
-    if mode == "llm":  # «Только правила» модель не тратит и в лимит не входит
-        enforce_limit(request)
+    limited = enforce_limit(request) if mode == "llm" else None  # «Только правила» модель не тратит и в лимит не входит
+    if limited:
+        mode = "rules"
     name = Path(file.filename or "документ").name[:200]
     prev = st.previous_done(pid)
     doc_id = st.document(pid, name, sha, len(data))
@@ -175,7 +186,7 @@ async def create_run(pid: str, request: Request, file: UploadFile = File(...), p
     job.on_finish = _on_finish
     webapp._start(job, src, compare_with=compare_with)
     return {"duplicate": False, "run": _live(run), "job": rid, "compare_with": prev["id"] if compare_with else None,
-            "events": f"/api/v1/jobs/{rid}/events"}
+            "events": f"/api/v1/jobs/{rid}/events", **({"limited": limited} if limited else {})}
 
 
 # ----------------------------------------------------------------------------------- готовый пример (v9)
@@ -275,10 +286,14 @@ async def run_answers(rid: str, request: Request):
     src_dir = st.run_dir(rid)
     src_json = src_dir / "report.json"
     inputs = sorted(src_dir.glob("input.*"))
-    if not src_json.exists() or not inputs:
+    if not src_json.exists():
         raise err(404, "not_found", "Файлы исходного прогона не найдены")
-    if src_run.get("mode", "llm") == "llm":
-        enforce_limit(request)
+    if not inputs:  # v13: на демо-сервере документ удаляется после прогона (DEMO_PURGE_MINUTES)
+        raise err(410, "purged", "Документ уже удалён с сервера после проверки — загрузите его снова, чтобы перепроверить с ответами.")
+    mode = src_run.get("mode", "llm")
+    limited = enforce_limit(request) if mode == "llm" else None
+    if limited:
+        mode = "rules"
     from types import SimpleNamespace
 
     from ..answers import _resolve
@@ -290,9 +305,8 @@ async def run_answers(rid: str, request: Request):
     import uuid
 
     new_id = uuid.uuid4().hex[:12]
-    run = st.create_run(new_id, src_run["project_id"], src_run["document_id"], src_run["doc_name"], src_run["doc_hash"],
-                        src_run.get("mode", "llm"))
-    job = webapp.Job(new_id, src_run["doc_name"], kind="review", mode=src_run.get("mode", "llm"), base=st.root / "runs")
+    run = st.create_run(new_id, src_run["project_id"], src_run["document_id"], src_run["doc_name"], src_run["doc_hash"], mode)
+    job = webapp.Job(new_id, src_run["doc_name"], kind="review", mode=mode, base=st.root / "runs")
     job.dir.mkdir(parents=True, exist_ok=True)
     src = job.dir / inputs[0].name
     src.write_bytes(inputs[0].read_bytes())
@@ -302,10 +316,44 @@ async def run_answers(rid: str, request: Request):
     job.on_finish = _on_finish
     webapp._start(job, src, compare_with=src_json)
     return {"run": _live(run), "job": new_id, "answers_of": rid, "events": f"/api/v1/jobs/{new_id}/events",
-            "matched": len(parsed) - len(unknown), "unknown_qids": unknown}
+            "matched": len(parsed) - len(unknown), "unknown_qids": unknown, **({"limited": limited} if limited else {})}
+
+
+def purge_minutes() -> int | None:
+    """v13: через сколько минут после прогона удалить загруженный документ (input.*); None — не удалять."""
+    import os
+
+    raw = os.getenv("DEMO_PURGE_MINUTES", "").strip()
+    try:
+        return max(0, int(raw)) if raw else None
+    except ValueError:
+        return None
+
+
+def _purge_input(job) -> None:
+    """Удалить загруженный документ прогона (отчёт остаётся в истории); 0 минут — сразу."""
+    m = purge_minutes()
+    if m is None:
+        return
+
+    def drop():
+        for p in job.dir.glob("input.*"):
+            try:
+                p.unlink()
+            except OSError:
+                pass
+    if m == 0:
+        drop()
+    else:
+        import threading
+
+        t = threading.Timer(m * 60, drop)
+        t.daemon = True
+        t.start()
 
 
 def _on_finish(job) -> None:
+    _purge_input(job)
     st = _store()
     if job.status != "done":
         st.update_run(job.id, status=job.status, error=job.error, finished=_now())

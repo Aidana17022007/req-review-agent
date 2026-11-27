@@ -29,7 +29,7 @@ from ..pipeline import PROFILES, ROOT, STEPS, Options, run
 from ..reader import SUPPORTED
 from .live import ObservedLLM, classify_error, demo_delay, provider_status
 
-MAX_BYTES = 10 * 1024 * 1024  # лимит загрузки: 10 МБ
+MAX_BYTES = int(float(os.getenv("STUDIO_MAX_MB", "10") or 10) * 1024 * 1024)  # лимит загрузки: 10 МБ (v13: STUDIO_MAX_MB, на Render — 5)
 STATIC = Path(__file__).parent / "static"
 JOBS_DIR = Path(tempfile.gettempdir()) / "reqlens-studio"
 SAMPLE = ROOT / "tests" / "fixtures" / "sample_requirements.md"
@@ -203,8 +203,9 @@ def index():
 
 @app.get("/api/health")
 def health():
-    """Состояние модели для экрана загрузки: провайдер и признак «ключ задан» (без самого ключа)."""
-    return provider_status()
+    """Состояние модели для экрана загрузки: провайдер и признак «ключ задан» (без самого ключа).
+    v13: CORS для этого ответа — сайт (Cloudflare Pages) проверяет, проснулась ли Studio, и пишет «просыпается, ~30 с»."""
+    return JSONResponse(provider_status(), headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "no-store"})
 
 
 @app.get("/api/demo")

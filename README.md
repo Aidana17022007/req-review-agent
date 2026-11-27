@@ -1,3 +1,7 @@
+**▶ Оценить без установки:** [reqlens-studio.onrender.com](https://reqlens-studio.onrender.com) — загрузите свой документ или откройте готовый пример (без ключа и регистрации).  
+**⏱ Проверить за 2 минуты:** [открыть отчёт по документу организаторов](https://reqlens.pages.dev/report/) · [PDF](https://reqlens.pages.dev/report/report.pdf) · [сайт](https://reqlens.pages.dev) *(адреса — после деплоя по [docs/DEPLOY.md](docs/DEPLOY.md))*  
+[![Studio health](https://github.com/Aidana17022007/req-review-agent/actions/workflows/studio-health.yml/badge.svg)](https://github.com/Aidana17022007/req-review-agent/actions/workflows/studio-health.yml)
+
 <p align="center"><img src="docs/assets/banner.svg" alt="ReqLens — ИИ-ревью требований по ISO/IEC/IEEE 29148" width="100%"></p>
 
 <p align="center">

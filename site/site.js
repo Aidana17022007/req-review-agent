@@ -23,7 +23,11 @@
   // язык: русский — в разметке, казахский — словарь ниже
   var KK = {
     "skip": "Мазмұнға өту", "nav.features": "Мүмкіндіктер", "nav.how": "Қалай жұмыс істейді", "nav.bench": "Бенчмарк",
-    "cta.try": "Орнатусыз бағалау", "cta.try.studio": "Браузердегі Studio: дайын мысал — прогонсыз және квотасыз; өз файлыңыз — тәулігіне 5 тексеруге дейін.",
+    "try.eyebrow": "Өзіңіз байқап көріңіз", "try.t": "Бір сөйлемді осы жерде тексеріңіз.",
+    "try.lead": "Талапты жазыңыз: агенттің сөздік ережелері бұлыңғыр сөздерді белгілеп, қалай түзету керегін түсіндіреді. Модельсіз, серверсіз және кілтсіз — бәрі браузерде есептеледі.",
+    "try.label": "Талап мәтіні", "try.ex": "Мысалдар:", "try.go": "Тексеру",
+    "try.note": "Бұл — агенттің тек бірінші, сөздік қабаты. Толық тексеру — модель, тест-сынама, талаптар арасындағы қайшылықтар — Studio-да немесе төмендегі бір командамен.",
+    "cta.try": "Орнатусыз бағалау", "nav.proof": "Дәлелдер", "cta.pdf": "PDF есеп", "cta.try.studio": "Браузердегі Studio: дайын мысал — прогонсыз және квотасыз; өз файлыңыз — тәулігіне 5 тексеруге дейін.",
     "cta.try.report": "Ұйымдастырушылар құжаты бойынша интерактивті есеп — браузерде ашылады, орнатусыз және кілтсіз.",
     "blind.eyebrow": "Соқыр бағалау", "blind.t": "Агент алғаш көретін құжаттар.",
     "blind.note": "Құжаттарды команда жазған жоқ, ақаулар кілті бөлек сақталды, агент оларға бапталмаған. Сандар — bench/RESULTS.md файлынан.",
@@ -108,4 +112,111 @@
     var y = Math.min(window.scrollY, 600);
     screens.style.transform = "translateY(" + (y * -0.08).toFixed(1) + "px)";
   }, { passive: true });
+
+  // «Проверьте одну фразу»: словарные правила агента (вшиты при сборке, scripts/build_site.py) — в браузере, без сервера
+  (function () {
+    var sec = document.getElementById("try"), raw = document.getElementById("rl-rules");
+    if (!sec || !raw) return;
+    var R, EX;
+    try {
+      R = JSON.parse(raw.textContent); EX = JSON.parse(document.getElementById("rl-examples").textContent);
+      R.rules.forEach(function (r) { r.rx = new RegExp(r.p, "giu"); });
+      R.andRx = new RegExp(R.and, "iu"); R.kkRx = new RegExp(R.kk, "iu");
+      R.sentRx = new RegExp(R.sent, "gu"); R.idRx = new RegExp("^(?:" + R.id + ")", "u");
+    } catch (e) { return; }  // старый браузер без Unicode-классов в RegExp — секция остаётся скрытой
+    sec.hidden = false;
+    var q = document.getElementById("try-q"), out = document.getElementById("try-out");
+    var SEV = { ru: { critical: "Критичный", major: "Существенный", minor: "Незначительный" },
+                kk: { critical: "Критикалық", major: "Елеулі", minor: "Елеусіз" } };
+    var T = { ru: { none: "Словарные правила ничего не нашли. Это не значит, что требование идеально: модель проверит полноту, тестируемость и противоречия.",
+                    found: "Найдено замечаний: ", fix: "Как исправить: " },
+              kk: { none: "Сөздік ережелер ештеңе таппады. Бұл талап мінсіз дегенді білдірмейді: модель толықтықты, тестіленуді және қайшылықтарды тексереді.",
+                    found: "Табылған ескертулер: ", fix: "Қалай түзету керек: " } };
+    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+    function check(t) {
+      var hits = [];
+      R.rules.forEach(function (r) {
+        var m, seen = {}, ms = []; r.rx.lastIndex = 0;
+        while ((m = r.rx.exec(t))) {
+          if (!m[0]) { r.rx.lastIndex++; continue; }
+          if (r.num && /\d/.test(t.slice(Math.max(0, m.index - 30), m.index + m[0].length + 60))) continue;
+          var k = m[0].toLowerCase(); if (seen[k]) continue; seen[k] = 1;
+          ms.push([m.index, m.index + m[0].length]);
+        }
+        if (ms.length) hits.push({ r: r, ms: ms });
+      });
+      var a = R.andRx.exec(t) || R.kkRx.exec(t);
+      if (a || t.split(";").length > 2) hits.push({ r: R.singular, ms: a ? [[a.index, a.index + a[0].length]] : [] });
+      else if (t.trim().charAt(0) !== "|") {  // v12: три и больше самостоятельных правила в одном пункте
+        var id = R.idRx.exec(t), from = id && /\d/.test(id[0]) ? id[0].length : 0, rules = 0, s;
+        R.sentRx.lastIndex = from;
+        while ((s = R.sentRx.exec(t))) {
+          if (!s[0]) { R.sentRx.lastIndex++; continue; }
+          var x = s[0].trim();
+          if (x.split(/\s+/).length >= 4 && x.indexOf("→") < 0 && !/^(?:например|т\.\s?е\.|то есть|пример)/i.test(x)) rules++;
+        }
+        if (rules >= 3) hits.push({ r: R.atomic, ms: [] });
+      }
+      return hits;
+    }
+    function render() {
+      var t = q.value.trim(), L = d.lang === "kk" ? "kk" : "ru";
+      if (!t) { out.innerHTML = ""; return; }
+      var hits = check(t), spans = [];
+      hits.forEach(function (h) { h.ms.forEach(function (m) { spans.push([m[0], m[1], h.r.sev]); }); });
+      spans.sort(function (x, y) { return x[0] - y[0]; });
+      var html = "", pos = 0;
+      spans.forEach(function (sp) { if (sp[0] < pos) return; html += esc(t.slice(pos, sp[0])) + '<mark class="try-m ' + sp[2] + '">' + esc(t.slice(sp[0], sp[1])) + "</mark>"; pos = sp[1]; });
+      html += esc(t.slice(pos));
+      var order = { critical: 0, major: 1, minor: 2 };
+      hits.sort(function (x, y) { return order[x.r.sev] - order[y.r.sev]; });
+      out.innerHTML = '<div class="try-text">' + html + "</div>" + (hits.length
+        ? '<p class="note" style="margin:14px 0 8px">' + T[L].found + "<b>" + hits.length + "</b></p><ul class=\"try-list\">" + hits.map(function (h) {
+            return '<li><span class="try-sev ' + h.r.sev + '">' + SEV[L][h.r.sev] + "</span> <b>" + esc(h.r.name) + "</b><div>" + esc(h.r.problem) + '</div><div class="try-fix">' + T[L].fix + esc(h.r.fix) + "</div></li>";
+          }).join("") + "</ul>"
+        : '<p class="note try-ok">' + T[L].none + "</p>");
+    }
+    window.REQLENS_TRY = function (t) { return check(t).map(function (h) { return h.r.crit + ":" + h.r.sev; }).sort(); };  // для тестов
+    document.getElementById("try-form").addEventListener("submit", function (e) { e.preventDefault(); render(); });
+    sec.addEventListener("click", function (e) {
+      var b = e.target.closest("[data-try]"); if (!b) return;
+      q.value = EX[+b.getAttribute("data-try")] || ""; render();
+    });
+    if (window.MutationObserver) new MutationObserver(render).observe(d, { attributes: true, attributeFilter: ["lang"] });
+    render();
+  })();
+
+  // v13: Studio на бесплатном Render засыпает. Нажали «Оценить без установки» — ждём /api/health и пишем
+  // «Studio просыпается, ~30 с» вместо ошибки; не проснулась за 90 с — предлагаем интерактивный отчёт.
+  (function () {
+    var note = document.getElementById("wake");
+    var links = document.querySelectorAll("a[data-studio]");
+    if (!note || !links.length || !window.fetch) return;
+    var T = { ru: { wake: "Studio просыпается, ~30 с…", fail: "Studio пока не отвечает — откройте интерактивный отчёт: ", rep: "отчёт" },
+              kk: { wake: "Studio оянып жатыр, ~30 с…", fail: "Studio әзірге жауап бермейді — интерактивті есепті ашыңыз: ", rep: "есеп" } };
+    function L() { return T[d.lang === "kk" ? "kk" : "ru"]; }
+    Array.prototype.forEach.call(links, function (a) {
+      a.addEventListener("click", function (e) {
+        var href = a.getAttribute("href"); if (!/^https?:/.test(href)) return;
+        e.preventDefault();
+        var base = href.replace(/\/?(\?.*)?$/, ""), t0 = Date.now(), shown = false;
+        var timer = setTimeout(function () { shown = true; note.hidden = false; note.textContent = L().wake; }, 1500);
+        (function ping() {
+          var ctl = window.AbortController ? new AbortController() : null;
+          var kill = ctl && setTimeout(function () { ctl.abort(); }, 8000);
+          fetch(base + "/api/health", { cache: "no-store", signal: ctl ? ctl.signal : undefined }).then(function (r) {
+            if (kill) clearTimeout(kill);
+            if (r.ok) { clearTimeout(timer); location.href = href; return; }
+            throw new Error("HTTP " + r.status);
+          }).catch(function () {
+            if (kill) clearTimeout(kill);
+            if (Date.now() - t0 < 90000) { setTimeout(ping, 3000); return; }
+            clearTimeout(timer); note.hidden = false;
+            note.innerHTML = L().fail + '<a href="report/">' + L().rep + "</a>";
+          });
+        })();
+        if (shown) note.hidden = false;
+      });
+    });
+  })();
 })();

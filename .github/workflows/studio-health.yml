@@ -1,0 +1,29 @@
+# v13: раз в час проверяем, что «Оценить без установки» (Studio на Render) отвечает. Бесплатный Render засыпает —
+# даём до 2 минут на пробуждение. Адрес — переменная репозитория STUDIO_URL (Settings → Variables), иначе адрес Blueprint.
+name: Studio health
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: GET /api/health (до 2 минут на пробуждение)
+        env:
+          STUDIO_URL: ${{ vars.STUDIO_URL || 'https://reqlens-studio.onrender.com' }}
+        run: |
+          url="${STUDIO_URL%/}/api/health"
+          for i in $(seq 1 12); do
+            code=$(curl -s -o /tmp/h.json -w "%{http_code}" --max-time 20 "$url" || true)
+            echo "попытка $i: HTTP $code"
+            if [ "$code" = "200" ]; then python3 -c "import json;d=json.load(open('/tmp/h.json'));print('модель:', d.get('model'), '· ключ задан:', d.get('key_ok'))"; exit 0; fi
+            sleep 10
+          done
+          echo "::error::Studio не отвечает: $url"; exit 1
