@@ -9,7 +9,7 @@
 - report/ — интерактивный HTML-отчёт по документу организаторов (reports/requirements-report.html.gz — тот же
   отчёт, что пишет агент; без него — Markdown-отчёт в оформлении проекта) и report.md;
 - slides/ — слайды защиты (docs/slides.html);
-- assets/ — скриншоты и GIF из docs/assets.
+- assets/ — скриншоты и GIF из docs/assets, на которые ссылаются слайды.
 Адрес Studio на Render — --studio или STUDIO_URL. Кода агента и ключей на сайте нет.
 """
 from __future__ import annotations
@@ -171,8 +171,13 @@ def build(out: Path, studio: str) -> None:
     (out / "slides").mkdir()
     slides = ROOT / "docs" / "slides.html"
     if slides.exists():
-        (out / "slides" / "index.html").write_text(slides.read_text(encoding="utf-8").replace('src="assets/', 'src="../assets/')
+        text = slides.read_text(encoding="utf-8")
+        (out / "slides" / "index.html").write_text(text.replace('src="assets/', 'src="../assets/')
                                                    .replace("url(assets/", "url(../assets/"), encoding="utf-8")
+        (out / "assets").mkdir()
+        for name in sorted(set(re.findall(r"assets/([\w.-]+)", text))):  # только то, на что ссылаются слайды
+            if (ROOT / "docs" / "assets" / name).exists():
+                shutil.copy2(ROOT / "docs" / "assets" / name, out / "assets" / name)
     (out / "_headers").write_text("/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n",
                                   encoding="utf-8")
     print(f"Сайт собран: {out} (страниц: {len(list(out.rglob('*.html')))}, интерактивный отчёт: {'да' if gz.exists() else 'нет'})")
