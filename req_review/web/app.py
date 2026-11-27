@@ -374,6 +374,37 @@ def sniff(ext: str, data: bytes) -> str | None:
         return "Не удалось прочитать текст: кодировка не UTF-8 и не Windows-1251"
 
 
+class B64Upload:
+    """Файл, присланный в base64 (поле file_b64 + filename). Studio кодирует документ перед отправкой: защита хостинга
+    (Cloudflare перед Render) блокирует запросы, в тексте которых есть, например, пример команды curl с заголовком
+    Authorization, — а это обычное содержимое ТЗ на API. Закодированный текст фильтр не трогает."""
+
+    def __init__(self, filename: str, data: bytes):
+        self.filename, self._data = filename, data
+
+    async def read(self, size: int = -1) -> bytes:
+        return self._data if size < 0 else self._data[:size]
+
+
+async def pick_upload(file: UploadFile | None, file_b64: UploadFile | None, filename: str = ""):
+    """Обычный файл или его base64-копия (Studio); дальше — те же проверки read_upload (формат, размер, пустой)."""
+    if file_b64 is not None and (file is None or not file.filename):
+        import base64
+        import binascii
+
+        raw = await file_b64.read(MAX_BYTES * 4 // 3 + 8)
+        if len(raw) > MAX_BYTES * 4 // 3 + 4:
+            raise HTTPException(413, {"code": "too_large", "message": f"Файл больше {MAX_BYTES // (1024 * 1024)} МБ"})
+        try:
+            data = base64.b64decode(b"".join(raw.split()), validate=True)
+        except (binascii.Error, ValueError):
+            raise HTTPException(400, {"code": "bad_request", "message": "Файл повреждён при передаче (base64) — загрузите его ещё раз"}) from None
+        return B64Upload(Path(filename or "документ").name, data)
+    if file is None or not file.filename:
+        raise HTTPException(400, {"code": "bad_request", "message": "Загрузите файл документа"})
+    return file
+
+
 async def read_upload(file: UploadFile) -> tuple[str, bytes]:
     ext = Path(file.filename or "").suffix.lower()
     if ext not in SUPPORTED:
@@ -407,7 +438,9 @@ def _legacy_limit(request: Request) -> None:
 
 
 @app.post("/api/review")
-async def start(request: Request, file: UploadFile = File(...), profile: str = Form("fast"), domain: str = Form("fintech")):
+async def start(request: Request, file: UploadFile | None = File(None), profile: str = Form("fast"), domain: str = Form("fintech"),
+                file_b64: UploadFile | None = File(None), filename: str = Form("")):
+    file = await pick_upload(file, file_b64, filename)
     if profile not in PROFILES:
         raise HTTPException(400, "Неизвестный профиль")
     if domain not in ("fintech", "none"):
@@ -420,7 +453,8 @@ async def start(request: Request, file: UploadFile = File(...), profile: str = F
 
 
 @app.post("/api/jobs/{job_id}/compare")
-async def compare_version(job_id: str, request: Request, file: UploadFile | None = File(None), use_fixed: bool = Form(False)):
+async def compare_version(job_id: str, request: Request, file: UploadFile | None = File(None), use_fixed: bool = Form(False),
+                          file_b64: UploadFile | None = File(None), filename: str = Form("")):
     """Проверить новую версию документа и сравнить с отчётом задачи job_id (экран «До / После»)."""
     parent = JOBS.get(job_id)
     if not parent or not parent.done or parent.error or not parent.json_path.exists():
@@ -444,7 +478,8 @@ async def compare_version(job_id: str, request: Request, file: UploadFile | None
         src = job.dir / "input.md"
         shutil.copyfile(fixed, src)
         job.name = f"{Path(parent.name).stem} (исправленный).md"
-    elif file is not None and file.filename:
+    elif (file is not None and file.filename) or file_b64 is not None:
+        file = await pick_upload(file, file_b64, filename)
         src = await _save_upload(file, job.dir)
         job.name = Path(file.filename).name
     else:
