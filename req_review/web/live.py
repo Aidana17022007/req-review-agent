@@ -29,6 +29,7 @@ class ObservedLLM:
         self._inner = inner
         self._emit = emit
         self._delay = delay
+        self._seen: set = set()
         self.phase = 0  # номер текущего шага пайплайна; события пакетов шлём только на шаге «Проверка требований»
 
     def __getattr__(self, name):
@@ -36,7 +37,12 @@ class ObservedLLM:
 
     def generate_json(self, system, prompt, *, task: str = "", context: dict | None = None):
         batch = list((context or {}).get("reqs") or []) if task == "check" else []
-        live = bool(batch) and self.phase == 2
+        # v12: проверка набора идёт параллельно (шаг 3 начинается раньше конца пакетов) — живые события шлём для
+        # первой проверки каждого пакета; повторная проверка (самосогласованность) событий не даёт
+        key = tuple(r.rid for r in batch)
+        live = bool(batch) and self.phase in (2, 3) and key not in self._seen
+        if live:
+            self._seen.add(key)
         if live:
             self._emit("batch_start", reqs=[{"rid": r.rid, "doc_id": r.doc_id, "text": getattr(r, "short", r.text)[:200],
                                              "section": r.section} for r in batch])

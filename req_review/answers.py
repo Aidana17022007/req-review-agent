@@ -57,8 +57,35 @@ class AnswerItem:
 
 # ------------------------------------------------------------------ шаблон и разбор
 
-def template_md(questions, title: str) -> str:
-    """Шаблон ответов: все вопросы с заголовками «### Q-xx», ссылки на замечания и пустое место для ответа."""
+LETTERS = "абвгд"
+_OPTION_LINE = re.compile(r"^\s*[-*]\s*([а-дa-e])\)\s*(.+?)\s*$", re.I)
+_LETTER_ANSWER = re.compile(r"^\s*([а-дa-e])\)?(?=$|[\s,.;:—-])\s*[,.;:—-]?\s*(.*)$", re.I)
+_LAT = {"a": "а", "b": "б", "c": "в", "d": "г", "e": "д"}
+
+
+def question_options(questions, decisions: list, set_values: dict | None = None) -> dict:
+    """Варианты ответа к вопросу: из повестки решений (по общим S-xx / R-xxx.N) или из значений противоречия."""
+    out = {}
+    for q in questions:
+        opts = []
+        for d in decisions or []:
+            if set(d.get("source_ids", [])) & set(q.closes):
+                opts = [str(o) for o in d.get("options", [])]
+                break
+        if not opts and set_values:
+            for fid in q.closes:
+                vals = list(dict.fromkeys(set_values.get(fid, [])))
+                if len(vals) >= 2:
+                    opts = vals[:3]
+                    break
+        if len(opts) >= 2:
+            out[q.qid] = opts[:4]
+    return out
+
+
+def template_md(questions, title: str, options: dict | None = None) -> str:
+    """Шаблон ответов: все вопросы с заголовками «### Q-xx», ссылки на замечания и пустое место для ответа.
+    У вопросов с готовыми вариантами — «а) … б) …»: ответ можно дать буквой («б» или «б, но …»)."""
     out = [f"# Ответы аналитика — {title}", "",
            "> Впишите ответ под каждым вопросом (вместо строки «Ответ:») и запустите перепроверку:",
            "> `python review.py <документ> <отчёт>.md --answers <этот файл>`.",
@@ -68,8 +95,12 @@ def template_md(questions, title: str) -> str:
         out += [f"### {q.qid}. {q.ref} — {q.section}", "",
                 f"<!-- reqlens: {q.rid or q.ref} {q.criterion}" + (f" {','.join(q.refs)}" if q.refs else "") + " -->",
                 f"**Вопрос.** {q.text}", "",
-                f"*Закроет замечания:* {', '.join(q.closes) if q.closes else '—'}", "",
-                "Ответ: ", ""]
+                f"*Закроет замечания:* {', '.join(q.closes) if q.closes else '—'}", ""]
+        opts = (options or {}).get(q.qid)
+        if opts:
+            out += ["*Варианты (можно ответить буквой):*"] + [f"- {LETTERS[i]}) {o}" for i, o in enumerate(opts)] \
+                + [f"- {LETTERS[len(opts)]}) свой ответ", ""]
+        out += ["Ответ: ", ""]
     return "\n".join(out).rstrip() + "\n"
 
 
@@ -81,17 +112,34 @@ def parse_answers(text: str) -> dict[str, dict]:
         body = text[m.end(): heads[i + 1].start() if i + 1 < len(heads) else len(text)]
         km = KEY_RE.search(body)
         key = (km.group(1), km.group(2), km.group(3) or "") if km else None
-        lines = []
+        lines, opts = [], {}
         for ln in body.splitlines():
             s = ln.strip()
-            if not s or s.startswith(("<!--", ">")) or s.startswith(("**Вопрос.**", "*Закроет замечания:*", "**Вопрос**")):
+            om = _OPTION_LINE.match(s)
+            if om:
+                opts[_LAT.get(om.group(1).lower(), om.group(1).lower())] = om.group(2)
+                continue
+            if not s or s.startswith(("<!--", ">")) or s.startswith(("**Вопрос.**", "*Закроет замечания:*", "**Вопрос**",
+                                                                      "*Варианты")):
                 continue
             s = re.sub(r"^(\*\*)?Ответ(\*\*)?\s*[:.]\s*(\*\*)?\s*", "", s, flags=re.I)
             if s:
                 lines.append(s)
         ans = " ".join(lines).strip()
+        option = None
+        lm = _LETTER_ANSWER.match(ans) if opts else None
+        if lm:
+            letter = _LAT.get(lm.group(1).lower(), lm.group(1).lower())
+            opt_text = opts.get(letter, "")
+            if opt_text and opt_text != "свой ответ":  # «б» / «б, но …» → текст варианта (+ уточнение)
+                option = letter
+                ans = opt_text.rstrip(".") + (". " + lm.group(2).strip() if lm.group(2).strip() else "")
+            elif opt_text == "свой ответ" and not lm.group(2).strip():
+                ans = ""  # выбрана «свой ответ», но сам ответ не вписан — вопрос остаётся без ответа
+            elif opt_text == "свой ответ":
+                ans = lm.group(2).strip()
         if ans:
-            out[m.group(1)] = {"answer": ans, "key": key}
+            out[m.group(1)] = {"answer": ans, "key": key, **({"option": option} if option else {})}
     return out
 
 
@@ -165,6 +213,45 @@ def _unit_conflict(q, answer: str, rv) -> str:
     return ""
 
 
+# Противоречие без чисел: одному и тому же случаю ответ назначает два разных HTTP-кода или метода из спорных вариантов
+# вопроса («для чужой карты — 403» и «запрос чужой карты возвращает 404»). Разные случаи («403 — чужая карта,
+# 404 — карта не найдена») противоречием не считаются: у частей ответа должна совпасть основа слов.
+_METHOD_RE = re.compile(r"\b(GET|POST|PUT|PATCH|DELETE)\b")
+_STATUS_RE = re.compile(r"(?<![\d.,])([1-5]\d\d)(?![\d%]|[.,]\d|\s*(?:₸|тенге|тг|мс|сек|мин|час|%|событ|запрос|символ))")
+_STOP = {"толь", "если", "когд", "тако", "этот", "этого", "всег", "долж", "може", "можн", "тольк", "также", "либо",
+         "дале", "пото", "сист", "серв", "отве", "возв", "метод", "мето", "кодо", "код", "стат", "http"}
+
+
+def _stems(text: str) -> set[str]:
+    words = re.findall(r"[a-zA-Zа-яА-ЯёЁ]{4,}", text.lower().replace("ё", "е"))
+    return {w[:4] for w in words} - _STOP
+
+
+def _token_conflict(q, answer: str) -> str:
+    """Для вопросов «что верно»: два предложения ответа об одном случае с разными кодами/методами из вопроса."""
+    if getattr(q, "criterion", "") not in NUMERIC_CHECK:
+        return ""
+    qtext = getattr(q, "text", "") or ""
+    q_status = set(_STATUS_RE.findall(qtext))
+    parts = [x.strip() for x in re.split(r"(?<=[.!?;])\s+|\n+", answer) if x.strip()]
+    tagged = []
+    for x in parts:
+        toks = {("метод", m) for m in _METHOD_RE.findall(x)} | {("код", c) for c in _STATUS_RE.findall(x) if c in q_status}
+        if toks:
+            tagged.append((x, toks, _stems(_METHOD_RE.sub(" ", _STATUS_RE.sub(" ", x)))))
+    for i, (a, ta, sa) in enumerate(tagged):
+        for b, tb, sb in tagged[i + 1:]:
+            common = sa & sb
+            if len(common) < 2 or len(common) < 0.6 * min(len(sa), len(sb)):
+                continue
+            for kind in ("код", "метод"):
+                va, vb = {v for k, v in ta if k == kind}, {v for k, v in tb if k == kind}
+                if va and vb and not va & vb:
+                    return (f"Для одного и того же случая в ответе два разных {('HTTP-кода' if kind == 'код' else 'метода')}: "
+                            f"{', '.join(sorted(va))} и {', '.join(sorted(vb))}")
+    return ""
+
+
 def classify_rules(q, answer: str, rv) -> tuple[str, str, str]:
     """(type, quote, note) по правилам; quote — дословная подстрока ответа."""
     nums = _numbers(answer)
@@ -176,6 +263,9 @@ def classify_rules(q, answer: str, rv) -> tuple[str, str, str]:
     why = _unit_conflict(q, answer, rv)
     if why:
         return "contradictory", _sentence(answer, re.compile(r"\d")), why
+    why = _token_conflict(q, answer)
+    if why:
+        return "contradictory", _sentence(answer, re.compile(r"\b(?:GET|POST|PUT|PATCH|DELETE|[1-5]\d\d)\b")), why
     if EVASIVE_RE.search(answer) and not nums:
         return "evasive", _sentence(answer, EVASIVE_RE), "Остаётся открытым: значение не названо"
     if len(answer) >= 8 and (nums or CONCRETE_RE.search(answer)):
@@ -234,20 +324,25 @@ def _resolve(questions, parsed: dict) -> list[tuple]:
             unknown.append(qid)
             continue
         used.add(q.qid)
-        out.append((q, v["answer"]))
+        out.append((q, v["answer"], v.get("option")))
     return out, unknown
 
 
 def apply_answers(rv, questions, parsed: dict, llm=None, log=print) -> dict:
     """Учесть ответы в результате проверки rv (меняет его). Возвращает {"items","unknown_qids","closed","added"}."""
-    pairs, unknown = _resolve(questions, parsed)
+    triples, unknown = _resolve(questions, parsed)
+    pairs = [(q, a) for q, a, _o in triples]
     kinds = classify(pairs, rv, llm, log)
+    for i, (q, a, opt) in enumerate(triples):  # выбранный вариант «а / б» — конкретное решение владельца ТЗ
+        if opt and kinds[i][0] != "contradictory":
+            kinds[i] = ("concrete", a.split(". ")[0].rstrip("."), f"выбран вариант {opt})")
     # ID замечаний по исходной нумерации — до любых удалений
     req_idx = {rr.req.rid: rr for rr in rv.req_results}
     findings_by_id = {f"{rr.req.rid}.{n}": (rr, f) for rr in rv.req_results for n, f in enumerate(rr.findings, 1)}
     set_by_id = {f"S-{i:02d}": f for i, f in enumerate(rv.set_findings, 1)}
     items: list[AnswerItem] = []
     close: dict[int, tuple] = {}  # id(finding) → (qid, quote)
+    closed_list: list[dict] = []  # v12: что закрыто (серьёзность, критерий) — для «Кратко» и исправленного ТЗ
     added: list[SetFinding] = []
     for (q, ans), (t, quote, note) in zip(pairs, kinds):
         closes = []
@@ -256,13 +351,12 @@ def apply_answers(rv, questions, parsed: dict, llm=None, log=print) -> dict:
                 if fid in findings_by_id or fid in set_by_id:
                     closes.append(fid)
                     f = findings_by_id[fid][1] if fid in findings_by_id else set_by_id[fid]
+                    if id(f) not in close:
+                        closed_list.append({"id": fid, "qid": q.qid, "quote": quote, "severity": f.severity,
+                                            "criterion": f.criterion, "problem": f.problem})
                     close.setdefault(id(f), (q.qid, quote, fid))
             note = note or (f"{', '.join(closes)} закрыто: «{quote}»" if closes else "Связанных замечаний в этом прогоне нет")
-            rr = req_idx.get(q.rid)
-            if rr is not None and closes:  # в исправленный документ — формулировка со значением из ответа
-                base = (rr.rewrite or rr.req.text).strip().rstrip(".")
-                rr.rewrite = f"{base}. Уточнено ответом {q.qid}: {quote.rstrip('.')}."
-                rr.answered.append(q.qid)
+            # формулировку «Стало» с этим значением пишет revised.write (исправленное ТЗ и исправленный документ)
         elif t == "evasive":
             for fid in q.closes:
                 hit = findings_by_id.get(fid)
@@ -303,7 +397,7 @@ def apply_answers(rv, questions, parsed: dict, llm=None, log=print) -> dict:
     log(f"ответы аналитика: {len(items)} учтено — конкретных {sum(i.type == 'concrete' for i in items)}, "
         f"уклончивых {sum(i.type == 'evasive' for i in items)}, противоречивых {sum(i.type == 'contradictory' for i in items)}; "
         f"закрыто замечаний {len(close)}" + (f"; неизвестные вопросы: {', '.join(unknown)}" if unknown else ""))
-    return {"items": items, "unknown_qids": unknown, "closed": len(close), "added": len(added)}
+    return {"items": items, "unknown_qids": unknown, "closed": len(close), "added": len(added), "closed_list": closed_list}
 
 
 def summary_state(rv, scores) -> dict:

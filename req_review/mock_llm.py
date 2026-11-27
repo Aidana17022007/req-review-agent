@@ -6,7 +6,9 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+import time
 
 from .llm import BaseLLM
 from .splitter import MODAL_RE
@@ -23,6 +25,8 @@ class MockLLM(BaseLLM):
         super().__init__(min_interval=0, max_retries=0)
 
     def _call(self, system, prompt, *, task, context):
+        if lat := float(os.getenv("MOCK_LATENCY", "0") or 0):  # v12: имитация задержки модели (замер параллельности)
+            time.sleep(lat)
         if task == "check":
             return json.dumps(self._check(context), ensure_ascii=False)
         if task == "set":
@@ -43,6 +47,15 @@ class MockLLM(BaseLLM):
                  "problem": f"[mock] {task}: поведение не определено.", "severity": "major", "fix": "[mock] Дописать."},
                 {"check": task, "type": "gap", "refs": [{"id": "DOC", "quote": "такой фразы в документе нет"}],
                  "problem": "[mock] выдуманный пропуск", "severity": "major", "fix": "—"}]}, ensure_ascii=False)
+        if task == "revise":  # v12: «модель» вписывает ответ в формулировку; у одного элемента — выдуманное число 999
+            out = []
+            for i, x in enumerate(context["items"]):
+                after = (x["before"].rstrip(". ") + ". " if x["before"] else "Система должна: ") + x["answer"]
+                if i == 1:
+                    after += " Не позднее 999 секунд."
+                out.append({"id": x["id"], "after": after, "gherkin": f"Дано требование {x['id']}\nКогда выполняется условие\n"
+                                                                      f"Тогда {x['answer']}"})
+            return json.dumps({"items": out}, ensure_ascii=False)
         if task == "answers":  # v9: «модель» считает все ответы конкретными и выдумывает цитату — правила обязаны это поправить
             return json.dumps({"items": [{"qid": q.qid, "type": "concrete", "quote": "[mock] цитаты нет в ответе",
                                           "note": "[mock] закрыто"} for q, _a in context["items"]]}, ensure_ascii=False)
