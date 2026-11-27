@@ -10,6 +10,7 @@
 <meta name="theme-color" content="#02030C">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <style>
+{{ fonts_css()|safe }}
 {{ tokens_css()|safe }}
 {{ asset("base.css")|safe }}
 [hidden]{display:none!important}
@@ -74,6 +75,8 @@
 .net-off{display:none}.offline .net-off{display:inline-flex}
 /* v9: предупреждение о конфиденциальности, «Что сделать», экран ответов аналитика */
 .privacy{margin:0}.privacy[hidden]{display:none}
+.privacy-note{display:flex;gap:10px;align-items:flex-start;font:var(--t-small);color:var(--text-2);padding:2px 2px 0}
+.privacy-note>.ic{color:var(--major);flex:none;margin-top:2px}.privacy-note b{color:var(--text);font-weight:600}.privacy-note .small{display:block;color:var(--text-3)}
 .err-card .todo{margin-top:12px;padding:12px 14px;border-radius:var(--r-field);background:var(--surface-2);border:1px solid var(--border)}
 .ans-prog{margin-bottom:16px}
 .ans-qs{list-style:none;margin:0;padding:0;display:grid;gap:12px}
@@ -159,7 +162,7 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
                   <button type="button" data-v="llm" aria-pressed="true">С моделью</button><button type="button" data-v="rules" aria-pressed="false">Только правила</button>
                 </div></div>
             </div>
-            <div class="banner-err banner-warn privacy" id="privacy" role="note">{{ icon("shield", 18) }}<div><b>Текст документа уходит в модель — не загружайте конфиденциальное.</b>
+            <div class="privacy-note privacy" id="privacy" role="note">{{ icon("shield", 16) }}<div><b>Текст документа уходит в модель — не загружайте конфиденциальное.</b>
               <span class="small">Для банковского контура — офлайн-режим (Ollama): профиль «Офлайн», документ не покидает ваш сервер.</span></div></div>
             <p class="small faint" id="up-policy" hidden></p>
             <div class="row wrap" style="justify-content:flex-end">
@@ -380,8 +383,7 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
   // режим «Демо»: сохранённый реальный прогон проигрывается без сети и без модели (страховка на защите)
   fetch("/api/demo").then(r=>r.json()).then(d=>{if(!d.available)return;state.demo=d;const b=$("#demo");b.hidden=false;
     b.title=`Проиграть сохранённый прогон: ${d.document} · ${d.model}`;
-    $("#health").insertAdjacentHTML("afterbegin",`<div class="banner-err banner-demo" role="status">${ic("play",18)}<div><b>Режим «Демо» включён.</b> Кнопка «Демо» проигрывает сохранённый прогон
-      «${esc(d.document)}» (${esc(d.model)}, ${esc(d.started)}) — без сети и без обращения к модели. Загрузка своего файла запускает настоящую проверку.</div></div>`);}).catch(()=>{});
+}).catch(()=>{});
   // состояние модели: нет ключа — предупреждаем до запуска
   api("/health").then(h=>{
     if(h.max_upload_mb)$("#max-mb").textContent=h.max_upload_mb;
