@@ -1,4 +1,5 @@
-"""Логотип ReqLens: знак (линза с галочкой на зелёном квадрате) + текст. Один источник геометрии → SVG и PNG.
+"""Логотип ReqLens: знак (линза с галочкой — кольцо в градиенте рассвета на ночной плитке) + текст.
+Один источник геометрии → SVG и PNG. Дизайн-система v3 «Ecliptic Dawn».
 
     python -m req_review.ui.brand   →  design/brand/ (SVG-логотипы, favicon, иконки PWA 192/512/maskable, brand.json)
 
@@ -21,35 +22,40 @@ OUT = ROOT / "design" / "brand"
 
 # геометрия знака в системе 48×48
 VIEW = 48
-GRAD = ("#14532D", "#2E8B57")  # как --grad-hero: от тёмного зелёного (сверху слева) к светлому
+NIGHT = "#02030C"  # плитка — ночь
+GLOW = "#4459C8"  # свечение кобальта снизу плитки
+GRAD = ("#4459C8", "#9191D3", "#E3CDDB")  # кольцо и ручка: кобальт → перивинкл → заря (сверху слева вниз вправо)
 LENS = (21.0, 21.0, 10.5)  # cx, cy, r — оправа линзы
 LENS_W = 4.0
 HANDLE = ((28.9, 28.9), (37.0, 37.0))
 HANDLE_W = 5.0
 CHECK = ((15.9, 21.4), (19.7, 25.2), (26.3, 17.7))
 CHECK_W = 3.2
-GLYPH = "#FFFFFF"
-TEXT = {"light": "#111813", "dark": "#EEF3EF"}
+GLYPH = "#FFFFFF"  # галочка
+TEXT = {"light": "#0A0D2A", "dark": "#F4F5FF"}
 
 _ids = itertools.count(1)
 
 
-def _glyph_svg() -> str:
+def _glyph_svg(gid: str) -> str:
     cx, cy, r = LENS
     (x1, y1), (x2, y2) = HANDLE
     pts = " ".join(f"{x},{y}" for x, y in CHECK)
-    return (f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="{GLYPH}" stroke-width="{LENS_W}"/>'
-            f'<path d="M{x1} {y1}L{x2} {y2}" stroke="{GLYPH}" stroke-width="{HANDLE_W}" stroke-linecap="round"/>'
+    return (f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="url(#{gid})" stroke-width="{LENS_W}"/>'
+            f'<path d="M{x1} {y1}L{x2} {y2}" stroke="url(#{gid})" stroke-width="{HANDLE_W}" stroke-linecap="round"/>'
             f'<polyline points="{pts}" fill="none" stroke="{GLYPH}" stroke-width="{CHECK_W}" stroke-linecap="round" stroke-linejoin="round"/>')
 
 
 def mark_svg(size: int | None = 48, gid: str = "rl") -> str:
-    """Знак ReqLens (квадрат со скруглением 12/48 и градиентом бренда)."""
+    """Знак ReqLens: ночная плитка (скругление 12/48) с кобальтовым свечением снизу, кольцо в градиенте рассвета."""
     wh = f' width="{size}" height="{size}"' if size else ""
     return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {VIEW} {VIEW}"{wh} role="img" aria-label="ReqLens">'
-            f'<defs><linearGradient id="{gid}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="{GRAD[0]}"/>'
-            f'<stop offset="1" stop-color="{GRAD[1]}"/></linearGradient></defs>'
-            f'<rect width="{VIEW}" height="{VIEW}" rx="12" fill="url(#{gid})"/>{_glyph_svg()}</svg>')
+            f'<defs><linearGradient id="{gid}" gradientUnits="userSpaceOnUse" x1="10" y1="9" x2="38" y2="38">'
+            f'<stop offset="0" stop-color="{GRAD[0]}"/><stop offset=".55" stop-color="{GRAD[1]}"/><stop offset="1" stop-color="{GRAD[2]}"/>'
+            f'</linearGradient><radialGradient id="{gid}g" cx=".5" cy="1" r=".85"><stop offset="0" stop-color="{GLOW}" stop-opacity=".6"/>'
+            f'<stop offset="1" stop-color="{GLOW}" stop-opacity="0"/></radialGradient></defs>'
+            f'<rect width="{VIEW}" height="{VIEW}" rx="12" fill="{NIGHT}"/><rect width="{VIEW}" height="{VIEW}" rx="12" fill="url(#{gid}g)"/>'
+            f'{_glyph_svg(gid)}</svg>')
 
 
 def logo_svg(theme: str = "light", height: int = 48) -> str:
@@ -80,14 +86,20 @@ def favicon_href() -> str:
 # ---------------------------------------------------------------- PNG (Pillow)
 
 def _png(size: int, maskable: bool = False, rounded: bool = True):
-    from PIL import Image, ImageDraw
+    from PIL import Image, ImageDraw, ImageFilter
 
     ss = 4
     S = size * ss
-    v = Image.linear_gradient("L")  # 0 сверху → 255 снизу
-    g = Image.blend(v, v.rotate(90), 0.5).resize((S, S))  # (x + y) / 2: диагональ без пустых углов
-    c0, c1 = (Image.new("RGB", (S, S), c) for c in GRAD)
-    bg = Image.composite(c1, c0, g)  # верх-лево — GRAD[0], низ-право — GRAD[1]
+
+    def rgb(h: str) -> tuple[int, int, int]:
+        return tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))
+
+    # плитка: ночь + кобальтовое свечение снизу
+    bg = Image.new("RGB", (S, S), rgb(NIGHT))
+    glow = Image.new("L", (S, S), 0)
+    ImageDraw.Draw(glow).ellipse((-0.35 * S, 0.55 * S, 1.35 * S, 1.75 * S), fill=150)
+    glow = glow.filter(ImageFilter.GaussianBlur(S * 0.14))
+    bg = Image.composite(Image.new("RGB", (S, S), rgb(GLOW)), bg, glow)
     img = Image.new("RGBA", (S, S), (0, 0, 0, 0))
     mask = Image.new("L", (S, S), 0)
     md = ImageDraw.Draw(mask)
@@ -104,21 +116,29 @@ def _png(size: int, maskable: bool = False, rounded: bool = True):
     def P(x: float, y: float) -> tuple[float, float]:
         return ((c + (x - c) * sc) * k0, (c + (y - c) * sc) * k0)
 
-    d = ImageDraw.Draw(img)
-    white = (255, 255, 255, 255)
+    # кольцо и ручка — маска, залитая диагональным градиентом рассвета
+    ring = Image.new("L", (S, S), 0)
+    rd = ImageDraw.Draw(ring)
 
-    def stroke(points: list[tuple[float, float]], width: float):
+    def stroke(draw, points: list[tuple[float, float]], width: float, fill):
         wpx = width * sc * k0
         pts = [P(x, y) for x, y in points]
-        d.line(pts, fill=white, width=round(wpx), joint="curve")
+        draw.line(pts, fill=fill, width=round(wpx), joint="curve")
         for x, y in pts:  # круглые концы и стыки
-            d.ellipse((x - wpx / 2, y - wpx / 2, x + wpx / 2, y + wpx / 2), fill=white)
+            draw.ellipse((x - wpx / 2, y - wpx / 2, x + wpx / 2, y + wpx / 2), fill=fill)
 
     cx, cy, r = LENS
     (px, py), rr, lw = P(cx, cy), r * sc * k0, LENS_W * sc * k0
-    d.ellipse((px - rr - lw / 2, py - rr - lw / 2, px + rr + lw / 2, py + rr + lw / 2), outline=white, width=round(lw))
-    stroke(list(HANDLE), HANDLE_W)
-    stroke(list(CHECK), CHECK_W)
+    rd.ellipse((px - rr - lw / 2, py - rr - lw / 2, px + rr + lw / 2, py + rr + lw / 2), outline=255, width=round(lw))
+    stroke(rd, list(HANDLE), HANDLE_W, 255)
+    v = Image.linear_gradient("L")
+    diag = Image.blend(v, v.rotate(90), 0.5).resize((S, S))  # 0 — сверху слева, 255 — снизу справа
+    c0, c1, c2 = (Image.new("RGB", (S, S), rgb(h)) for h in GRAD)
+    half = diag.point(lambda x: min(255, x * 2))
+    grad = Image.composite(c1, c0, half)
+    grad = Image.composite(c2, grad, diag.point(lambda x: max(0, (x - 128) * 2)))
+    img.paste(grad, (0, 0), ring)
+    stroke(ImageDraw.Draw(img), list(CHECK), CHECK_W, (255, 255, 255, 255))
     return img.resize((size, size), Image.LANCZOS)
 
 
@@ -150,6 +170,17 @@ def build(out: Path = OUT) -> list[Path]:
                       "apple-touch-icon.png": _png(180, rounded=False), "favicon-32.png": _png(32)}.items():
         img.save(out / name, optimize=True)
         written.append(out / name)
+    # иконки приложения (PWA) — те же файлы знака: один источник для отчёта, Studio, сайта и установки на телефон
+    static = ROOT / "req_review" / "web" / "static"
+    if out == OUT and static.exists():
+        import shutil
+
+        for name in ("icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png"):
+            shutil.copy2(out / name, static / name)
+        (static / "icon.svg").write_text(files["favicon.svg"] + "\n", encoding="utf-8")
+        site = ROOT / "site"
+        if site.exists():
+            (site / "favicon.svg").write_text(files["favicon.svg"] + "\n", encoding="utf-8")
     return written
 
 

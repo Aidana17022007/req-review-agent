@@ -1,7 +1,7 @@
 """Скриншоты и GIF для README и слайдов (опционально, нужен Playwright; GIF — Pillow).
 
     pip install playwright pillow && playwright install chromium
-    python scripts/screenshots.py [путь к report.html] [--no-studio]   →  docs/assets/
+    python scripts/screenshots.py [путь к report.html] [--no-studio] [--only-demo]   →  docs/assets/
 
 Что снимается:
   • все разделы HTML-отчёта (светлая и тёмная темы, 1440×900), включая 3D-граф (WebGL через SwiftShader) и 2D-вид;
@@ -63,6 +63,8 @@ def shoot_report(b, html: Path, errors: list):
                 page.keyboard.press("j")
                 page.wait_for_timeout(600)
             page.screenshot(path=str(OUT / f"screenshot-{name}-{theme}.png"), full_page=full)
+            if full:
+                fit_budget(OUT / f"screenshot-{name}-{theme}.png")
         if theme == "light":
             page.goto(html.resolve().as_uri() + "#graph")
             page.wait_for_timeout(1500)
@@ -77,6 +79,18 @@ def shoot_report(b, html: Path, errors: list):
         page.wait_for_timeout(900)
         page.screenshot(path=str(OUT / f"screenshot-mobile-{name}.png"))
     page.close()
+
+
+def fit_budget(path: Path, budget: int = 950 * 1024):
+    """Полностраничный скриншот больше бюджета — палитра 256 цветов (правило репозитория: файлы < 1 МБ)."""
+    if path.stat().st_size <= budget:
+        return
+    try:
+        from PIL import Image
+    except ImportError:
+        return
+    im = Image.open(path).convert("RGB")
+    im.quantize(colors=256, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).save(path, optimize=True)
 
 
 def free_port() -> int:
@@ -170,17 +184,37 @@ def shoot_v22(b, errors: list):
     page.close()
 
 
+REAL = ROOT / "reports" / "requirements-report.json"  # отчёт для сдачи — по документу организаторов
+
+
 def shoot_demo(b, errors: list):
-    """Режим «Демо»: GIF живого прогона (проигрывание сохранённого прогона без сети) и ассистент с источниками."""
+    """Режим «Демо»: GIF живого прогона (проигрывание сохранённого прогона без сети) и ассистент с источниками.
+
+    Проигрывается настоящий отчёт по документу организаторов (reports/requirements-report.json + .html.gz), а не
+    тестовый пример: Studio показывает модель из паспорта прогона, модель при этом не вызывается.
+    Без отчёта для сдачи — фикстура схемы 2.2."""
+    import gzip
+    import json
     import shutil
 
-    d = ROOT / "reports" / "demo_v22"
-    d.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(ROOT / "tests" / "fixtures" / "report_v22.json", d / "report.json")
-    shutil.copyfile(ROOT / "reports" / "preview_v22.html", d / "report.html")
+    env = {**mock_env()}
+    gz = REAL.with_suffix(".html.gz")
+    if REAL.exists() and gz.exists():
+        d = ROOT / "reports" / "demo_real"
+        d.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(REAL, d / "report.json")
+        (d / "report.html").write_bytes(gzip.decompress(gz.read_bytes()))
+        provider, _, model = json.loads(REAL.read_text(encoding="utf-8"))["passport"]["model"].partition(" / ")
+        if provider == "gemini":  # плашка «mock» не нужна: проигрывается прогон настоящей модели (ключ не используется)
+            env.update(LLM_PROVIDER="gemini", GEMINI_MODEL=model, GEMINI_API_KEY="demo-replay-no-calls")
+    else:
+        d = ROOT / "reports" / "demo_v22"
+        d.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / "tests" / "fixtures" / "report_v22.json", d / "report.json")
+        shutil.copyfile(ROOT / "reports" / "preview_v22.html", d / "report.html")
     port = free_port()
     srv = subprocess.Popen([sys.executable, "-m", "req_review.web", "--demo", str(d / "report.json")],
-                           cwd=ROOT, env={**mock_env(), "STUDIO_PORT": str(port)})
+                           cwd=ROOT, env={**env, "STUDIO_PORT": str(port)})
     try:
         for _ in range(100):
             try:
@@ -227,12 +261,15 @@ def make_gif(frames: list[bytes], path: Path, width: int = 960):
         return
     if not frames:
         return
-    step = max(1, len(frames) // 40)  # не больше ~40 кадров
-    src = [Image.open(io.BytesIO(png)).convert("RGB") for png in frames[::step] + [frames[-1]] * 3]
-    for w, colors in ((width, 128), (width, 64), (round(width * 0.85), 64), (round(width * 0.7), 64)):  # ужимаем, пока не влезет в бюджет
+    tail = [frames[-1]] * 3
+    for n_max, w, colors in ((40, width, 128), (40, width, 64), (40, round(width * 0.85), 64), (40, round(width * 0.7), 64),
+                             (28, round(width * 0.7), 48), (20, round(width * 0.7), 48)):  # ужимаем, пока не влезет в бюджет
+        step = max(1, -(-len(frames) // n_max))
+        src = [Image.open(io.BytesIO(png)).convert("RGB") for png in frames[::step] + tail]
         imgs = [im.resize((w, round(im.height * w / im.width)), Image.LANCZOS)
                 .quantize(colors=colors, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE) for im in src]
-        imgs[0].save(path, save_all=True, append_images=imgs[1:], duration=[260] * (len(imgs) - 1) + [2200], loop=0, optimize=True)
+        imgs[0].save(path, save_all=True, append_images=imgs[1:], duration=[260 * 40 // n_max] * (len(imgs) - 1) + [2200],
+                     loop=0, optimize=True)
         if path.stat().st_size <= GIF_BUDGET:
             break
     print(f"GIF: {path} ({len(imgs)} кадров, {w}px, {colors} цветов, {path.stat().st_size // 1024} КБ)")
@@ -251,6 +288,14 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     errors: list[str] = []
     with sync_playwright() as p:
+        if "--only-demo" in sys.argv:  # только режим «Демо»: GIF и ассистент по отчёту для сдачи
+            b = p.chromium.launch()
+            shoot_demo(b, errors)
+            b.close()
+            if errors:
+                sys.exit("Ошибки в консоли браузера:\n  " + "\n  ".join(errors))
+            print(f"Готово: {OUT}")
+            return
         b = p.chromium.launch(args=GL_ARGS)
         shoot_report(b, html, errors)
         shoot_v22(b, errors)

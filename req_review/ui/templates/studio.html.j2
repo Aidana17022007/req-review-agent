@@ -7,7 +7,7 @@
 <link rel="icon" href="{{ favicon_href() }}">
 {# PWA: манифест, цвет окна и иконка для iOS; service worker регистрируется в конце страницы #}
 <link rel="manifest" href="/manifest.webmanifest">
-<meta name="theme-color" content="#1F6B45">
+<meta name="theme-color" content="#02030C">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <style>
 {{ tokens_css()|safe }}
@@ -58,8 +58,7 @@
 .hist td:last-child{white-space:nowrap}.hist td:nth-child(3){white-space:nowrap}
 .hist .acts{display:flex;gap:6px;justify-content:flex-end}
 /* график динамики: цвета серий проверены на CVD и контраст в обеих темах (dataviz validate_palette) */
-.trend-box{--tr-score:#1E8A50;--tr-ready:#3B82C4}
-[data-theme="dark"] .trend-box{--tr-score:#3FB070;--tr-ready:#5A9BE6}
+.trend-box{--tr-score:var(--ok);--tr-ready:var(--accent)}
 .trend{position:relative;margin-top:8px}
 .trend svg{width:100%;height:auto;display:block;overflow:visible}
 .trend .grid-l{stroke:var(--border);stroke-width:1}
@@ -292,7 +291,7 @@
   const jdel=p=>api(p,{method:"DELETE"});
 
   // ---------------- тема, меню, экраны
-  const cur=()=>document.documentElement.dataset.theme||"light";
+  const cur=()=>document.documentElement.dataset.theme||"dark";
   const themeBtn=()=>{const d=cur()==="dark";$("#btn-theme").innerHTML=ic(d?"sun":"moon",18)+`<span>${d?"Светлая тема":"Тёмная тема"}</span>`;};
   $("#btn-theme").onclick=()=>{const n=cur()==="dark"?"light":"dark";document.documentElement.dataset.theme=n;try{localStorage.setItem("reqlens-theme",n)}catch(e){}themeBtn();
     try{const f=$("#frame").contentDocument;if(f){f.documentElement.dataset.theme=n;}}catch(e){}};themeBtn();

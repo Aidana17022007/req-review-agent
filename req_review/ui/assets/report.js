@@ -1,4 +1,4 @@
-/* ReqLens — интерактивный отчёт (структура «AI-агент», светлая зелёная тема). Ванильный JS, без зависимостей.
+/* ReqLens — интерактивный отчёт (структура «AI-агент», дизайн-система v3 «Ecliptic Dawn»). Ванильный JS, без зависимостей.
    Модули: ядро и разделы — здесь; «Граф» (3D/2D) — в report-graph.js и использует window.RL. */
 (function () {
   "use strict";
@@ -7,11 +7,14 @@
   const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const ic = (n, s = 18) => `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ""}</svg>`;
+  // цвет серьёзности — из токенов текущей темы (tokens.css): графики и граф совпадают с чипами в обеих темах
+  const tok = (v, fb) => (getComputedStyle(document.documentElement).getPropertyValue(v).trim() || fb);
+  const sev = (label, icon, v, fb) => ({ label, icon, get color() { return tok(v, fb); } });
   const SEV = {
-    critical: { label: "Критичный", icon: "alert", color: "#D64545" },
-    major: { label: "Существенный", icon: "alert", color: "#B7791F" },
-    minor: { label: "Незначительный", icon: "chat", color: "#B8A532" },
-    ok: { label: "Без замечаний", icon: "check", color: "#1F9D55" },
+    critical: sev("Критичный", "alert", "--critical", "#FF7B8A"),
+    major: sev("Существенный", "alert", "--major", "#FFB86B"),
+    minor: sev("Незначительный", "chat", "--minor", "#F3DE8A"),
+    ok: sev("Без замечаний", "check", "--ok", "#5EE6B0"),
   };
   const ORDER = { critical: 0, major: 1, minor: 2, ok: 3 };
   const EARS = { ubiquitous: "постоянное", event: "по событию", state: "по состоянию", unwanted: "нежелательное поведение", optional: "опциональное", complex: "составное" };
@@ -36,9 +39,11 @@
   const COV_OK = D.coverage ? D.coverage.steps.filter((s) => s.rids.length).length : 0;
   const CATS = [...new Set(D.reqs.map((r) => r.category).filter(Boolean))];
   const BIG_DOC = D.lines.length > 1200, BIG_TABLE = D.reqs.length > 300;
+  // v8: требования без строк таблиц API, критериев приёмки и заглушек (поле kind); в старых отчётах kind нет — считаем все
+  const N_REQ = D.reqs.filter((r) => (r.kind || "requirement") === "requirement").length || D.reqs.length, N_OTHER = D.reqs.length - N_REQ;
 
   // ------------------------------------------------------------ тема, печать, тосты
-  function currentTheme() { return document.documentElement.dataset.theme || "light"; }
+  function currentTheme() { return document.documentElement.dataset.theme || "dark"; }
   function setThemeBtn() { const d = currentTheme() === "dark"; $("#btn-theme").innerHTML = ic(d ? "sun" : "moon") + `<span>${d ? "Светлая тема" : "Тёмная тема"}</span>`; }
   function toggleTheme() {
     const t = currentTheme() === "dark" ? "light" : "dark";
@@ -185,7 +190,7 @@
   // ------------------------------------------------------------ навигация (сайдбар)
   const VIEWS = [
     { id: "overview", label: "Обзор", icon: "grid" },
-    { id: "reqs", label: "Требования", icon: "list", count: D.reqs.length },
+    { id: "reqs", label: "Требования", icon: "list", count: N_REQ },
     { id: "doc", label: "Документ", icon: "file", count: totalMarks || "" },
     { id: "graph", label: "Граф", icon: "cube", count: D.graph.edges.length || "" },
     { id: "set", label: "Проверка набора", icon: "layers", count: D.set.length || "" },
@@ -328,7 +333,7 @@
         if (ca) return { html: `<p>Каждая цитата замечаний сверена с документом кодом: подтверждено <b>${ca.verified} из ${ca.total}</b> (дословно ${ca.exact}, с пропусками «…» ${ca.fuzzy}). Замечаний модели с выдуманными цитатами отброшено: <b>${ca.dropped}</b> — в отчёт они не попали.</p>`, src: [] };
       }
       if (has(q, "сколько", "сводк", "статист", "кратко", "обзор")) {
-        return { html: `<p>Требований: <b>${D.reqs.length}</b>. Замечаний: <b>${totalFindings}</b> — критичных ${D.counts.critical}, существенных ${D.counts.major}, незначительных ${D.counts.minor}. Балл документа ${D.scores.doc}/100, готовность ${D.scores.readiness}%.</p>`, src: [] };
+        return { html: `<p>Требований: <b>${N_REQ}</b>${N_OTHER ? ` (и ещё ${N_OTHER} строк API и критериев приёмки)` : ""}. Замечаний: <b>${totalFindings}</b> — критичных ${D.counts.critical}, существенных ${D.counts.major}, незначительных ${D.counts.minor}. Балл документа ${D.scores.doc}/100, готовность ${D.scores.readiness}%.</p>`, src: [] };
       }
       const hits = search(q, 6), fids = hits.filter((d) => d.kind === "f").map((d) => d.id).slice(0, 4), lns = hits.filter((d) => d.kind === "l").map((d) => d.id).slice(0, 3);
       if (!fids.length && !lns.length) return { html: "<p>В отчёте и документе ничего не нашлось по этому вопросу. Попробуйте ID требования (R-006, Ф-2) или слова из документа.</p>", src: [] };
@@ -502,7 +507,7 @@
     const crit = D.counts.critical;
     el.innerHTML = `${errorBanner()}${trustHTML()}${summary30HTML() ? `<div style="margin-bottom:16px">${summary30HTML()}</div>` : ""}
       <div class="grid g-4">
-        ${kpi("Всего требований", num(D.reqs.length), `<b>${D.split_method === "ids" ? "ID" : "R"}</b>нарезка ${D.split_method === "ids" ? "по ID документа" : "с номерами агента"}`, true, "reqs")}
+        ${kpi("Всего требований", num(N_REQ), N_OTHER ? `<b>+${N_OTHER}</b>строк API и критериев приёмки проверены отдельно` : `<b>${D.split_method === "ids" ? "ID" : "R"}</b>нарезка ${D.split_method === "ids" ? "по ID документа" : "с номерами агента"}`, true, "reqs")}
         ${kpi("Нарушений", num(totalFindings), `<b>${reqFindings}</b>по требованиям · <b>${D.set.length}</b>по набору`, false, "doc")}
         ${kpi("Критичных", num(crit), `${ic("alert", 14)}непроверяемые, противоречивые, неполные`, false, "reqs", crit ? "var(--critical)" : "var(--ok)")}
         ${kpi("Без замечаний", num(cleanReqs), `<b>${Math.round((100 * cleanReqs) / Math.max(1, D.reqs.length))}%</b>из ${D.reqs.length} требований`, false, "reqs", "var(--ok)")}

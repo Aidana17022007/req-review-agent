@@ -39,12 +39,18 @@ def tokens_css(tokens: dict | None = None) -> str:
     common += [f"  --motion-{k}: {v};" for k, v in t["motion"].items()]
     common += [f"  --z-{k}: {v};" for k, v in t.get("z", {}).items()]
     common += [f"  --max-width: {t['layout']['max-width']};", f"  --sidebar: {t['layout'].get('sidebar', '248px')};"]
+    # v3 «Ecliptic Dawn»: градиенты рассвета и страницы, стекло, перспектива парящих экранов
+    common += [f"  --grad-{k}: {v};" for k, v in t.get("gradient", {}).items()]
+    common += [f"  --glass-{k}: {v};" for k, v in t.get("glass", {}).items()]
+    common += [f"  --persp-{k}: {v};" for k, v in t.get("perspective", {}).items()]
     light, dark = block(t["color"]["light"]), block(t["color"]["dark"])
-    # [data-theme] без :root — темы можно применять и к отдельным блокам (витрина styleguide)
-    return (f":root {{\n{chr(10).join(common)}\n{light}\n  color-scheme: light;\n}}\n"
+    # тема по умолчанию (:root) — из tokens.json (default_theme; в v3 — тёмная); [data-theme] без :root — темы можно
+    # применять и к отдельным блокам (витрина styleguide)
+    default = t.get("default_theme", "light")
+    base = dark if default == "dark" else light
+    return (f":root {{\n{chr(10).join(common)}\n{base}\n  color-scheme: {default};\n}}\n"
             f"[data-theme=\"light\"] {{\n{light}\n  color-scheme: light;\n}}\n"
             f"[data-theme=\"dark\"] {{\n{dark}\n  color-scheme: dark;\n}}\n")
-    # Основная тема — светлая зелёная; тёмная включается только переключателем (не по настройке ОС)
 
 
 @lru_cache(maxsize=None)

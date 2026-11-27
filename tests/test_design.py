@@ -1,4 +1,4 @@
-"""Дизайн-система v2: токены — один источник правды, контраст AA, единые иконки, логотип и иконки PWA, витрина."""
+"""Дизайн-система v3 «Ecliptic Dawn»: токены — один источник правды, контраст AA, единые иконки, логотип и иконки PWA, витрина."""
 import re
 from pathlib import Path
 
@@ -35,7 +35,7 @@ def test_semantic_tokens_are_complete_in_both_themes():
 
 
 def test_scales_motion_and_layers():
-    for name in ("green", "gray"):
+    for name in ("indigo", "night"):
         assert list(T["palette"][name]) == ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900", "950"]
         lum = [sum(rgb(v)) for v in T["palette"][name].values()]
         assert lum == sorted(lum, reverse=True), f"шкала {name} должна темнеть от 50 к 950"
@@ -46,7 +46,8 @@ def test_scales_motion_and_layers():
     z = T["z"]
     assert z["overlay"] < z["drawer"] < z["popover"] < z["modal"] < z["tooltip"] < z["toast"]
     css = tokens_css()
-    for var in ("--green-700:", "--gray-500:", "--fs-md: 16px", "--lh-3xl: 56px", "--z-modal:", "--info:", "--danger:", "--r-full:"):
+    for var in ("--indigo-700:", "--night-500:", "--grad-dawn:", "--glass-blur:", "--persp-depth:", "--r-panel:", "--shadow-xl:",
+                "--fs-md: 16px", "--lh-3xl: 56px", "--z-modal:", "--info:", "--danger:", "--r-full:"):
         assert var in css, var
 
 
@@ -122,3 +123,15 @@ def test_styleguide_shows_every_token_group_and_component(tmp_path):
                 "modal-box", "toast-err", "empty", "skel-card", "stages", "data-tip", "seg seg-sm"):
         assert cls in html, cls
     assert all(f"<span>{n}</span>" in html for n in ICONS)
+
+
+def test_v3_dark_is_default_and_dawn_tokens_exist():
+    """v3: тёмная тема по умолчанию (:root), градиент рассвета и страницы, белая главная кнопка, панели 36 px."""
+    assert T["version"].startswith("4.") and T["default_theme"] == "dark"
+    css = tokens_css()
+    root = css.split("[data-theme=")[0]
+    assert "color-scheme: dark" in root and f"--panel: {T['color']['dark']['panel']}" in root
+    assert {"dawn", "page", "glow"} <= T["gradient"].keys() and T["radius"]["panel"] == "36px"
+    for theme in ("light", "dark"):
+        c = T["color"][theme]
+        assert contrast(rgb(c["on-primary"]), rgb(c["primary"])) >= AA_TEXT

@@ -1,6 +1,8 @@
 """v5 «Глубина»: CRUD-полнота API, контракт интеграции, учёт строк, покрытие приёмкой, вердикты, провайдеры."""
 import glob
 import json
+import os
+import re
 from pathlib import Path
 
 import pytest
@@ -958,19 +960,48 @@ def test_calibration_folds_llm_twin_of_rule_and_caps_unconfirmed_critical(tmp_pa
 
 
 def test_site_build_uses_project_design_and_readme_features(tmp_path):
-    """Сайт для Cloudflare: дизайн-система проекта (токены, base.css, логотип), функции из README, отчёт и слайды."""
+    """Сайт для Cloudflare: исходник site/ + общие токены (tokens.css из design/tokens.json), свежие цифры из отчёта
+    и бенчмарка, 6 главных возможностей, видео, отчёт, слайды и соответствие ТЗ; без внешних шрифтов и трекеров;
+    картинки WebP с размерами; ни одной ссылки на несуществующую страницу."""
     import subprocess
     import sys
 
+    def build(out, *extra):
+        r = subprocess.run([sys.executable, str(ROOT / "scripts" / "build_site.py"), "--out", str(out), *extra],
+                           capture_output=True, text=True, cwd=ROOT, env={**os.environ, "STUDIO_URL": "", "REPO_PUBLIC": ""})
+        assert r.returncode == 0, r.stderr
+        return (out / "index.html").read_text(encoding="utf-8")
+
     out = tmp_path / "public"
-    r = subprocess.run([sys.executable, str(ROOT / "scripts" / "build_site.py"), "--out", str(out), "--studio", "https://studio.example"],
-                       capture_output=True, text=True, cwd=ROOT)
-    assert r.returncode == 0, r.stderr
-    home = (out / "index.html").read_text(encoding="utf-8")
-    assert "--brand" in home and "logo-mark" in home and "kpi-hero" in home and "https://studio.example" in home
-    assert home.count('class="card feat"') >= 10 and "Тест-проба" in home
-    assert (out / "report" / "index.html").exists() and (out / "slides" / "index.html").exists()
-    assert "<script>alert" not in (out / "report" / "index.html").read_text(encoding="utf-8")
+    home = build(out)  # Studio не задана → кнопки ведут на отчёт и «Одну команду», GitHub закрыт → ссылок нет
+    assert "onrender.com" not in home and "data-studio" not in home and "github.com" not in home
+    assert 'href="report/"' in home and 'href="#start"' in home and "Открыть отчёт по документу организаторов" in home
+    assert home.count('class="card reveal"') == 6 and "Тест-проба" in home and "Спроси отчёт" in home
+    assert 'href="report/#graph"' in home  # скриншоты ведут в живой 3D/2D-граф и разделы отчёта
+    d = json.loads((ROOT / "reports" / "requirements-report.json").read_text(encoding="utf-8"))
+    n_req = sum(1 for x in d["requirements"] if x.get("kind", "requirement") == "requirement")
+    assert f'data-k="n-req">{n_req}<' in home  # цифры подставлены из отчёта для сдачи
+    assert (out / "tokens.css").read_text(encoding="utf-8").startswith(":root")
+    imgs = re.findall(r"<img [^>]*>", home)
+    assert all('width="' in i and 'height="' in i for i in imgs)
+    assert all(".webp" in i or ".svg" in i or ".gif" in i for i in imgs)
+    assert not re.search(r"https?://(fonts\.googleapis|www\.googletagmanager|cdn\.)", home)
+    for p in ("report/index.html", "slides/index.html", "tz/index.html", "llms.txt"):
+        assert (out / p).exists(), p
+    # все внутренние ссылки и картинки главной указывают на существующие файлы или якоря
+    ids = set(re.findall(r'\bid="([^"]+)"', home))
+    for ref in re.findall(r'(?:href|src|poster)="([^"]+)"', home):
+        if ref.startswith(("http://", "https://", "data:", "mailto:")):
+            continue
+        if ref.startswith("#"):
+            assert ref[1:] in ids, ref
+        elif (ROOT / "docs" / "assets" / "demo-60s.mp4").exists() or ref != "demo-60s.mp4":
+            path = ref.split("#")[0]  # report/#graph — раздел интерактивного отчёта
+            assert (out / path).exists() or (out / path / "index.html").exists(), ref
+    # Studio явно включена (--studio-force) → кнопки ведут на неё, запасных кнопок нет
+    forced = build(tmp_path / "forced", "--studio", "https://studio.example", "--studio-force")
+    assert 'href="https://studio.example"' in forced and "data-nostudio" not in forced
+    assert not re.search(r"data-studio\s+hidden", forced)
 
 
 def test_merge_keeps_specifics_of_duplicate():
@@ -1006,3 +1037,15 @@ def test_calibration_drops_non_russian_model_findings_and_keeps_rule_severity(tm
     calibrate_severity(rv)
     assert rv.set_findings == [rule] and rule.severity == "major"
     assert any("не на русском" in r["reason"] for r in rv.rejected)
+
+
+def test_requirement_count_excludes_api_rows_and_acceptance(tmp_path):
+    """v8: «N требований» в Studio «Демо», сравнении версий и HTML-отчёте — без строк таблиц API и критериев приёмки."""
+    from req_review.web.demo import DemoRun
+
+    src = ROOT / "reports" / "requirements-report.json"
+    d = json.loads(src.read_text(encoding="utf-8"))
+    n_req = sum(1 for r in d["requirements"] if r.get("kind", "requirement") == "requirement")
+    assert DemoRun(src).describe()["reqs"] == n_req
+    js = (ROOT / "req_review" / "ui" / "assets" / "report.js").read_text(encoding="utf-8")
+    assert 'count: N_REQ' in js and '"kind": r.kind' in (ROOT / "req_review" / "html_report.py").read_text(encoding="utf-8")

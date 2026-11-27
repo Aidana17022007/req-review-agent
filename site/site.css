@@ -1,0 +1,211 @@
+/* ReqLens — сайт в стиле «Ecliptic Dawn» (дизайн-система v3).
+   Общие значения приходят из tokens.css (design/tokens.json); здесь — значения по умолчанию с нулевой специфичностью
+   (:where) на случай, если tokens.css не подключён, и раскладка сайта. */
+@font-face{font-family:"Inter";font-style:normal;font-weight:100 900;font-display:swap;src:url(fonts/inter-latin-wght-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Inter";font-style:normal;font-weight:100 900;font-display:swap;src:url(fonts/inter-cyrillic-wght-normal.woff2) format("woff2");unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:"Inter";font-style:normal;font-weight:100 900;font-display:swap;src:url(fonts/inter-cyrillic-ext-wght-normal.woff2) format("woff2");unicode-range:U+0460-052F,U+1C80-1C88,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F}
+
+:where(:root){
+  --panel:#02030C;--surface:#0B0E24;--surface-2:#12163A;--text:#F4F5FF;--text-2:#A3A8C9;--text-3:#8C91B5;
+  --brand:#4459C8;--brand-hover:#5A6DD6;--accent:#8E9BFF;--border:rgba(140,155,255,.14);--border-strong:rgba(140,155,255,.28);
+  --glass-bg:rgba(255,255,255,.04);--glass-border:rgba(255,255,255,.08);
+  --critical:#FF7B8A;--major:#FFB86B;--minor:#F3DE8A;--ok:#5EE6B0;--info:#8E9BFF;
+  --grad-page:linear-gradient(180deg,#333E9F 0%,#3B4CB6 35%,#7E82CE 70%,#E3CDDB 100%);
+  --grad-dawn:linear-gradient(180deg,#02020E 0%,#02020E 30%,#080F36 42%,#192B84 52%,#4459C8 62%,#9191D3 74%,#D9C6DA 88%,#E3CDDB 100%);
+  --dawn-ink:#050719;--font-sans:Inter,"Inter Display",Geist,Manrope,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  --font-mono:"JetBrains Mono","Cascadia Code",Consolas,Menlo,monospace;--r-panel:36px;--r-card:20px;--ease:cubic-bezier(.2,.8,.2,1)
+}
+:where([data-theme="light"]){
+  --panel:#FFFFFF;--surface:#F5F6FC;--surface-2:#ECEEF9;--text:#0A0D2A;--text-2:#454A6E;--text-3:#5A5F82;
+  --brand:#3B4CB6;--brand-hover:#2F3E9A;--accent:#3B4CB6;--border:rgba(10,13,42,.08);--border-strong:rgba(10,13,42,.16);
+  --glass-bg:rgba(255,255,255,.7);--glass-border:rgba(10,13,42,.08);
+  --critical:#C0263A;--major:#9A5A00;--minor:#7A6A00;--ok:#0E7A52;--info:#3B4CB6
+}
+
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh;background:var(--grad-page);background-attachment:fixed;color:var(--text);
+  font:400 16px/1.6 var(--font-sans);font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased;
+  padding:16px;display:flex;flex-direction:column;gap:16px}
+img{max-width:100%;height:auto;display:block}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:8px}
+.skip{position:absolute;left:-9999px}.skip:focus{left:24px;top:24px;z-index:9;background:#fff;color:#02030C;padding:8px 14px;border-radius:999px}
+
+/* панели — главный приём: ночные скруглённые плиты на градиенте страницы */
+.panel{position:relative;background:var(--panel);border-radius:var(--r-panel);padding:clamp(28px,5vw,72px);overflow:hidden;
+  max-width:1440px;width:100%;margin:0 auto;box-shadow:0 40px 120px rgba(2,3,12,.35)}
+
+.eyebrow{margin:0 0 14px;font:500 12px/1 var(--font-sans);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.display{margin:0;font-weight:500;font-size:clamp(40px,7vw,88px);line-height:1.02;letter-spacing:-.045em}
+.display.sm{font-size:clamp(36px,5.6vw,72px)}
+.h1{margin:0 0 32px;font-weight:500;font-size:clamp(32px,4.4vw,56px);line-height:1.04;letter-spacing:-.04em}
+.dim{color:var(--text-3)}
+.lead{font-size:clamp(16px,1.5vw,19px);line-height:1.55;max-width:680px;margin:20px auto 0}
+.note{color:var(--text-2);font-size:14px;margin:18px 0 0}
+.small{font-size:13px;color:var(--text-3)}
+
+/* кнопки */
+.btn{display:inline-flex;align-items:center;gap:10px;height:44px;padding:0 20px 0 22px;border-radius:999px;font:500 15px/1 var(--font-sans);
+  text-decoration:none;border:1px solid transparent;cursor:pointer;transition:transform .2s var(--ease),box-shadow .2s var(--ease),background .2s}
+.btn i{font-style:normal;font-size:20px;line-height:1;margin-top:-2px;transition:transform .2s var(--ease)}
+.btn:hover i{transform:translateX(3px)}
+.btn-white{background:#fff;color:#02030C;box-shadow:0 8px 30px rgba(2,3,12,.25),inset 0 -1px 0 rgba(2,3,12,.08)}
+.btn-white:hover{transform:translateY(-1px);box-shadow:0 12px 36px rgba(2,3,12,.32)}
+.btn-dark{background:#0B0E24;color:#F4F5FF;border-color:rgba(140,155,255,.22)}
+.btn-dark:hover{border-color:rgba(142,155,255,.55)}
+.btn-sm{height:36px;padding:0 14px 0 16px;font-size:14px}
+.pill-btn{height:36px;min-width:36px;padding:0 10px;border-radius:999px;border:1px solid var(--glass-border);background:var(--glass-bg);
+  color:var(--text);font:600 12px/1 var(--font-sans);letter-spacing:.04em;cursor:pointer;display:inline-grid;place-items:center}
+
+/* hero */
+.hero{min-height:min(980px,100vh);padding:16px 16px 0;display:flex;flex-direction:column;background:#02020E}
+/* рассвет привязан к низу панели: светлая заря всегда под текстом, какой бы высоты ни была панель */
+.dawn{position:absolute;inset:0;background:#02020E var(--grad-dawn) bottom/100% 1000px no-repeat;pointer-events:none}
+.dawn::after{content:"";position:absolute;inset:0;background:radial-gradient(60% 40% at 50% 62%,rgba(68,89,200,.55),transparent);
+  animation:breathe 11s ease-in-out infinite}
+@keyframes breathe{50%{opacity:.55;transform:scale(1.04)}}
+.nav{position:relative;z-index:3;display:flex;align-items:center;gap:12px;padding:8px 8px 0}
+.logo{display:inline-flex;align-items:center;gap:10px;color:#F4F5FF;text-decoration:none;font-weight:600;font-size:18px;letter-spacing:-.02em}
+.logo img{border-radius:8px}
+.capsule{margin:0 auto;display:flex;gap:2px;padding:5px;border-radius:999px;border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.04);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.capsule a{color:#C9CCE6;text-decoration:none;font-size:14px;padding:7px 14px;border-radius:999px}
+.capsule a:hover{color:#fff;background:rgba(255,255,255,.06)}
+.nav-act{display:flex;gap:8px;align-items:center}
+.hero .pill-btn{color:#F4F5FF;border-color:rgba(255,255,255,.12);background:rgba(255,255,255,.05)}
+#theme .i-moon{display:none}[data-theme="light"] #theme .i-moon{display:block}[data-theme="light"] #theme .i-sun{display:none}
+
+.screens{position:relative;z-index:1;height:clamp(240px,40vw,520px);margin-top:clamp(24px,4vw,48px);perspective:1600px;
+  display:flex;justify-content:center;align-items:flex-start}
+.screen{--ry:0deg;--z:0px;position:absolute;top:0;margin:0;width:min(56%,780px);border-radius:18px;overflow:hidden;
+  border:1px solid rgba(140,155,255,.22);background:#02030C;box-shadow:0 40px 120px rgba(2,3,12,.6),0 0 80px rgba(68,89,200,.25);
+  transform:perspective(1600px) rotateX(18deg) rotateY(var(--ry)) translateZ(var(--z));transform-origin:50% 100%;
+  -webkit-mask-image:linear-gradient(to bottom,#000 40%,transparent 100%);mask-image:linear-gradient(to bottom,#000 40%,transparent 100%);
+  animation:float-in .9s var(--ease) both}
+.screen img{width:100%;aspect-ratio:16/10;object-fit:cover;object-position:top left}
+.s-left{--ry:14deg;--z:-140px;left:2%;top:8%;opacity:.8;animation-delay:.08s}
+.s-right{--ry:-14deg;--z:-140px;right:2%;top:8%;opacity:.8;animation-delay:.16s}
+.s-mid{z-index:2}
+@keyframes float-in{from{opacity:0;transform:perspective(1600px) translateY(40px) rotateX(30deg) rotateY(var(--ry)) translateZ(var(--z))}}
+
+.hero-text{position:relative;z-index:2;margin-top:auto;text-align:center;padding:clamp(24px,4vw,40px) 16px clamp(40px,6vw,72px);color:var(--dawn-ink)}
+.hero-text .lead{color:#1B2052}
+.cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+.hero-text .cta,.cta.center{justify-content:center}
+
+/* логотипы стандартов */
+.logos{padding:22px clamp(20px,4vw,56px)}
+.logos ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;justify-content:space-between;gap:14px 28px}
+.logos li{color:var(--text-2);font-weight:600;font-size:15px;letter-spacing:-.01em;opacity:.85}
+
+/* KPI «на полу» в перспективе */
+.kpis{padding-bottom:clamp(40px,6vw,72px)}
+.floor{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;perspective:1200px}
+.tile{background:linear-gradient(180deg,var(--surface-2),var(--surface));border:1px solid var(--border);border-radius:var(--r-card);padding:24px;
+  transform:rotateX(14deg);transform-origin:50% 100%;box-shadow:0 30px 60px rgba(2,3,12,.35)}
+.tile b{display:block;font-weight:500;font-size:clamp(34px,4vw,54px);letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums}
+.tile>span{display:block;margin-top:12px;color:var(--text-2);font-size:14px}.tile em{font-style:normal;font-weight:600;color:var(--critical)}
+.tile:first-child,.tile:last-child{filter:blur(.4px);opacity:.92}
+
+/* карточки возможностей */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr));gap:20px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:12px 12px 20px;
+  transition:transform .25s var(--ease),border-color .25s}
+.card:hover{transform:translateY(-2px);border-color:rgba(142,155,255,.45)}
+.crop{border-radius:12px;overflow:hidden;border:1px solid var(--border);background:#02030C;aspect-ratio:16/10}
+.crop img{width:100%;height:100%;object-fit:cover;object-position:top left}
+.card h3{margin:18px 8px 6px;font-size:19px;font-weight:600;letter-spacing:-.02em}
+.card p{margin:0 8px;color:var(--text-2);font-size:15px;line-height:1.55}
+.more{margin:24px 0 0;color:var(--text-2);font-size:15px;line-height:1.7;max-width:1100px}.more b{color:var(--text);font-weight:600}
+
+/* видео */
+.video{border-radius:var(--r-card);overflow:hidden;border:1px solid var(--border-strong);background:#02030C;box-shadow:0 30px 80px rgba(2,3,12,.45);max-width:1100px}
+.video video{display:block;width:100%;height:auto;aspect-ratio:16/9;background:#02030C}
+
+/* доверие */
+.trust{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:20px 40px}
+.trust .eyebrow{margin-bottom:10px}.trust .note{margin-top:10px;max-width:720px}.trust .cta{margin-top:0}
+.h2{margin:0;font-weight:500;font-size:clamp(24px,2.8vw,36px);line-height:1.1;letter-spacing:-.03em}
+.h2 [data-k]{color:var(--ok)}
+
+/* как работает */
+.how{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:clamp(24px,4vw,56px);align-items:center}
+.steps{list-style:none;margin:0;padding:0;counter-reset:s;position:relative}
+.steps::before{content:"";position:absolute;left:17px;top:18px;bottom:18px;width:2px;background:linear-gradient(180deg,#3B4CB6,#8E9BFF);border-radius:2px}
+.steps li{counter-increment:s;position:relative;padding:0 0 26px 56px}
+.steps li::before{content:counter(s);position:absolute;left:0;top:0;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;
+  background:#0B0E24;border:1px solid rgba(142,155,255,.5);color:#F4F5FF;font-weight:600;font-size:14px}
+[data-theme="light"] .steps li::before{background:#fff;color:#0A0D2A}
+.steps b{display:block;font-weight:600;font-size:18px;letter-spacing:-.02em}
+.steps span{display:block;color:var(--text-2);font-size:15px;margin-top:4px}
+.gif{border-radius:var(--r-card);overflow:hidden;border:1px solid var(--border-strong);box-shadow:0 30px 80px rgba(2,3,12,.45);
+  background:#02030C url(img/live-poster.webp) top left/cover no-repeat;aspect-ratio:16/10}
+.gif img{width:100%;height:100%;object-fit:cover;object-position:top left}
+
+/* табы со скриншотами (работают без JS) */
+.tabs{display:flex;flex-wrap:wrap;gap:8px}
+.tabs input{position:absolute;opacity:0;pointer-events:none}
+.tabs label{height:38px;padding:0 16px;border-radius:999px;display:inline-flex;align-items:center;font-size:14px;cursor:pointer;
+  border:1px solid var(--border);color:var(--text-2);background:var(--surface)}
+.tabs input:checked+label{background:#fff;color:#02030C;border-color:#fff}
+.tabs input:focus-visible+label{outline:2px solid var(--accent);outline-offset:3px}
+.stage{flex-basis:100%;margin-top:20px;perspective:1600px;position:relative}
+.stage a{display:none}.stage img{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;object-position:top left;border-radius:18px;border:1px solid var(--border-strong);box-shadow:0 40px 120px rgba(2,3,12,.5);
+  transform:rotateX(8deg);transform-origin:50% 100%;animation:tab-in .5s var(--ease)}
+#t1:checked~.stage .p1,#t2:checked~.stage .p2,#t3:checked~.stage .p3,#t4:checked~.stage .p4,#t5:checked~.stage .p5{display:block}
+.stage a:hover img{border-color:rgba(142,155,255,.6)}
+.stage-cta{flex-basis:100%;margin:24px 0 0;text-align:center}
+@keyframes tab-in{from{opacity:0;transform:rotateX(16deg) translateY(16px)}}
+
+/* бенчмарк */
+.table{overflow-x:auto;border:1px solid var(--border);border-radius:var(--r-card);background:var(--surface)}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:15px}
+th,td{padding:14px 18px;text-align:left;border-bottom:1px solid var(--border)}
+th{font-weight:500;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
+tfoot td{font-weight:600;border-bottom:0}
+td:nth-child(n+2),th:nth-child(n+2){text-align:right;white-space:nowrap}
+
+/* код */
+.code{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:20px 132px 20px 20px}
+.code pre{margin:0;overflow-x:auto}.code code{font:14px/1.6 var(--font-mono);color:var(--text)}
+.copy{position:absolute;right:14px;top:50%;transform:translateY(-50%)}
+
+/* финальный CTA */
+.final{min-height:520px;display:flex;align-items:flex-end;justify-content:center;background:#02020E}
+.final .dawn{background-size:100% 720px}
+.final-in{position:relative;z-index:1;text-align:center;color:var(--dawn-ink);padding-bottom:clamp(32px,5vw,56px)}
+
+/* футер — отдельная панель: текст на ночи/белом с контрастом AA в обеих темах */
+.foot{max-width:1440px;width:100%;margin:0 auto;padding:24px clamp(20px,4vw,56px) 28px;border-radius:var(--r-panel);background:var(--panel);
+  color:var(--text-2);display:flex;flex-wrap:wrap;gap:12px 32px;align-items:center}
+.foot .logo{color:var(--text)}.foot p{margin:0}.foot nav{display:flex;flex-wrap:wrap;gap:8px 20px;margin-left:auto}
+.foot a{color:var(--text);text-decoration:none;font-weight:500}.foot a:hover{text-decoration:underline}
+.foot .small{flex-basis:100%;color:var(--text-3)}
+
+/* появление при прокрутке (JS добавляет .on; без JS всё видно) */
+/* без прозрачности: контент виден на скриншоте всей страницы и без прокрутки; через 1 с JS ставит .on всем */
+.js .reveal{transform:translateY(12px);transition:transform .5s var(--ease)}
+.js .reveal.on{opacity:1;transform:none}
+.js .tile.reveal{transform:rotateX(14deg) translateY(12px)}.js .tile.reveal.on{transform:rotateX(14deg)}
+
+/* светлая тема: панели белые, рассвет остаётся */
+[data-theme="light"] .panel:not(.hero):not(.final){box-shadow:0 30px 90px rgba(10,13,42,.18)}
+[data-theme="light"] .crop,[data-theme="light"] .stage img,[data-theme="light"] .gif,[data-theme="light"] .video{border-color:rgba(10,13,42,.12)}
+[data-theme="light"] .foot{box-shadow:0 20px 60px rgba(10,13,42,.12)}
+[data-theme="light"] .tabs input:checked+label{background:#0A0D2A;color:#fff;border-color:#0A0D2A}
+
+/* адаптив */
+@media (max-width:1100px){.floor{grid-template-columns:repeat(2,minmax(0,1fr))}.how{grid-template-columns:1fr}}
+@media (max-width:860px){.capsule{display:none}.nav-act{margin-left:auto}.screen{width:78%}.s-left,.s-right{display:none}}
+@media (max-width:560px){
+  .hero .dawn{background-size:100% 1500px}
+  body{padding:10px;gap:10px}.panel{border-radius:26px;padding:24px 18px}.hero{padding:10px 10px 0}
+  .nav-act .btn{display:none}.floor{grid-template-columns:1fr}.tile{transform:none}
+  .js .tile.reveal,.js .tile.reveal.on{transform:none}.code{padding:16px}.copy{position:static;transform:none;margin-top:12px}
+  .foot nav{margin-left:0}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+  .js .reveal{transform:none}}
+@media print{body{background:#fff;padding:0}.panel{box-shadow:none;border:1px solid #ddd}.dawn,.screens,.nav-act,.capsule{display:none}}
