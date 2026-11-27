@@ -30,7 +30,8 @@ def run(live: bool = False, out=print) -> int:
     out(f"модель: {llm.label}" + (f" · резервные: {', '.join(llm.fallback_models)}" if getattr(llm, "fallback_models", None) else ""))
     out("ключ: не нужен" if not keys else f"ключ: {'задан' if has_key else 'НЕ задан'} ({' / '.join(keys)})")
     out(f"кэш ответов: {os.getenv('LLM_CACHE', '1')} · параллельно запросов: {concurrency()} · пауза между стартами: "
-        f"{getattr(llm, 'min_interval', 0)} с")
+        f"{getattr(llm, 'min_interval', 0)} с" + (f" · не больше {llm.rpm_window} стартов в минуту"
+                                                   if getattr(llm, "rpm_window", 0) else ""))
     if keys and not has_key:
         return 2
     if not live:

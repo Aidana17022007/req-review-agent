@@ -62,7 +62,7 @@ def test_throttle_spaces_starts_across_threads():
     pmap(lambda i: f.generate_json("s", str(i)), range(6), n=6)
     gaps = [b - a for a, b in zip(sorted(f.starts), sorted(f.starts)[1:])]
     assert min(gaps) >= 0.045  # LLM_RPM / LLM_MIN_INTERVAL соблюдается и в параллельном режиме
-    assert f.peak <= 3 and f.stats.calls == 6  # LLM_CONCURRENCY=3 по умолчанию
+    assert f.peak <= 4 and f.stats.calls == 6  # LLM_CONCURRENCY=4 по умолчанию (v14; было 3)
 
 
 def _strip(d):

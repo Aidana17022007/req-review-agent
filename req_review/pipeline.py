@@ -16,7 +16,8 @@ ROOT = Path(__file__).resolve().parent.parent
 
 PROFILES = {
     # fast — по умолчанию: минимум обращений к модели (бесплатный тариф)
-    "fast": {"critic": False, "rescore": False},
+    # v14: пакеты по 10 требований — короче запросы, при LLM_CONCURRENCY=4 они идут параллельно (быстрее по времени)
+    "fast": {"critic": False, "rescore": False, "batch_size": 10},
     "full": {"critic": True, "rescore": True},
     "offline": {"critic": True, "rescore": False},
     # deep — для финального отчёта: малые пакеты (6 требований — модель внимательнее к каждому), критик на все

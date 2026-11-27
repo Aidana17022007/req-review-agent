@@ -41,12 +41,16 @@ class BaseLLM:
     provider = "base"
     model = ""
 
-    def __init__(self, min_interval: float = 0.0, max_retries: int = 6, timeout: float = 180.0):
+    def __init__(self, min_interval: float = 0.0, max_retries: int = 6, timeout: float = 180.0, rpm_window: int = 0):
         self.min_interval = min_interval
         self.max_retries = max_retries
         self.timeout = timeout
         self.stats = LLMStats()
         self._last_call = 0.0
+        # v14: лимит «не больше N стартов за любые 60 с» (LLM_RPM_WINDOW) — короткий прогон уходит сразу, без пауз,
+        # а длинный не превышает поминутную квоту тарифа; 0 — выключено
+        self.rpm_window = rpm_window
+        self._starts: list[float] = []
         self.fallback_models: list[str] = []
         # v12: параллельные вызовы — общий ограничитель частоты и числа одновременных запросов (LLM_CONCURRENCY)
         from .parallel import concurrency
@@ -96,14 +100,16 @@ class BaseLLM:
                 with self._lock:
                     self.stats.retries += 1
                 # модель перегружена (503) или не отвечает — после LLM_FALLBACK_AFTER повторов переходим на резервную
-                if attempt >= int(os.getenv("LLM_FALLBACK_AFTER", "3")) and self.fallback_models and ("503" in str(e) or "сетев" in str(e)):
+                # v14: по умолчанию после одного повтора (было 3 — до 14 с ожидания на перегруженной модели)
+                if attempt >= int(os.getenv("LLM_FALLBACK_AFTER", "1")) and self.fallback_models and ("503" in str(e) or "сетев" in str(e)):
                     if self._switch(f"{e}"):
                         print(f"  [llm] модель перегружена — переключаюсь на резервную {self.model}", flush=True)
                     continue
                 wait = e.retry_after if e.retry_after else min(60.0, 2.0 * (2 ** attempt))
                 max_wait = float(os.getenv("LLM_MAX_WAIT", "180"))
-                # квота модели исчерпана (429 с долгой задержкой или 429 подряд) — сразу на резервную модель
-                if self.fallback_models and "429" in str(e) and (wait > max_wait or attempt >= 2):
+                # квота модели исчерпана — сразу на резервную модель: v14 — при первом же 429 с «quota» в ответе API
+                # (повторы на модели с исчерпанной квотой только тратят время), иначе — 429 с долгой задержкой или подряд
+                if self.fallback_models and "429" in str(e) and ("quota" in str(e).lower() or wait > max_wait or attempt >= 2):
                     if self._switch(f"квота: {e}"):
                         print(f"  [llm] квота исчерпана — переключаюсь на резервную модель {self.model}", flush=True)
                     continue
@@ -143,13 +149,18 @@ class BaseLLM:
 
     def _throttle(self):
         """Старты запросов разносятся на min_interval — общий слот для всех потоков (LLM_RPM соблюдается и параллельно)."""
-        if self.min_interval <= 0:
+        if self.min_interval <= 0 and self.rpm_window <= 0:
             return
         # perf_counter — точные часы и на Windows (там monotonic шагает по ~15,6 мс, и интервал «сжимался»);
         # sleep может проснуться чуть раньше срока — досыпаем до назначенного слота
         with self._lock:
             now = time.perf_counter()
             start = max(now, self._last_call + self.min_interval)
+            if self.rpm_window > 0:  # v14: N-й старт назад должен быть старше 60 с
+                self._starts = [s for s in self._starts if s > start - 60.0]
+                if len(self._starts) >= self.rpm_window:
+                    start = max(start, self._starts[-self.rpm_window] + 60.0)
+                self._starts.append(start)
             self._last_call = start
         while (left := start - time.perf_counter()) > 0:
             time.sleep(left)
@@ -212,6 +223,15 @@ def repair_json(t: str) -> str:
     return t + "".join(reversed(stack))
 
 
+def _quota_hint(r) -> str:
+    """v14: « quota» к тексту ошибки 429, если API пишет об исчерпанной квоте (Gemini: «Quota exceeded…», RESOURCE_EXHAUSTED)."""
+    try:
+        body = (r.text or "").lower()
+    except Exception:  # noqa: BLE001 — тело ответа недоступно
+        return ""
+    return " quota" if r.status_code == 429 and ("quota" in body or "resource_exhausted" in body) else ""
+
+
 def _retry_delay_from_body(body: str) -> float | None:
     m = re.search(r'"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"', body)
     if m:
@@ -246,7 +266,7 @@ class GeminiLLM(BaseLLM):
         except requests.RequestException as e:
             raise RetryableError(f"сетевая ошибка: {e}")
         if r.status_code in (429, 500, 502, 503, 504):
-            raise RetryableError(f"HTTP {r.status_code}", _retry_delay_from_body(r.text))
+            raise RetryableError(f"HTTP {r.status_code}{_quota_hint(r)}", _retry_delay_from_body(r.text))
         if r.status_code != 200:
             raise LLMFatalError(f"Gemini HTTP {r.status_code}: {r.text[:500]}")
         data = r.json()
@@ -278,7 +298,7 @@ class GeminiLLM(BaseLLM):
         except requests.RequestException as e:
             raise RetryableError(f"сетевая ошибка: {e}")
         if r.status_code in (429, 500, 502, 503, 504):
-            raise RetryableError(f"HTTP {r.status_code}", _retry_delay_from_body(r.text))
+            raise RetryableError(f"HTTP {r.status_code}{_quota_hint(r)}", _retry_delay_from_body(r.text))
         if r.status_code == 400 and use_schema and "schema" in r.text.lower():
             # модель не принимает схему — откат на обычный JSON-режим (+ ремонт), повтор без задержки
             self.schema_off[self.model] = True
@@ -323,7 +343,7 @@ class OpenAICompatLLM(BaseLLM):
             raise RetryableError(f"сетевая ошибка: {e}")
         if r.status_code in (429, 500, 502, 503, 504):
             ra = r.headers.get("retry-after")
-            raise RetryableError(f"HTTP {r.status_code}", float(ra) if ra and ra.isdigit() else None)
+            raise RetryableError(f"HTTP {r.status_code}{_quota_hint(r)}", float(ra) if ra and ra.isdigit() else None)
         if r.status_code != 200:
             raise LLMFatalError(f"LLM HTTP {r.status_code}: {r.text[:500]}")
         data = r.json()
@@ -382,8 +402,11 @@ def _env_key(name: str) -> str:
 
 
 def _min_interval() -> float:
-    """Пауза между запросами: LLM_MIN_INTERVAL (с) или лимит LLM_RPM (запросов в минуту) — берётся более строгое."""
-    iv = float(os.getenv("LLM_MIN_INTERVAL", "6"))
+    """Пауза между запросами: LLM_MIN_INTERVAL (с) или лимит LLM_RPM (запросов в минуту) — берётся более строгое.
+
+    v14: по умолчанию паузы нет (было 6 с — одно это давало ≥ 66 с на 12 запросов): поминутную квоту соблюдает
+    окно LLM_RPM_WINDOW (_rpm_window). Явные LLM_MIN_INTERVAL / LLM_RPM работают как раньше."""
+    iv = float(os.getenv("LLM_MIN_INTERVAL", "0"))
     rpm = os.getenv("LLM_RPM", "").strip()
     if rpm:
         try:
@@ -391,6 +414,15 @@ def _min_interval() -> float:
         except ValueError:
             pass
     return iv
+
+
+def _rpm_window(default: int) -> int:
+    """v14: не больше LLM_RPM_WINDOW стартов за любые 60 с (Gemini — 15 по умолчанию, как поминутный лимит бесплатного
+    тарифа flash-lite); 0 — без окна."""
+    try:
+        return max(0, int(os.getenv("LLM_RPM_WINDOW", str(default)) or default))
+    except ValueError:
+        return default
 
 
 def default_provider() -> str:
@@ -420,6 +452,7 @@ def build_llm_from_env() -> BaseLLM:
             base_url=os.getenv("GEMINI_BASE_URL") or None,
             fallback=[m.strip() for m in os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3.5-flash-lite,gemini-3.1-flash-lite").split(",")],
             temperature=temperature,
+            rpm_window=_rpm_window(15),
             **common,
         )
     if provider in ("openai", "openai-compatible"):
