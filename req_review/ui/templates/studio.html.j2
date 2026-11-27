@@ -72,6 +72,21 @@
 .sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
 .trend-legend{display:flex;gap:16px;flex-wrap:wrap;font:var(--t-small);color:var(--text-2)}
 .net-off{display:none}.offline .net-off{display:inline-flex}
+/* v9: предупреждение о конфиденциальности, «Что сделать», экран ответов аналитика */
+.privacy{margin:0}.privacy[hidden]{display:none}
+.err-card .todo{margin-top:12px;padding:12px 14px;border-radius:var(--r-field);background:var(--surface-2);border:1px solid var(--border)}
+.ans-prog{margin-bottom:16px}
+.ans-qs{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.ans-qi{display:grid;gap:4px;min-width:0;transition:border-color var(--motion-base) var(--motion-ease)}
+.ans-qi.done{border-color:color-mix(in srgb,var(--ok) 45%,var(--border))}
+.ans-qi .chip[hidden]{display:none}
+.ans-ta{width:100%;min-height:64px;margin-top:8px;resize:vertical;font:var(--t-small);line-height:1.5}
+.ans-cmp .ans-tbl td{vertical-align:top}
+.ans-cmp .kpi-num{font-size:clamp(26px,2.6vw,36px);line-height:1.15;white-space:nowrap}
+.ans-cmp .kpi .chip{font-size:11px}
+mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2px;box-shadow:inset 0 -2px 0 var(--ok)}
+@media (prefers-reduced-motion:no-preference){.ans-qi.done .a-done{animation:ans-in var(--motion-slow) var(--motion-ease)}}
+@keyframes ans-in{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
 @media (max-width:640px){.side-col{position:static}#frame{height:72vh}#proj-sel{max-width:100%}}
 </style>
 <script>(function(){try{var t=localStorage.getItem("reqlens-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}})()</script>
@@ -89,6 +104,7 @@
     <button class="nav-item" type="button" id="nav-compare" disabled>{{ icon("compare") }}<span>До / После</span></button>
     <div class="nav-label">Общее</div>
     <button class="nav-item" id="btn-theme" type="button">{{ icon("moon") }}<span>Тёмная тема</span></button>
+    <button class="nav-item" id="btn-lang" type="button">{{ icon("globe") }}<span>Қазақша</span></button>
     <div class="promo" style="margin-top:auto">
       <div class="h3">Ключ в безопасности</div>
       <p>Ключ модели хранится только в .env сервера и никогда не передаётся в браузер.</p>
@@ -133,7 +149,10 @@
                   <button type="button" data-v="llm" aria-pressed="true">С моделью</button><button type="button" data-v="rules" aria-pressed="false">Только правила</button>
                 </div></div>
             </div>
+            <div class="banner-err banner-warn privacy" id="privacy" role="note">{{ icon("shield", 18) }}<div><b>Текст документа уходит в модель — не загружайте конфиденциальное.</b>
+              <span class="small">Для банковского контура — офлайн-режим (Ollama): профиль «Офлайн», документ не покидает ваш сервер.</span></div></div>
             <div class="row wrap" style="justify-content:flex-end">
+              <button class="btn btn-outline" id="example" type="button">{{ icon("eye", 16) }}Открыть готовый пример</button>
               <button class="btn btn-outline" id="demo" type="button" hidden>{{ icon("play", 16) }}Демо</button>
               <button class="btn btn-outline" id="sample" type="button">{{ icon("file", 16) }}Пример документа</button>
               <button class="btn btn-primary" id="go" type="submit" disabled>{{ icon("play", 16) }}Запустить проверку</button>
@@ -222,6 +241,14 @@
                 <input id="chat-q" autocomplete="off" maxlength="500" placeholder="Например: почему FR-06 критичное?">
                 <button class="btn btn-primary btn-icon" type="submit" aria-label="Отправить вопрос">{{ icon("send", 16) }}</button></form>
             </section>
+            <section class="card" id="ans-card" aria-label="Вопросы аналитику" hidden>
+              <div class="card-title">{{ icon("chat") }}<span class="h2 grow">Вопросы аналитику</span><span class="chip chip-brand" id="ans-count"></span></div>
+              <p class="small muted">Ответьте на вопросы агента: конкретный ответ закроет замечания, а перепроверка покажет «было → стало».</p>
+              <div class="row wrap" style="margin-top:12px">
+                <button class="btn btn-sm btn-outline" id="ans-open" type="button">{{ icon("chat", 14) }}Ответить на вопросы</button>
+                <a class="btn btn-sm btn-ghost" id="ans-tpl" href="#" hidden download>{{ icon("download", 14) }}Скачать шаблон ответов</a>
+              </div>
+            </section>
             <section class="card" id="cmp-card" aria-label="Сравнение версий">
               <div class="card-title">{{ icon("compare") }}<span class="h2">Сравнить версии</span></div>
               <p class="small muted">Исправили документ? Проверьте новую версию — она попадёт в историю проекта, а мы покажем балл до и после, исправленные и новые дефекты.</p>
@@ -233,6 +260,22 @@
             </section>
           </div>
         </div>
+      </section>
+
+      <!-- Экран v9: ответы аналитика → перепроверка -->
+      <section class="screen" id="s-answers" aria-labelledby="a-title">
+        <header class="pagehead"><div class="grow" style="min-width:0"><div class="caption"><button type="button" class="linkish" id="a-back">Отчёт</button> / ответы аналитика</div>
+          <h1 class="display" style="margin-top:6px" id="a-title">Ответьте на вопросы агента</h1>
+          <p class="muted" style="margin-top:6px"><span>Конкретный ответ — число, перечень или решение — закроет замечания.</span> <span>«Уточним позже» оставит их открытыми, а ответ, который противоречит документу, добавит новое замечание.</span></p></div>
+          <div class="row wrap"><a class="btn btn-outline" id="a-tpl" href="#" hidden download>{{ icon("download", 16) }}Скачать шаблон ответов</a>
+            <button class="btn btn-primary" id="a-go" type="button" disabled>{{ icon("refresh", 16) }}Перепроверить</button></div></header>
+        <div class="card ans-prog"><div class="row between wrap" style="gap:8px"><span class="small"><b id="a-n">0</b> <span>из</span> <b id="a-total">0</b> <span>вопросов с ответом</span></span>
+            <span class="small faint" id="a-saved" aria-live="polite"></span></div>
+          <div class="bar" style="height:8px;margin-top:10px" role="progressbar" aria-label="Вопросы с ответом" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="a-barwrap"><i id="a-bar" style="width:0%"></i></div></div>
+        <ol class="ans-qs" id="a-list"></ol>
+        <div class="row wrap" style="justify-content:space-between;margin-top:16px">
+          <span class="small faint">Черновик ответов сохраняется в этом браузере и не уходит на сервер до «Перепроверить».</span>
+          <button class="btn btn-ghost" id="a-clear" type="button">{{ icon("trash", 16) }}Очистить черновик</button></div>
       </section>
 
       <!-- Экран 4: до / после -->
@@ -285,7 +328,8 @@
   async function api(path,opt={}){
     let r;try{r=await fetch("/api/v1"+path,opt);}catch(x){throw Object.assign(new Error("Сервер ReqLens недоступен."),{code:"network"});}
     const j=await r.json().catch(()=>({}));
-    if(!r.ok){const e=j.error||{};throw Object.assign(new Error(e.message||j.detail||r.statusText||"Ошибка"),{code:e.code||"error",status:r.status});}
+    if(!r.ok){const e=j.error||{},ra=+(e.retry_after||r.headers.get("Retry-After")||0);
+      throw Object.assign(new Error(e.message||j.detail||r.statusText||"Ошибка"),{code:e.code||"error",status:r.status,extra:{...e,retry_after:ra||null}});}
     return j;}
   const jpost=(p,b)=>api(p,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})});
   const jdel=p=>api(p,{method:"DELETE"});
@@ -296,7 +340,7 @@
   $("#btn-theme").onclick=()=>{const n=cur()==="dark"?"light":"dark";document.documentElement.dataset.theme=n;try{localStorage.setItem("reqlens-theme",n)}catch(e){}themeBtn();
     try{const f=$("#frame").contentDocument;if(f){f.documentElement.dataset.theme=n;}}catch(e){}};themeBtn();
   $("#burger").onclick=()=>$("#sidebar").classList.toggle("open");
-  const NAV={"s-upload":"#nav-new","s-projects":"#nav-projects","s-project":"#nav-projects","s-progress":"#nav-run","s-result":"#nav-report","s-compare":"#nav-compare"};
+  const NAV={"s-upload":"#nav-new","s-projects":"#nav-projects","s-project":"#nav-projects","s-progress":"#nav-run","s-result":"#nav-report","s-answers":"#nav-report","s-compare":"#nav-compare"};
   function show(id){$$(".screen").forEach(s=>s.classList.toggle("active",s.id===id));
     Object.entries(NAV).forEach(([s,n])=>{const b=$(n);if(s===id)b.setAttribute("aria-current","page");else if(NAV[id]!==n)b.removeAttribute("aria-current");});
     if(id!=="s-project")clearTimeout(state.poll);
@@ -307,7 +351,7 @@
   const net=()=>document.body.classList.toggle("offline",!navigator.onLine);addEventListener("online",net);addEventListener("offline",net);net();
 
   // ---------------- состояние
-  const state={profile:"fast",domain:"fintech",mode:"llm",projects:[],pid:null,job:null,res:null,run:null,src:null,demo:null,poll:0};
+  const state={profile:"fast",domain:"fintech",mode:"llm",projects:[],pid:null,job:null,res:null,run:null,src:null,demo:null,poll:0,report:null,unknown:[]};
 
   // режим «Демо»: сохранённый реальный прогон проигрывается без сети и без модели (страховка на защите)
   fetch("/api/demo").then(r=>r.json()).then(d=>{if(!d.available)return;state.demo=d;const b=$("#demo");b.hidden=false;
@@ -326,7 +370,8 @@
   // ---------------- загрузка
   const SEGS={"seg-profile":"profile","seg-domain":"domain","seg-mode":"mode"};
   for(const id of Object.keys(SEGS))$("#"+id).addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
-    [...$("#"+id).children].forEach(x=>x.setAttribute("aria-pressed",x===b));state[SEGS[id]]=b.dataset.v;});
+    [...$("#"+id).children].forEach(x=>x.setAttribute("aria-pressed",x===b));state[SEGS[id]]=b.dataset.v;privacy();});
+  const privacy=()=>{$("#privacy").hidden=state.mode==="rules"||state.profile==="offline";};
   const file=$("#file"),drop=$("#drop");
   const pick=()=>{const f=file.files[0];$("#go").disabled=!f;$("#drop-title").textContent=f?`${f.name} · ${Math.max(1,Math.round(f.size/1024))} КБ`:"Перетащите файл сюда или нажмите, чтобы выбрать";};
   file.onchange=()=>{pick();};
@@ -340,42 +385,78 @@
     const {job,demo}=await r.json();state.job=job;state.src=null;
     resetProgress(demo.document||"Сохранённый прогон","Демо · сохранённый прогон, модель не вызывается",false);
     enable("#nav-run",()=>show("s-progress"));show("s-progress");follow(job,{legacy:true});};
+  // ---------------- готовый пример (v9): отчёт по документу организаторов — без прогона и без квоты
+  async function openExample(){clearErr();const b=$("#example");b.classList.add("loading");
+    try{const d=await api("/example"),s=d.summary||{},v=s.verdict||{};
+      const rank=n=>n.endsWith(".html")?0:n.endsWith(".md")?1:2;
+      const files=Object.entries(d.files||{}).map(([k,url])=>[k,url,url.split("/").pop()]).sort((a,b)=>rank(a[2])-rank(b[2])),html=files.find(f=>f[2].endsWith(".html"));
+      state.run=null;state.report=d.report||null;
+      const vd=v.development==="можно"?"можно":v.development==="нельзя"?"нельзя":v.development?"условно":"";
+      setResult({id:"example",v1:false,example:true,pid:null,compare:null,caption:"Готовый пример · без прогона и без квоты",
+        title:`${d.document||"Документ организаторов"} — балл ${s.score}/100, готовность ${s.readiness}%`,
+        meta:verdictChip(vd)+`<span class="small muted">требований: ${s.reqs} · критичных: ${s.critical} · существенных: ${s.major}${d.model?" · "+esc(d.model):""}${d.started?" · "+esc(d.started):""}</span>`,
+        files,frame:html?`${html[1]}?embed=studio`:"",canFixed:false,fixedTitle:"В готовом примере недоступно",
+        hello:"Это готовый отчёт по документу организаторов: модель не вызывалась, квота не тратится. Спрашивайте — отвечу по данным отчёта, офлайн."});
+      show("s-result");try{history.replaceState(null,"","/?example=1");}catch(x){}}
+    catch(e){show("s-upload");showErr(e.code==="not_found"?"noexample":"error",e.message);}
+    finally{b.classList.remove("loading");}}
+  $("#example").onclick=openExample;
   $("#sample").onclick=async()=>{const b=$("#sample");b.classList.add("loading");
     try{const t=await (await fetch("/api/v1/sample")).text();await launch(new File([t],"Пример_P2P-переводы.md",{type:"text/markdown"}));}catch(x){showErr("error","Не удалось загрузить демо-документ.");}
     finally{b.classList.remove("loading");}};
 
   // ---------------- карточка ошибки
-  function clearErr(){$("#err").innerHTML="";}
+  // «одна белая кнопка на экран» (DESIGN_SYSTEM.md): пока видна карточка ошибки, её главное действие — единственное белое
+  function demote(on){$$(".btn-demoted").forEach(b=>{b.classList.remove("btn-demoted","btn-outline");b.classList.add("btn-primary");});
+    if(!on)return;const scr=document.querySelector(".screen.active");if(!scr)return;
+    [...scr.querySelectorAll(".btn-primary")].filter(b=>!b.closest("#err")).forEach(b=>{b.classList.remove("btn-primary");b.classList.add("btn-outline","btn-demoted");});}
+  function clearErr(){$("#err").innerHTML="";demote(false);}
   const ERR={key:["key","Нет ключа API","Модель не приняла запрос: ключ не задан или неверный.",["Откройте .env на сервере и впишите GEMINI_API_KEY (или OPENAI_API_KEY).","Перезапустите Studio: python -m req_review.web","Без ключа: режим «Только правила» или LLM_PROVIDER=mock в .env."]],
     quota:["clock","Лимит API исчерпан","Модель отказала из-за квоты (429). Уже полученные ответы сохранены в кэше — повторный запуск продолжит с того же места.",["Проверьте документ без модели — только правилами: размытые формулировки, плейсхолдеры, числа, правила API.","Подождите сброса квоты или смените GEMINI_MODEL / ключ.","Профиль «Офлайн» работает с локальной моделью без лимитов."]],
-    noreqs:["file","Требования не найдены","Похоже, это не документ требований (ТЗ, SRS): агент не нашёл ни идентификаторов вида FR-01 / 3.1.2, ни формулировок «должен», «необходимо», «shall».",
+    noreqs:["file","Требований не найдено","Похоже, это не документ требований (ТЗ, SRS): агент не нашёл ни идентификаторов вида FR-01 / 3.1.2, ни формулировок «должен», «необходимо», «shall».",
       ["Загрузите техническое задание или спецификацию требований — например, «Пример документа».","Оформите требования пунктами с ID (FR-01, NFR-02 …) или модальными словами («Система должна …»).",
        "В mock-режиме нарезка «моделью» ищет только русские и английские модальные слова; с настоящей моделью (ключ Gemini) нарезка идёт по смыслу."],true],
+    document:["file","Файл не читается","",["Сохраните документ как PDF с текстовым слоем или .docx и загрузите снова.","Скан без текста — распознайте его (OCR), затем проверьте результат.","Старый .doc — откройте в Word и сохраните как .docx."],true],
+    limit:["clock","Дневной лимит демо исчерпан","",["Откройте готовый пример — отчёт по документу организаторов, без прогона и без квоты.","Проверьте документ без модели — только правилами: это не тратит квоту.","Запустите ReqLens локально: python -m req_review.web — без лимитов."]],
+    answers:["chat","Ответы не приняты","",["Под заголовком «### Q-xx» должен быть текст ответа — пустые вопросы не учитываются.","Если исходный прогон ещё идёт — дождитесь отчёта и отправьте ответы снова."]],
+    noexample:["file","Готового примера на сервере нет","",["Владелец сервера: положите reports/requirements-report.json (и .html.gz) рядом с приложением.","Или загрузите свой документ — «Пример документа» проверяется за секунды."],true],
     upload:["file","Файл не принят","",["Поддерживаются PDF, DOCX, MD и TXT — содержимое должно соответствовать расширению.","Проверьте, что файл не пустой и меньше лимита."],true],
     offline:["wifi-off","Нет интернета","Проверка документа обращается к модели и требует сети.",["История проверок и открытые ранее отчёты доступны офлайн — раздел «Проекты».","Подключитесь к сети и повторите."]],
     cancelled:["stop","Прогон отменён","Проверка остановлена. Уже готовые этапы не сохраняются в историю как результат.",["Запустите проверку снова, когда будете готовы."]],
     error:["alert","Проверка не удалась","",["Проверьте, что файл открывается и содержит текст требований.","Повторите запуск; при повторной ошибке — смотрите журнал агента."]]};
-  const ERR_OF={too_large:"upload",unsupported:"upload",empty:"upload",bad_request:"upload",offline:"offline",network:"error"};
+  const ERR_OF={too_large:"upload",unsupported:"upload",empty:"upload",bad_request:"upload",offline:"offline",network:"error",not_ready:"answers"};
+  // через сколько сброс дневного лимита (Retry-After — секунды до 00:00 UTC)
+  const untilTxt=sec=>{sec=+sec;if(!sec)return "";const h=Math.floor(sec/3600),m=Math.max(1,Math.round(sec%3600/60));
+    const at=new Date(Date.now()+sec*1000).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});return `Можно снова через ${h?h+" ч ":""}${m} мин — около ${at}.`;};
   function showErr(code,msg,extra={}){code=ERR_OF[code]||code;const e=ERR[code]||ERR.error,noRetry=!!e[4];
     const canRe=!!(state.src&&state.src.file),rules=code==="quota"&&extra.fallback==="rules";
     // карточку ошибки показываем сразу под заголовком текущего экрана, а не внизу страницы
     const scr=document.querySelector(".screen.active"),errEl=$("#err");
     if(scr&&scr.querySelector(".pagehead"))scr.querySelector(".pagehead").after(errEl);
     const btn=(id,cls,icn,t)=>`<button class="btn btn-sm ${cls}" type="button" id="${id}">${icn?ic(icn,14):""}${t}</button>`;
-    const btns=noRetry?btn("err-new","btn-primary","upload","Загрузить другой файл")+btn("err-sample","btn-outline","file","Пример документа")
+    const lim=code==="limit",doc=code==="document"||code==="noreqs";
+    const btns=lim?btn("err-example","btn-primary","eye","Открыть готовый пример")+(canRe?btn("err-rules","btn-outline","list","Проверить без модели (только правила)"):"")+btn("err-new","btn-ghost","","Новая проверка")
+      :code==="answers"?btn("err-close","btn-outline","","Вернуться к ответам")
+      :noRetry?btn("err-new","btn-primary","upload","Загрузить другой файл")+btn("err-sample","btn-outline","file","Пример документа")+(code==="noexample"?"":btn("err-example","btn-ghost","eye","Открыть готовый пример"))
       :(rules&&canRe?btn("err-rules","btn-primary","list","Проверить без модели (только правила)"):"")
        +(canRe?btn("err-retry",rules?"btn-outline":"btn-primary","refresh","Попробовать снова"):"")+btn("err-new","btn-outline","","Новая проверка")
        +(state.src&&state.src.pid?btn("err-proj","btn-ghost","history","История проекта"):"");
     errEl.innerHTML=`<div class="card err-card ${code}" role="alert" style="margin:0 0 16px"><span class="empty-ic">${ic(e[0],26)}</span><div class="grow">
-      <div class="h2">${esc(e[1])}</div><p class="small muted" style="margin-top:4px">${esc(extra.hint||e[2]||"")}</p>${msg&&msg!==e[1]?`<pre class="code small" style="margin-top:10px;white-space:pre-wrap">${esc(msg)}</pre>`:""}
-      <ul class="small" style="margin:10px 0 0;padding-left:18px">${e[3].map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
+      <div class="h2">${esc(e[1])}</div>${lim||doc||code==="answers"||code==="noexample"
+        ?`${msg&&msg!==e[1]?`<p class="small" style="margin-top:6px">${esc(msg)}</p>`:""}${lim&&extra.retry_after?`<p class="small muted" style="margin-top:4px">${ic("clock",13)} ${esc(untilTxt(extra.retry_after))}</p>`:""}
+          ${doc&&extra.hint?`<div class="todo"><div class="caption">Что сделать</div><p class="small" style="margin-top:4px">${esc(extra.hint)}</p></div>`:""}`
+        :`<p class="small muted" style="margin-top:4px">${esc(extra.hint||e[2]||"")}</p>${msg&&msg!==e[1]?`<pre class="code small" style="margin-top:10px;white-space:pre-wrap">${esc(msg)}</pre>`:""}`}
+      ${doc&&extra.hint?"":`<ul class="small" style="margin:10px 0 0;padding-left:18px">${e[3].map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`}
       <div class="row wrap" style="margin-top:12px">${btns}</div></div></div>`;
+    demote(!!errEl.querySelector(".btn-primary"));
     const on=(id,fn)=>{const b=$("#"+id);if(b)b.onclick=fn;};
     on("err-retry",()=>{clearErr();launch(state.src.file,{pid:state.src.pid,force:true,mode:state.src.mode,cmp:state.src.cmp});});
     on("err-rules",()=>{clearErr();launch(state.src.file,{pid:state.src.pid,force:true,mode:"rules",cmp:state.src.cmp});});
     on("err-sample",()=>{clearErr();show("s-upload");$("#sample").click();});
     on("err-new",()=>{clearErr();show("s-upload");});
     on("err-proj",()=>{clearErr();openProject(state.src.pid);});
+    on("err-example",()=>{clearErr();openExample();});
+    on("err-close",()=>clearErr());
     $("#go").classList.remove("loading");
     if(scr&&scr.id==="s-progress"){
       $("#p-status").className="status st-fail";$("#p-status").innerHTML=ic(code==="cancelled"?"stop":"x",11)+(code==="cancelled"?"ОТМЕНЁН":"ОШИБКА");
@@ -528,7 +609,7 @@
       state.job=res.job;
       resetProgress(o.name||f.name,(o.caption||(res.compare_with?"Новая версия · сравнение с прошлой":"Живой прогон"))+(mode==="rules"?" · только правила":""),true);
       enable("#nav-run",()=>show("s-progress"));show("s-progress");follow(res.job,{rid:res.run.id,cmp:o.cmp});
-    }catch(e){show(o.back||"s-upload");showErr(e.code||"error",e.message);}
+    }catch(e){show(o.back||"s-upload");showErr(e.code||"error",e.message,e.extra||{});}
     finally{$("#go").classList.remove("loading");}
   }
 
@@ -586,7 +667,7 @@
         const s=ev.summary;total=s.reqs;done=s.reqs;setDone();
         s.rows.forEach(r=>{upsert(r,chip(r.worst,r.worst==="ok"?"Без замечаний":SEV[r.worst][0]+(r.n>1?` · ${r.n}`:"")),false);});
         loadProjects();
-        setTimeout(()=>ctx.legacy?(ctx.legacyCmp?legacyCompareDone(job,ev):openLegacy(job,ev)):openRun(ctx.rid,{cmp:ctx.cmp}),REDUCED?200:1400);}
+        setTimeout(()=>ctx.legacy?(ctx.legacyCmp?legacyCompareDone(job,ev):openLegacy(job,ev)):openRun(ctx.rid,{cmp:ctx.cmp,answers:ctx.answers}),REDUCED?200:1400);}
     };
   }
 
@@ -611,7 +692,9 @@
     if(o.dup){$("#r-note").innerHTML=`<div class="banner-err banner-demo" role="status" style="margin-bottom:16px;align-items:center">${ic("history",18)}<div class="grow"><b>Этот файл уже проверялся.</b> Открыт прошлый результат — квота модели не потрачена.</div>
         ${state.src&&state.src.file?`<button class="btn btn-sm btn-outline" type="button" id="r-force">${ic("refresh",14)}Проверить заново</button>`:""}</div>`;
       const b=$("#r-force");if(b)b.onclick=()=>launch(state.src.file,{pid:state.src.pid,force:true,mode:state.src.mode,cmp:state.src.cmp});}
-    if(run.compare)enable("#nav-compare",()=>renderCompare(run.compare,{run}));
+    const qp=loadQuestions(run,files);
+    if(run.compare)enable("#nav-compare",()=>renderCompare(run.compare,{run,answers:state.report&&state.report.answers}));
+    if(o.answers&&!o.dup){await qp;if(state.report&&state.report.answers)return renderCompare(run.compare,{run,answers:state.report.answers});}
     if(o.cmp&&run.compare&&!o.dup)return renderCompare(run.compare,{run});
     show("s-result");
   }
@@ -620,8 +703,10 @@
     $("#downloads").innerHTML=R.files.map(([k,url,name],i)=>`<a class="btn btn-sm ${i===0?"btn-primary":"btn-outline"}" href="${esc(url)}" ${name.endsWith(".html")?'target="_blank" rel="noopener"':`download="${esc(name)}"`}>${ic(name.endsWith(".html")?"arrow-up-right":"download",14)}${esc(k)}</a>`).join("");
     if(R.frame)$("#frame").src=R.frame;
     const b=$("#cmp-fixed");b.disabled=!R.canFixed;b.title=R.fixedTitle||"";
+    $("#cmp-card").hidden=!!R.example;$("#ans-card").hidden=true;
     $("#cmp-open").hidden=!R.compare;$("#r-proj").hidden=!R.pid;
-    $("#chat-log").innerHTML=`<div class="msg ai">${esc(R.hello)}</div>`;$("#chat-sugg").innerHTML="";loadSuggest();
+    $("#chat-log").innerHTML=`<div class="msg ai">${esc(R.hello)}</div>`;$("#chat-sugg").innerHTML="";
+    if(R.example)sugg(["Что исправить первым?","Какие есть противоречия?","Можно ли начинать разработку?","Какие вопросы аналитику?"]);else loadSuggest();
     enable("#nav-report",()=>show("s-result"));}
   $("#r-proj").onclick=()=>{if(state.res&&state.res.pid)openProject(state.res.pid);};
   $("#cmp-open").onclick=()=>{if(state.res&&state.res.compare)renderCompare(state.res.compare,{run:state.run});};
@@ -674,6 +759,9 @@
     const a=await r.json();if(!r.ok)throw new Error(a.detail||"ошибка");a.sources=(a.sources||[]).map(legacySrc);return a;}
   async function ask(q){
     const R=state.res;if(!q||!R)return;const log=$("#chat-log");
+    if(R.example){let a=null;try{a=$("#frame").contentWindow.REQLENS_ASK(q);}catch(e){}
+      log.insertAdjacentHTML("beforeend",`<div class="msg me">${esc(q)}</div><div class="msg ai ex-ans">${a?a.html+'<span class="src">по данным отчёта, без обращения к модели</span>':"Отчёт ещё загружается — повторите вопрос через секунду."}</div>`);
+      log.scrollTop=log.scrollHeight;return;}
     log.insertAdjacentHTML("beforeend",`<div class="msg me">${esc(q)}</div><div class="msg ai typing" id="typing">Ищу в отчёте и источниках…</div>`);log.scrollTop=log.scrollHeight;
     try{const a=await askRaw(R,q);const t=$("#typing");if(t)t.remove();if(state.res!==R)return;
       log.insertAdjacentHTML("beforeend",`<div class="msg ai">${renderAnswer(a)}</div>`);sugg(a.suggest);}
@@ -683,7 +771,11 @@
   async function loadSuggest(){const R=state.res;if(!R)return;try{const a=await askRaw(R,"помощь");if(state.res===R)sugg(a.suggest);}catch(e){}}
   $("#chat-form").onsubmit=e=>{e.preventDefault();const q=$("#chat-q").value.trim();$("#chat-q").value="";ask(q);};
   $("#chat-sugg").onclick=e=>{const b=e.target.closest("[data-q]");if(b)ask(b.dataset.q);};
-  $("#chat-log").onclick=e=>{const b=e.target.closest("[data-ref]");if(b&&/^(R-\d+|S-\d+|L\d+)$/.test(b.dataset.ref))frameGo(b.dataset.ref);};
+  $("#chat-log").onclick=e=>{const b=e.target.closest("[data-ref]");if(b&&/^(R-\d+|S-\d+|L\d+)$/.test(b.dataset.ref))frameGo(b.dataset.ref);
+    // ссылки из ответа офлайн-ассистента отчёта (готовый пример): требование, строка, замечание → в отчёт
+    const a=e.target.closest(".ex-ans a");if(!a)return;e.preventDefault();
+    const ref=a.dataset.goReq||(a.dataset.goLine?"L"+a.dataset.goLine:"")||String(a.dataset.open||"").replace(/\.\d+$/,"");
+    if(/^(R-\d+|S-\d+|L\d+)$/.test(ref))frameGo(ref);};
   // новая версия из экрана отчёта — в тот же проект; исправленный агентом документ берётся из файлов прогона
   $("#cmp-fixed").onclick=async()=>{const R=state.res;if(!R)return;if(!R.v1)return legacyCompare(null);
     const b=$("#cmp-fixed");b.classList.add("loading");
@@ -694,15 +786,88 @@
   $("#cmp-file").onchange=e=>{const f=e.target.files[0];e.target.value="";if(!f||!state.res)return;
     if(state.res.v1)launch(f,{pid:state.res.pid,cmp:true,back:"s-result",caption:"Проверка новой версии"});else legacyCompare(f);};
 
+  // ---------------- ответы аналитика (v9): вопросы прогона → ответы (черновик в localStorage) → перепроверка
+  async function loadQuestions(run,files){
+    const j=files.find(f=>f[2].endsWith(".json")),tpl=files.find(f=>f[2].endsWith("_answers_template.md"));
+    state.report=null;if(!j)return;
+    try{const r=await fetch(j[1]);if(!r.ok)return;const d=await r.json();if(state.run!==run)return;state.report=d;
+      const qs=(d.questions||[]).filter(q=>q.qid);
+      $("#ans-card").hidden=!qs.length;$("#ans-count").textContent=qs.length;
+      for(const id of ["#ans-tpl","#a-tpl"]){const t=$(id);t.hidden=!tpl;if(tpl){t.href=tpl[1];t.setAttribute("download",tpl[2]);}}
+    }catch(e){}}
+  const draftKey=()=>`reqlens-answers:${state.run?state.run.id:""}`;
+  const loadDraft=()=>{try{return JSON.parse(localStorage.getItem(draftKey())||"{}")||{};}catch(e){return {};}};
+  function openAnswers(){const run=state.run,d=state.report;if(!run||!d)return;clearErr();
+    const qs=(d.questions||[]).filter(q=>q.qid),draft=loadDraft();
+    $("#a-list").innerHTML=qs.map(q=>`<li class="card ans-qi" data-qid="${esc(q.qid)}">
+      <div class="row wrap" style="gap:8px"><span class="chip chip-outline mono">${esc(q.qid)}</span>${SEV[q.severity]?chip(q.severity):""}
+        <span class="small muted grow" style="min-width:0;overflow-wrap:anywhere">${esc(q.ref||"")}${q.section?` · ${esc(q.section)}`:""}</span>
+        <span class="chip sev-ok a-done" hidden>${ic("check",13)}есть ответ</span></div>
+      <p class="small" style="margin-top:6px">${esc(q.text)}</p>
+      ${(q.closes||[]).length?`<div class="row wrap small faint" style="gap:6px;margin-top:4px"><span>Закроет:</span>${q.closes.map(c=>`<span class="chip chip-outline mono">${esc(c)}</span>`).join("")}</div>`:""}
+      <label class="sr-only" for="a-${esc(q.qid)}">Ответ на ${esc(q.qid)}</label>
+      <textarea class="input ans-ta" id="a-${esc(q.qid)}" data-qid="${esc(q.qid)}" rows="2" maxlength="4000" placeholder="Конкретно: число и единицы, перечень или решение. Например: не дольше 2 секунд для 95 % запросов">${esc(draft[q.qid]||"")}</textarea></li>`).join("");
+    $("#a-saved").textContent=Object.values(draft).some(v=>String(v).trim())?"черновик восстановлен":"";
+    aProgress();show("s-answers");}
+  function aProgress(){const ts=$$("#a-list textarea"),n=ts.filter(t=>t.value.trim()).length,p=ts.length?Math.round(100*n/ts.length):0;
+    $("#a-n").textContent=n;$("#a-total").textContent=ts.length;$("#a-bar").style.width=p+"%";$("#a-barwrap").setAttribute("aria-valuenow",p);
+    $("#a-go").disabled=!n;ts.forEach(t=>{const li=t.closest(".ans-qi"),ok=!!t.value.trim();li.classList.toggle("done",ok);li.querySelector(".a-done").hidden=!ok;});}
+  let draftT;
+  $("#a-list").addEventListener("input",e=>{if(!e.target.matches("textarea"))return;aProgress();clearTimeout(draftT);
+    draftT=setTimeout(()=>{const o={};$$("#a-list textarea").forEach(t=>{if(t.value.trim())o[t.dataset.qid]=t.value;});
+      try{localStorage.setItem(draftKey(),JSON.stringify(o));$("#a-saved").textContent="черновик сохранён · "+new Date().toTimeString().slice(0,5);}catch(x){}},400);});
+  $("#ans-open").onclick=openAnswers;
+  $("#a-back").onclick=()=>{clearErr();show("s-result");};
+  $("#a-clear").onclick=async()=>{if(!await dialog({title:"Очистить черновик ответов?",body:"Все введённые ответы на этой странице будут удалены из браузера.",ok:"Очистить",danger:true}))return;
+    try{localStorage.removeItem(draftKey());}catch(x){}$$("#a-list textarea").forEach(t=>{t.value="";});$("#a-saved").textContent="";aProgress();};
+  $("#a-go").onclick=async()=>{const run=state.run;if(!run)return;clearErr();
+    const parts=$$("#a-list textarea").map(t=>[t.dataset.qid,t.value.trim()]).filter(x=>x[1]);
+    if(!parts.length)return showErr("answers","Впишите хотя бы один ответ.");
+    const text=parts.map(([q,a])=>`### ${q}\n${a}\n`).join("\n"),b=$("#a-go");b.classList.add("loading");b.disabled=true;
+    try{const res=await jpost(`/runs/${run.id}/answers`,{text});
+      state.unknown=res.unknown_qids||[];state.src=null;state.job=res.job;
+      resetProgress(run.doc_name,`Перепроверка с ответами аналитика · учтено ответов: ${res.matched}`,true);
+      enable("#nav-run",()=>show("s-progress"));show("s-progress");
+      if(state.unknown.length)toast(`Нет таких вопросов: ${state.unknown.join(", ")} — эти ответы не учтены`,"err");
+      follow(res.job,{rid:res.run.id,answers:true});loadProjects();}
+    catch(e){showErr(e.code==="limit"?"limit":"answers",e.message,e.extra||{});}
+    finally{b.classList.remove("loading");aProgress();}};
+  // «было → стало» по ответам: answers.before / after и таблица ответов нового прогона
+  const ATYPE={concrete:["sev-ok","check","конкретный"],evasive:["sev-major","clock","уклончивый"],contradictory:["sev-critical","x","противоречивый"]};
+  const VCH={"нельзя":"critical","с оговорками":"major","можно":"ok"};
+  const vchip=v=>v?`<span class="chip sev-${VCH[v]||"major"}">${ic(VCH[v]==="ok"?"check":VCH[v]==="critical"?"x":"alert",13)}${esc(v)}</span>`:'<span class="faint">—</span>';
+  const tchip=t=>{const m=ATYPE[t]||ATYPE.evasive;return `<span class="chip ${m[0]}">${ic(m[1],13)}${m[2]}</span>`;};
+  function ansBlock(a){const B=a.before||{},A=a.after||{},vb=B.verdict||{},va=A.verdict||{},items=a.items||[];
+    const n={};items.forEach(x=>{n[x.type]=(n[x.type]||0)+1;});
+    const kp=(l,b,af,u,lower)=>{if(b==null||af==null)return "";const d=af-b,good=lower?d<0:d>0;
+      return `<article class="kpi"><span class="lbl">${l}</span><div class="kpi-num"><span data-to="${b}">0</span>${u} <span class="faint">→</span> <span style="color:${!d?"var(--text)":good?"var(--ok)":"var(--critical)"}" data-to="${af}">0</span>${u}</div>
+        <div class="sub">${d?`<span class="delta ${good?"up":"down"}">${d>0?"▲ +":"▼ "}${d}${u}</span>`:"<span>без изменений</span>"}</div></article>`;};
+    const q=(x)=>{const i=x.quote?x.answer.indexOf(x.quote):-1;return i<0?esc(x.answer):esc(x.answer.slice(0,i))+`<mark class="ans-q">${esc(x.quote)}</mark>`+esc(x.answer.slice(i+x.quote.length));};
+    return `<div class="card ans-cmp" style="margin-bottom:16px"><div class="card-title">${ic("chat")}<span class="h2 grow">Ответы аналитика: было → стало</span>${a.source?`<span class="chip chip-outline">${ic("file",13)}${esc(a.source)}</span>`:""}</div>
+      <div class="grid g-4">${kp("Критичных",B.critical,A.critical,"",true)}${kp("Существенных",B.major,A.major,"",true)}${kp("Готовность",B.readiness,A.readiness,"%",false)}
+        <article class="kpi"><span class="lbl">Вердикт</span><div class="stack" style="gap:8px;margin-top:10px">
+          <div class="row wrap small" style="gap:6px"><span class="muted">Разработка</span>${vchip(vb.development)}<span class="faint">→</span>${vchip(va.development)}</div>
+          <div class="row wrap small" style="gap:6px"><span class="muted">Тестирование</span>${vchip(vb.testing)}<span class="faint">→</span>${vchip(va.testing)}</div></div></article></div>
+      <div class="row wrap" style="gap:8px;margin-top:14px">${Object.keys(ATYPE).filter(t=>n[t]).map(t=>`${tchip(t)}<b class="small">${n[t]}</b>`).join(" ")}</div>
+      ${state.unknown.length?`<div class="banner-err banner-warn" style="margin-top:12px">${ic("alert",18)}<div>Нет таких вопросов в прогоне: <b>${esc(state.unknown.join(", "))}</b> — эти ответы не учтены.</div></div>`:""}
+      <div class="table-wrap" style="margin-top:12px"><table class="tbl ans-tbl"><thead><tr><th scope="col">Вопрос</th><th scope="col">Ответ</th><th scope="col">Тип ответа</th><th scope="col">Что закрыто / осталось</th></tr></thead><tbody>
+        ${items.map(x=>`<tr><td><b class="mono">${esc(x.qid)}</b><div class="small muted" style="margin-top:2px">${esc(clip(x.question,150))}</div></td><td class="small">${q(x)}</td><td>${tchip(x.type)}</td>
+          <td class="small">${(x.closes||[]).length?`<div class="row wrap" style="gap:4px">${x.closes.map(c=>`<span class="chip sev-ok mono">${ic("check",12)}${esc(c)}</span>`).join("")}</div>`:""}${x.note?`<div class="muted" style="margin-top:4px">${esc(x.note)}</div>`:""}</td></tr>`).join("")}</tbody></table></div></div>`;}
+
   // ---------------- До / После
   function renderCompare(c,ctx={}){
-    if(!c){showErr("error","Сравнение не построено.");return;}
+    if(!c&&!ctx.answers){showErr("error","Сравнение не построено.");return;}
+    const pre=ctx.answers?ansBlock(ctx.answers):"";
+    $("#c-title").textContent=ctx.answers?"Было → стало":"До / После";
+    if(!c){$("#c-sub").textContent=`${ctx.run?ctx.run.doc_name:"Документ"} · перепроверка с ответами аналитика`;$("#c-body").innerHTML=pre;
+      $$("#c-body [data-to]").forEach(el=>countUp(el,el.dataset.to));const run=ctx.run;$("#c-open-new").onclick=()=>run&&openRun(run.id);
+      enable("#nav-compare",()=>show("s-compare"));show("s-compare");return;}
     const B=c.before,A=c.after,d=A.score-B.score,dr=A.readiness-B.readiness,run=ctx.run;
     $("#c-sub").textContent=`${B.document||"Прошлая версия"} → ${run?`${run.doc_name} (версия ${run.version})`:"новая версия"} · ${A.reqs} требований`;
     const stLbl={fixed:["ok","исправлено"],improved:["ok","улучшено"],new:["major","новые"],worse:["critical","хуже"],same:["minor","без изменений"]};
     const counts=c.counts||(c.rows||[]).reduce((m,r)=>(m[r.status]=(m[r.status]||0)+1,m),{});
     const def=(x)=>`<div class="def">${chip(x.severity)}<div><div class="small"><b>${x.rid?`<a href="#" data-cref="${esc(x.rid)}">${esc(x.label)}</a>`:esc(x.label)}</b> · ${esc(x.cname)}</div><div class="small muted" style="margin-top:2px">${esc(String(x.problem||"").slice(0,200))}</div></div></div>`;
-    $("#c-body").innerHTML=`<div class="grid g-3">
+    $("#c-body").innerHTML=pre+`<div class="grid g-3">
         <article class="card"><div class="ba"><div class="ba-card"><span class="ba-lbl">Было</span><span class="big" style="color:var(--text-2)" data-to="${B.score}">0</span></div>
           <span class="arrow">${ic("arrow-right",36)}</span><div class="ba-card"><span class="ba-lbl">Стало</span><span class="big" style="color:${d>=0?"var(--ok)":"var(--critical)"}" data-to="${A.score}">0</span></div></div>
           <div class="row" style="justify-content:center;margin-top:10px"><span class="small muted">балл документа</span><span class="delta ${d>=0?"up":"down"}">${d>=0?"▲ +":"▼ "}${d}</span></div></article>
@@ -724,7 +889,118 @@
     enable("#nav-compare",()=>show("s-compare"));show("s-compare");
   }
 
-  loadProjects();
+  loadProjects();privacy();
+  if(/[?&]example=1(?:&|$)/.test(location.search))openExample();
+})();
+</script>
+<script>
+/* Studio: язык интерфейса русский / қазақша (тот же ключ reqlens-lang, что у HTML-отчёта во фрейме).
+   Переводятся подписи интерфейса; тексты документа, замечаний и сообщения сервера остаются на русском (ТЗ). */
+(function(){
+  "use strict";
+  const pick=()=>{const q=/[?&]lang=(ru|kk)(?:&|$)/.exec(location.search);if(q)return q[1];try{return localStorage.getItem("reqlens-lang")||"ru";}catch(e){return "ru";}};
+  const LANG=pick(),btn=document.getElementById("btn-lang");
+  if(btn){btn.querySelector("span").textContent=LANG==="kk"?"Русский":"Қазақша";
+    btn.onclick=()=>{try{localStorage.setItem("reqlens-lang",LANG==="kk"?"ru":"kk");}catch(e){}location.reload();};}
+  if(LANG!=="kk")return;
+  document.documentElement.lang="kk";
+  const KK={
+    "Меню":"Мәзір","Новая проверка":"Жаңа тексеру","Проекты":"Жобалар","Живой прогон":"Тірі прогон","Отчёт":"Есеп","До / После":"Дейін / Кейін",
+    "Общее":"Жалпы","Тёмная тема":"Қараңғы тақырып","Светлая тема":"Жарық тақырып","Ключ в безопасности":"Кілт қауіпсіз",
+    "Ключ модели хранится только в .env сервера и никогда не передаётся в браузер.":"Модель кілті тек сервердің .env файлында сақталады және браузерге ешқашан берілмейді.",
+    "ИИ-ревью требований по ISO/IEC/IEEE 29148 и IEEE 830":"ISO/IEC/IEEE 29148 және IEEE 830 бойынша талаптардың ЖИ-ревьюі",
+    "локальный сервер":"жергілікті сервер","mock-режим (без модели)":"mock-режим (модельсіз)","Открыть меню":"Мәзірді ашу","Перейти к содержимому":"Мазмұнға өту",
+    // загрузка
+    "Загрузите документ требований":"Талаптар құжатын жүктеңіз",
+    "Агент выделит требования, проверит каждое и набор целиком, попробует написать тесты и предложит правки.":"Агент талаптарды бөліп алады, әрқайсысын және жиынтықты тексереді, тест жазып көреді және түзетулер ұсынады.",
+    "Перетащите файл сюда или нажмите, чтобы выбрать":"Файлды осында сүйреңіз немесе таңдау үшін басыңыз","до":"ең көбі",
+    "МБ · проверка начнётся сразу после выбора файла":"МБ · тексеру файл таңдалған соң бірден басталады",
+    "Проект":"Жоба","Новый проект — по имени файла":"Жаңа жоба — файл атауы бойынша","Профиль":"Профиль","Быстрый":"Жылдам","Полный":"Толық","Офлайн":"Офлайн",
+    "Домен":"Домен","Финтех":"Финтех","Без домена":"Доменсіз","Режим":"Режим","Режим проверки":"Тексеру режимі","С моделью":"Модельмен","Только правила":"Тек ережелер",
+    "Открыть готовый пример":"Дайын мысалды ашу","Демо":"Демо","Пример документа":"Құжат мысалы","Запустить проверку":"Тексеруді іске қосу",
+    "Текст документа уходит в модель — не загружайте конфиденциальное.":"Құжат мәтіні модельге жіберіледі — құпия құжаттарды жүктемеңіз.",
+    "Для банковского контура — офлайн-режим (Ollama): профиль «Офлайн», документ не покидает ваш сервер.":"Банк контуры үшін — офлайн-режим (Ollama): «Офлайн» профилі, құжат серверіңізден шықпайды.",
+    "Что получите":"Не аласыз","артефактов: отчёт .md, HTML, JSON, Excel, CSV для Jira, исправленный документ":"артефакт: .md есебі, HTML, JSON, Excel, Jira үшін CSV, түзетілген құжат",
+    "История проверок":"Тексерулер тарихы","Каждая версия документа — в проекте: график балла, критичные дефекты, вердикт.":"Құжаттың әр нұсқасы — жобада: балл графигі, критикалық ақаулар, вердикт.",
+    "AI-ассистент с источниками":"Дереккөздері бар AI-көмекші","Ответ ссылается на требования, строки документа и фрагменты базы знаний.":"Жауап талаптарға, құжат жолдарына және білім қорының үзінділеріне сілтейді.",
+    "Тестовый режим (mock).":"Тест режимі (mock).",
+    // живой прогон
+    "ВЫПОЛНЯЕТСЯ":"ОРЫНДАЛУДА","В ОЧЕРЕДИ":"КЕЗЕКТЕ","ЗАВЕРШЁН":"АЯҚТАЛДЫ","ОШИБКА":"ҚАТЕ","ОТМЕНЁН":"БОЛДЫРЫЛМАДЫ","Агент проверки требований":"Талаптарды тексеру агенті",
+    "требований проверено":"талап тексерілді","время прогона":"прогон уақыты","Подготовка…":"Дайындық…","Отменить":"Болдырмау","Требования":"Талаптар",
+    "ждём нарезку":"бөлуді күтеміз","В документе":"Құжатта","Формулировка":"Тұжырым","Статус":"Күйі","Балл":"Балл","Трассировка агента":"Агент трассировкасы",
+    "Журнал агента":"Агент журналы","ожидает":"күтуде","выполняется…":"орындалуда…","готово":"дайын","пропущен":"өткізілді","ошибка":"қате","остановлено":"тоқтатылды",
+    "Чтение":"Оқу","Нарезка":"Бөлу","Проверка требований":"Талаптарды тексеру","Проверка набора":"Жиынтықты тексеру","Домен и глоссарий":"Домен және глоссарий",
+    "Критик":"Критик","Отчёты":"Есептер","Готово: отчёт сформирован":"Дайын: есеп жасалды","Прогресс прогона":"Прогон барысы","предварительно":"алдын ала",
+    "проверяется…":"тексерілуде…","нет замечаний":"ескерту жоқ","Без замечаний":"Ескертусіз","Критичный":"Критикалық","Существенный":"Елеулі","Незначительный":"Елеусіз",
+    // результат
+    "Готово":"Дайын","с источниками":"дереккөздерімен","Сравнить версии":"Нұсқаларды салыстыру","Проверить исправленный агентом":"Агент түзеткенді тексеру",
+    "Загрузить новую версию":"Жаңа нұсқаны жүктеу","Сравнение с прошлой версией":"Алдыңғы нұсқамен салыстыру","История проекта":"Жоба тарихы",
+    "Исправили документ? Проверьте новую версию — она попадёт в историю проекта, а мы покажем балл до и после, исправленные и новые дефекты.":"Құжатты түзеттіңіз бе? Жаңа нұсқаны тексеріңіз — ол жоба тарихына түседі, ал біз балды, түзетілген және жаңа ақауларды көрсетеміз.",
+    "Вопросы аналитику":"Аналитикке сұрақтар","Ответить на вопросы":"Сұрақтарға жауап беру","Скачать шаблон ответов":"Жауап үлгісін жүктеу",
+    "Ответьте на вопросы агента: конкретный ответ закроет замечания, а перепроверка покажет «было → стало».":"Агент сұрақтарына жауап беріңіз: нақты жауап ескертулерді жабады, ал қайта тексеру «дейін → кейін» көрсетеді.",
+    "Готовый пример · без прогона и без квоты":"Дайын мысал · прогонсыз және квотасыз","Интерактивный отчёт":"Интерактивті есеп","Вопрос ассистенту":"Көмекшіге сұрақ","Отправить вопрос":"Сұрақты жіберу",
+    "Что исправить первым?":"Алдымен не түзету керек?","Какие есть противоречия?":"Қандай қайшылықтар бар?","Можно ли начинать разработку?":"Әзірлеуді бастауға бола ма?","Какие вопросы аналитику?":"Аналитикке қандай сұрақтар бар?",
+    "в разработку нельзя":"әзірлеуге болмайды","условно":"шартты","можно в разработку":"әзірлеуге болады","только правила":"тек ережелер",
+    // ответы аналитика
+    "/ ответы аналитика":"/ аналитик жауаптары","Ответьте на вопросы агента":"Агенттің сұрақтарына жауап беріңіз",
+    "Конкретный ответ — число, перечень или решение — закроет замечания.":"Нақты жауап — сан, тізім немесе шешім — ескертулерді жабады.",
+    "«Уточним позже» оставит их открытыми, а ответ, который противоречит документу, добавит новое замечание.":"«Кейін нақтылаймыз» оларды ашық қалдырады, ал құжатқа қайшы жауап жаңа ескерту қосады.",
+    "Перепроверить":"Қайта тексеру","из":"/","вопросов с ответом":"сұраққа жауап берілді","Вопросы с ответом":"Жауап берілген сұрақтар","черновик восстановлен":"черновик қалпына келтірілді",
+    "есть ответ":"жауап бар","Закроет:":"Жабады:","Очистить черновик":"Черновикті тазалау","Очистить":"Тазалау","Очистить черновик ответов?":"Жауаптар черновигін тазалау керек пе?",
+    "Все введённые ответы на этой странице будут удалены из браузера.":"Осы беттегі барлық енгізілген жауаптар браузерден жойылады.",
+    "Черновик ответов сохраняется в этом браузере и не уходит на сервер до «Перепроверить».":"Жауаптар черновигі осы браузерде сақталады және «Қайта тексеру» басылғанша серверге жіберілмейді.",
+    "Конкретно: число и единицы, перечень или решение. Например: не дольше 2 секунд для 95 % запросов":"Нақты: сан мен бірлік, тізім немесе шешім. Мысалы: сұраулардың 95 %-ы үшін 2 секундтан аспайды",
+    // сравнение
+    "Сравнение версий":"Нұсқаларды салыстыру","Было → стало":"Дейін → кейін","Отчёт новой версии":"Жаңа нұсқаның есебі","Ответы аналитика: было → стало":"Аналитик жауаптары: дейін → кейін",
+    "Критичных":"Критикалық","Существенных":"Елеулі","Готовность":"Дайындық","Вердикт":"Вердикт","Разработка":"Әзірлеу","Тестирование":"Тестілеу","без изменений":"өзгеріссіз",
+    "конкретный":"нақты","уклончивый":"жалтарма","противоречивый":"қайшы","Вопрос":"Сұрақ","Ответ":"Жауап","Тип ответа":"Жауап түрі","Что закрыто / осталось":"Не жабылды / не қалды",
+    "Было":"Дейін","Стало":"Кейін","балл документа":"құжат балы","Готовность к разработке":"Әзірлеуге дайындық","Критичных дефектов":"Критикалық ақаулар",
+    "Исправлено":"Түзетілді","Новые дефекты":"Жаңа ақаулар","Изменение":"Өзгеріс","Балл до":"Бұрынғы балл","Балл после":"Кейінгі балл","ID":"ID",
+    "Исправленных дефектов нет.":"Түзетілген ақау жоқ.","Новых дефектов не появилось.":"Жаңа ақау пайда болған жоқ.",
+    "нельзя":"болмайды","можно":"болады","с оговорками":"ескертулермен",
+    // ошибки
+    "Дневной лимит демо исчерпан":"Демо-лимит бүгінге таусылды","Проверить без модели (только правила)":"Модельсіз тексеру (тек ережелер)",
+    "Откройте готовый пример — отчёт по документу организаторов, без прогона и без квоты.":"Дайын мысалды ашыңыз — ұйымдастырушылар құжаты бойынша есеп, прогонсыз және квотасыз.",
+    "Проверьте документ без модели — только правилами: это не тратит квоту.":"Құжатты модельсіз — тек ережелермен тексеріңіз: бұл квотаны жұмсамайды.",
+    "Запустите ReqLens локально: python -m req_review.web — без лимитов.":"ReqLens-ті жергілікті іске қосыңыз: python -m req_review.web — лимитсіз.",
+    "Файл не читается":"Файл оқылмайды","Требований не найдено":"Талаптар табылмады","Что сделать":"Не істеу керек","Загрузить другой файл":"Басқа файлды жүктеу",
+    "Ответы не приняты":"Жауаптар қабылданбады","Вернуться к ответам":"Жауаптарға оралу","Попробовать снова":"Қайта көру","Проверка не удалась":"Тексеру сәтсіз аяқталды",
+    "Готового примера на сервере нет":"Серверде дайын мысал жоқ","Файл не принят":"Файл қабылданбады","Лимит API исчерпан":"API лимиті таусылды","Нет ключа API":"API кілті жоқ",
+    "Нет интернета":"Интернет жоқ","Прогон отменён":"Прогон болдырылмады",
+    "Сохраните документ как PDF с текстовым слоем или .docx и загрузите снова.":"Құжатты мәтін қабаты бар PDF немесе .docx ретінде сақтап, қайта жүктеңіз.",
+    "Скан без текста — распознайте его (OCR), затем проверьте результат.":"Мәтінсіз скан — оны танытыңыз (OCR), содан кейін нәтижені тексеріңіз.",
+    "Старый .doc — откройте в Word и сохраните как .docx.":"Ескі .doc — Word-та ашып, .docx ретінде сақтаңыз.",
+    "Под заголовком «### Q-xx» должен быть текст ответа — пустые вопросы не учитываются.":"«### Q-xx» тақырыбының астында жауап мәтіні болуы керек — бос сұрақтар есепке алынбайды.",
+    "Если исходный прогон ещё идёт — дождитесь отчёта и отправьте ответы снова.":"Бастапқы прогон әлі жүріп жатса — есепті күтіп, жауаптарды қайта жіберіңіз.",
+    // проекты
+    "Проекты и история проверок":"Жобалар және тексерулер тарихы","Проект — один документ требований и все его версии.":"Жоба — бір талаптар құжаты және оның барлық нұсқалары.",
+    "Новый проект":"Жаңа жоба","Проверить новую версию":"Жаңа нұсқаны тексеру","Удалить проект":"Жобаны жою","Динамика по версиям":"Нұсқалар бойынша динамика",
+    "Версия":"Нұсқа","Документ":"Құжат","Проверено":"Тексерілді","Режим и статус":"Режим және күй","Удалить безвозвратно":"Біржола жою","Отмена":"Болдырмау",
+    "Проектов пока нет":"Әзірге жоба жоқ","Загрузить документ":"Құжатты жүктеу","Создать":"Құру","Название проекта":"Жоба атауы","Введите название":"Атауын енгізіңіз",
+  };
+  const KK_RE=[
+    [/^шаг (\d+) из (\d+)$/,"$2 қадамның $1-і"],[/^проверено (\d+) из (\d+)$/,"$2 ішінен $1 тексерілді"],[/^версий: (\d+)$/,"нұсқалар: $1"],
+    [/^черновик сохранён · (\d\d:\d\d)$/,"черновик сақталды · $1"],
+    [/^Можно снова через (?:(\d+) ч )?(\d+) мин — около (.+)\.$/,(m,h,mi,at)=>`Қайта ${h?h+" сағ ":""}${mi} мин кейін — шамамен ${at}.`],
+    [/^(.+) — балл (\d+)\/100, готовность (\d+)%$/,"$1 — балл $2/100, дайындық $3%"],
+    [/^Перепроверка с ответами аналитика · учтено ответов: (\d+)$/,"Аналитик жауаптарымен қайта тексеру · ескерілген жауаптар: $1"],
+    [/^Ответ на (Q-\d+)$/,"$1 сұрағына жауап"],[/^Нет таких вопросов: (.+) — эти ответы не учтены$/,"Мұндай сұрақтар жоқ: $1 — бұл жауаптар ескерілмеді"],
+  ];
+  const SKIP="script,style,pre,code,textarea,.msg,.pj-name,#pj-name,#p-name,#c-sub,.def-list,.tbl td.small,option";
+  function tr(s){const t=s.trim();if(!t)return s;let r=KK[t];
+    if(r==null)for(const [re,rep] of KK_RE)if(re.test(t)){r=t.replace(re,rep);break;}
+    return r==null?s:s.replace(t,r);}
+  const ATTRS=["placeholder","aria-label","title"];
+  function attrs(n){for(const a of ATTRS)if(n.hasAttribute(a))n.setAttribute(a,tr(n.getAttribute(a)));}
+  function translate(root){
+    if(root.nodeType===3){if(!(root.parentElement&&root.parentElement.closest(SKIP)))root.nodeValue=tr(root.nodeValue);return;}
+    if(root.nodeType!==1)return;attrs(root);if(root.closest(SKIP))return;
+    const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT|NodeFilter.SHOW_ELEMENT);
+    for(let n=w.nextNode();n;n=w.nextNode()){
+      if(n.nodeType===1){attrs(n);continue;}
+      if(!(n.parentElement&&n.parentElement.closest(SKIP)))n.nodeValue=tr(n.nodeValue);}}
+  translate(document.body);
+  new MutationObserver(ms=>ms.forEach(m=>{if(m.type==="characterData")return;m.addedNodes.forEach(translate);})).observe(document.body,{childList:true,subtree:true});
 })();
 </script>
 <script>if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}));</script>
