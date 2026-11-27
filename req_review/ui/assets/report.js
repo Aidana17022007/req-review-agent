@@ -520,18 +520,10 @@
       <div data-crit-list="req">${rows(req)}</div>${set.length ? `<div data-crit-list="set" hidden>${rows(set)}</div>` : ""}
       <p class="small faint" style="margin-top:8px">Доля требований без нарушений, ISO/IEC/IEEE 29148 §5.2.5–5.2.6.</p></div>`;
   }
-  // маленькая «сфера агента» (знак ReqLens): точки по кругу и лучи к фокусу, детерминированно
-  function orb(s = 22) {
-    let d = "", l = "";
-    for (let i = 0; i < 36; i++) { const a = i * 2.4, r = 9 * Math.sqrt((i + 0.5) / 36), x = (12 + Math.cos(a) * r).toFixed(1), y = (12 + Math.sin(a) * r).toFixed(1);
-      d += `<circle cx="${x}" cy="${y}" r=".8"/>`; if (i % 3 === 0) l += `M15.5 15.5L${x} ${y}`; }
-    return `<svg class="orb" width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true"><path d="${l}" stroke="currentColor" stroke-width=".35" opacity=".45"/><g fill="currentColor">${d}</g><circle cx="15.5" cy="15.5" r="1.6" fill="currentColor"/></svg>`;
-  }
   function passportHTML() {
     const kv = (k, v) => (v || v === 0 ? `<div class="kv"><span>${k}</span><span>${esc(v)}</span></div>` : "");
     const dur = +P.duration_s ? `${Math.floor(P.duration_s / 60)} мин ${P.duration_s % 60} с` : "";
-    const err = D.trace.some((t) => t.status === "err");
-    return `<div class="box"><h3>Паспорт прогона <span class="status ${err ? "st-fail" : "st-done"}">${orb(18)}${err ? "С ошибками" : "Завершён"}</span></h3>
+    return `<div class="box"><h3>Паспорт прогона</h3>
       ${kv("Документ", P.file || P.document)}${kv("Дата", P.started)}${kv("Модель", P.model)}${kv("Версия агента", P.agent_version)}
       ${kv("Запросов к модели", P.calls)}${kv("Длительность", dur)}</div>`;
   }
