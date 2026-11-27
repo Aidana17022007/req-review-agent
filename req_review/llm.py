@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import re
+import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -46,6 +47,11 @@ class BaseLLM:
         self.stats = LLMStats()
         self._last_call = 0.0
         self.fallback_models: list[str] = []
+        # v12: параллельные вызовы — общий ограничитель частоты и числа одновременных запросов (LLM_CONCURRENCY)
+        from .parallel import concurrency
+
+        self._lock = threading.Lock()
+        self._inflight = threading.BoundedSemaphore(concurrency())
 
     # --- публичный метод ---
     def generate_json(self, system: str, prompt: str, *, task: str = "", context: dict | None = None) -> dict:
@@ -55,18 +61,21 @@ class BaseLLM:
         if cache and cache.exists() and os.getenv("LLM_CACHE", "1").strip().lower() != "refresh":
             try:
                 data = parse_json(cache.read_text(encoding="utf-8"))
-                self.stats.cached += 1
+                with self._lock:
+                    self.stats.cached += 1
                 return data
             except (ValueError, OSError):
                 pass
         last_err: Exception | None = None
         for attempt in range(self.max_retries + 1):
-            self._throttle()
             try:
-                text = self._call(system, prompt if attempt == 0 or not isinstance(last_err, json.JSONDecodeError)
-                                  else prompt + "\n\nВНИМАНИЕ: предыдущий ответ был невалидным JSON. Верни ТОЛЬКО валидный JSON.",
-                                  task=task, context=context or {})
-                self.stats.calls += 1
+                with self._inflight:
+                    self._throttle()
+                    text = self._call(system, prompt if attempt == 0 or not isinstance(last_err, json.JSONDecodeError)
+                                      else prompt + "\n\nВНИМАНИЕ: предыдущий ответ был невалидным JSON. Верни ТОЛЬКО валидный JSON.",
+                                      task=task, context=context or {})
+                with self._lock:
+                    self.stats.calls += 1
                 data = parse_json(text)
                 if cache:
                     cache.parent.mkdir(parents=True, exist_ok=True)
@@ -74,24 +83,24 @@ class BaseLLM:
                 return data
             except json.JSONDecodeError as e:
                 last_err = e
-                self.stats.retries += 1
+                with self._lock:
+                    self.stats.retries += 1
                 continue
             except RetryableError as e:
                 last_err = e
-                self.stats.retries += 1
+                with self._lock:
+                    self.stats.retries += 1
                 # модель перегружена (503) или не отвечает — после LLM_FALLBACK_AFTER повторов переходим на резервную
                 if attempt >= int(os.getenv("LLM_FALLBACK_AFTER", "3")) and self.fallback_models and ("503" in str(e) or "сетев" in str(e)):
-                    old, self.model = self.model, self.fallback_models.pop(0)
-                    self.stats.switches.append(f"{old} → {self.model} ({e})")
-                    print(f"  [llm] {old} перегружена — переключаюсь на резервную модель {self.model}", flush=True)
+                    if self._switch(f"{e}"):
+                        print(f"  [llm] модель перегружена — переключаюсь на резервную {self.model}", flush=True)
                     continue
                 wait = e.retry_after if e.retry_after else min(60.0, 2.0 * (2 ** attempt))
                 max_wait = float(os.getenv("LLM_MAX_WAIT", "180"))
                 # квота модели исчерпана (429 с долгой задержкой или 429 подряд) — сразу на резервную модель
                 if self.fallback_models and "429" in str(e) and (wait > max_wait or attempt >= 2):
-                    old, self.model = self.model, self.fallback_models.pop(0)
-                    self.stats.switches.append(f"{old} → {self.model} (квота: {e})")
-                    print(f"  [llm] квота {old} исчерпана — переключаюсь на резервную модель {self.model}", flush=True)
+                    if self._switch(f"квота: {e}"):
+                        print(f"  [llm] квота исчерпана — переключаюсь на резервную модель {self.model}", flush=True)
                     continue
                 if attempt >= self.max_retries:
                     break
@@ -110,6 +119,15 @@ class BaseLLM:
         self.stats.errors.append(msg)
         raise LLMError(msg)
 
+    def _switch(self, why: str) -> bool:
+        """Переход на резервную модель (один раз на событие, даже если упали несколько параллельных запросов)."""
+        with self._lock:
+            if not self.fallback_models:
+                return False
+            old, self.model = self.model, self.fallback_models.pop(0)
+            self.stats.switches.append(f"{old} → {self.model} ({why})")
+            return True
+
     def _cache_path(self, system: str, prompt: str) -> Path | None:
         """Кэш ответов по хэшу (провайдер + модель + температура + промпт): повторный прогон не тратит квоту."""
         if self.provider in ("mock", "rules") or os.getenv("LLM_CACHE", "1").strip() in ("0", "false", "no", ""):
@@ -119,12 +137,15 @@ class BaseLLM:
         return base / f"{h}.json"
 
     def _throttle(self):
+        """Старты запросов разносятся на min_interval — общий слот для всех потоков (LLM_RPM соблюдается и параллельно)."""
         if self.min_interval <= 0:
             return
-        wait = self._last_call + self.min_interval - time.monotonic()
-        if wait > 0:
-            time.sleep(wait)
-        self._last_call = time.monotonic()
+        with self._lock:
+            now = time.monotonic()
+            start = max(now, self._last_call + self.min_interval)
+            self._last_call = start
+        if start > now:
+            time.sleep(start - now)
 
     def _call(self, system: str, prompt: str, *, task: str, context: dict) -> str:  # pragma: no cover
         raise NotImplementedError

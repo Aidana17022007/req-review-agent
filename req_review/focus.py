@@ -119,14 +119,40 @@ def focused_passes(split, doc, llm, dropped: list, found: list, log=print) -> di
     """Узкие проходы (по одному классу на запрос). Возвращает {task: добавлено замечаний}."""
     if os.getenv("REQLENS_FOCUSED", "1") == "0" or getattr(llm, "provider", "") == "rules":
         return {}
+    import json as _json
+
+    from .checker import LLMError, LLMFatalError, _doc_context
+
     stats = {}
-    for task, (label, system) in PASSES.items():
-        if not applicable(task, split, doc):
-            continue
+    jobs = [(task, label, system) for task, (label, system) in PASSES.items() if applicable(task, split, doc)]
+    # v12: запросы узких проходов независимы — параллельно; «уже найдено» — общий снимок до проходов,
+    # слияние (проверка цитат, отсев повторов) — последовательно в фиксированном порядке PASSES
+    known = [f.problem[:160] for f in found][:40]
+    reqs = split.requirements
+    base = {"ДОКУМЕНТ": _doc_context(doc)[:40000],
+            "НАРЕЗКА": [{"id": r.rid, "doc_id": r.doc_id, "text": r.text[:300]} for r in reqs], "УЖЕ НАЙДЕНО": known}
+
+    def call(job):
+        task, label, system = job
         log(f"  узкий проход: {label}")
-        tg = targets(task, split, doc)
-        stats[task] = llm_set_pass(split, doc, llm, dropped, found, log, system=system, task=task, label=f"узкий проход «{label}»",
-                                   source=f"LLM (узкий проход: {label})", focus={"class": label, "targets": tg})
+        payload = {**base, "ФОКУС": {"class": label, "targets": targets(task, split, doc)}}
+        try:
+            return llm.generate_json(system, _json.dumps(payload, ensure_ascii=False, indent=1), task=task,
+                                     context={"reqs": reqs, "doc": doc})
+        except LLMFatalError:
+            raise
+        except LLMError as e:
+            log(f"  узкий проход «{label}» пропущен ({e})")
+            return None
+
+    from .parallel import pmap
+
+    for (task, label, system), data in zip(jobs, pmap(call, jobs)):
+        if data is None:
+            stats[task] = 0
+            continue
+        stats[task] = llm_set_pass(split, doc, llm, dropped, found, log, system=system, task=task,
+                                   label=f"узкий проход «{label}»", source=f"LLM (узкий проход: {label})", prefetched=data)
     return stats
 
 
