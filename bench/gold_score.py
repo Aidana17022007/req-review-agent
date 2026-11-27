@@ -5,6 +5,7 @@
          python bench/gold_score.py --real ОТЧЁТ.json    — другой отчёт по документу организаторов
          python bench/gold_score.py --write              — обновить раздел в bench/RESULTS.md, bench/score.json и README
          python bench/gold_score.py --readme             — только строка README по bench/score.json (без пересчёта)
+         python bench/gold_score.py --labels labels.json — перенести вердикты из bench/label_sheet.html в unmatched.md
 
 Эталон: внедрённые дефекты 9 вымышленных документов (bench/ground_truth.json) + ожидаемые дефекты документа
 организаторов (bench/real/notifications.json). Полнота — доля найденных дефектов эталона.
@@ -29,16 +30,16 @@ ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
 
 UNMATCHED = HERE / "unmatched.md"
-VERDICTS = {"настоящий": True, "ложное": False}
+VERDICTS = {"настоящий": True, "ложное": False, "спорно": None}  # спорно — проверено, но верным не считается
 
 
 def _key(doc: str, where: str, problem: str) -> str:
     return hashlib.sha1(f"{doc}|{where}|{' '.join(problem.split())[:200]}".encode()).hexdigest()[:10]
 
 
-def load_verdicts(path: Path = UNMATCHED) -> dict[str, bool]:
-    """Разметка из bench/unmatched.md: строки таблицы «| key | … | вердикт |»."""
-    out: dict[str, bool] = {}
+def load_verdicts(path: Path = UNMATCHED) -> dict[str, bool | None]:
+    """Разметка из bench/unmatched.md: строки таблицы «| key | … | вердикт |» (True / False / None — спорно)."""
+    out: dict[str, bool | None] = {}
     if not path.exists():
         return out
     for line in path.read_text(encoding="utf-8").splitlines():
@@ -92,18 +93,20 @@ def score(rows: list[dict], items: list[dict], verdicts: dict[str, bool], reps: 
     for it in items:
         it.setdefault("key", _key(it["doc"], it["where"], it["problem"]))
     rec = [int(r["found"]) for r in rows]
-    judged = []  # 1 — верное, 0 — ложное; неразмеченные несовпавшие — отдельно
-    unjudged = 0
+    judged = []  # 1 — верное, 0 — ложное; неразмеченные и спорные несовпавшие — отдельно
+    unjudged = disputed = 0
     for it in items:
         if it["outcome"] == "tp":
             judged.append(1)
         elif it["outcome"] == "fp":
             judged.append(0)
+        elif it["key"] in verdicts and verdicts[it["key"]] is None:
+            disputed += 1
         elif it["key"] in verdicts:
             judged.append(int(verdicts[it["key"]]))
         else:
             unjudged += 1
-    strict = judged + [0] * unjudged
+    strict = judged + [0] * (unjudged + disputed)
     r = sum(rec) / len(rec) if rec else 0.0
     p = sum(judged) / len(judged) if judged else 1.0
     ps = sum(strict) / len(strict) if strict else 1.0
@@ -120,8 +123,8 @@ def score(rows: list[dict], items: list[dict], verdicts: dict[str, bool], reps: 
             "precision": p, "precision_ci": bootstrap(judged, reps, seed), "precision_strict": ps,
             "judged": len(judged), "unjudged": unjudged, "f1": f1, "f1_strict": f1s,
             # v15: сколько замечаний проверено и как — для честной строки «проверено N из M»
-            "findings": len(judged) + unjudged, "correct": sum(judged),
-            "checked_gold": len(judged) - manual, "checked_manual": manual,
+            "findings": len(judged) + disputed + unjudged, "correct": sum(judged), "disputed": disputed,
+            "checked_gold": len(judged) + disputed - manual, "checked_manual": manual,
             "critical_found": sum(crit), "critical_total": len(crit), "by_doc": by_doc,
             "method": f"перцентильный бутстреп, {reps} повторов, seed {seed}"}
 
@@ -136,8 +139,10 @@ def write_unmatched(items: list[dict], verdicts: dict[str, bool]) -> int:
                 old[cells[0]] = cells[-1]
     out = ["# Замечания, не совпавшие с эталоном", "",
            "Каждая строка — существенное или критичное замечание агента, которого нет в эталоне. В последней колонке впишите",
-           "**настоящий** (дефект есть в документе, эталон его не содержит) или **ложное** (дефекта нет), можно с",
-           "комментарием после слова. Файл пересобирается `python bench/gold_score.py`, вписанные вердикты сохраняются по ключу.", "",
+           "**настоящий** (дефект есть в документе, эталон его не содержит), **ложное** (дефекта нет) или **спорно**, можно",
+           "с комментарием после слова. Удобнее — в `bench/label_sheet.html` (текст требования рядом), затем",
+           "`python bench/gold_score.py --labels labels.json`. Файл пересобирается `python bench/gold_score.py`, вписанные",
+           "вердикты сохраняются по ключу.", "",
            "| Ключ | Документ | Где | Критерий | Серьёзность | Замечание | Вердикт |", "|---|---|---|---|---|---|---|"]
     for it in sorted(rows, key=lambda x: (x["doc"], x["where"])):
         prob = " ".join(it["problem"].split())[:220].replace("|", "/")
@@ -158,14 +163,17 @@ def _range(lo: float, hi: float) -> str:
 
 
 def precision_text(res: dict) -> str:
-    """Точность словами: одно число — только когда проверены все замечания, иначе диапазон [строгая … по проверенным]."""
-    n, m = res["judged"], res.get("findings", res["judged"] + res["unjudged"])
+    """Точность словами: одно число — только когда проверены все замечания и спорных нет, иначе диапазон
+    [строгая (непроверенные и спорные — ложные) … по проверенным]."""
+    d = res.get("disputed", 0)
+    n, m = res["judged"] + d, res.get("findings", res["judged"] + d + res["unjudged"])
     how = f"сверкой с эталоном {res.get('checked_gold', n)}, вручную {res.get('checked_manual', 0)}"
-    correct = res.get("correct", round(res["precision"] * n))
-    if res["unjudged"]:
+    correct = res.get("correct", round(res["precision"] * res["judged"]))
+    sp = f", спорных {d}" if d else ""
+    if res["unjudged"] or d:
+        rest = f"; ещё {res['unjudged']} не проверены" if res["unjudged"] else ""
         return (f"точность — **от {_pct(res['precision_strict'])} до {_pct(res['precision'])}**: "
-                f"проверено {n} из {m} существенных замечаний ({how}), верны {correct}; "
-                f"ещё {res['unjudged']} не проверены")
+                f"проверено {n} из {m} существенных замечаний ({how}), верны {correct}{sp}{rest}")
     return (f"точность **{_pct(res['precision'])}** [{_range(*res['precision_ci'])}]: "
             f"проверены все {m} существенных замечаний ({how}), верны {correct}")
 
@@ -192,9 +200,10 @@ def update_readme(res: dict, path: Path = ROOT / "README.md") -> int:
 
 def md(res: dict, label: str) -> str:
     ci = lambda c: f"[{_pct(c[0])}–{_pct(c[1])}]"  # noqa: E731
-    m = res.get("findings", res["judged"] + res["unjudged"])
+    d = res.get("disputed", 0)
+    m = res.get("findings", res["judged"] + d + res["unjudged"])
     gold, manual = res.get("checked_gold", res["judged"]), res.get("checked_manual", 0)
-    if res["unjudged"]:
+    if res["unjudged"] or d:
         prec = f"| Точность | **от {_pct(res['precision_strict'])} до {_pct(res['precision'])}** (проверено не всё) | — |"
         f1 = f"| F1 | от {_pct(res.get('f1_strict', res['f1']))} до {_pct(res['f1'])} | — |"
     else:
@@ -202,21 +211,23 @@ def md(res: dict, label: str) -> str:
         f1 = f"| F1 | **{_pct(res['f1'])}** | — |"
     lines = ["## Единый замер: эталон из " + str(res["total"]) + " дефектов, 95 % интервалы", "",
              f"*Прогон:* {label}. Команда: `python bench/gold_score.py`. {res['method']}.", "",
-             f"**Проверено {res['judged']} из {m} существенных замечаний** (сверкой с эталоном — {gold}, вручную — "
-             f"{manual}); не проверено {res['unjudged']}."
-             + (" Пока проверено не всё, точность — диапазон: нижняя граница считает непроверенные ложными, верхняя — "
-                "учитывает только проверенные." if res["unjudged"] else "")
+             f"**Проверено {res['judged'] + d} из {m} существенных замечаний** (сверкой с эталоном — {gold}, вручную — "
+             f"{manual}{f'; из них спорных — {d}' if d else ''}); не проверено {res['unjudged']}."
+             + (" Пока проверено не всё (или есть спорные), точность — диапазон: нижняя граница считает непроверенные и "
+                "спорные ложными, верхняя — учитывает только проверенные с ответом «настоящий» / «ложное»."
+                if res["unjudged"] or d else "")
              + " Разметка — `bench/unmatched.md`.", "",
              "| Метрика | Значение | 95 % интервал |", "|---|---|---|",
              f"| Полнота | **{_pct(res['recall'])}** ({res['found']} из {res['total']}) | {ci(res['recall_ci'])} |",
              prec,
              f"| Точность по проверенным ({res['judged']}) | {_pct(res['precision'])} | {ci(res['precision_ci'])} |",
-             f"| Точность строгая (непроверенные {res['unjudged']} — как ложные) | {_pct(res['precision_strict'])} | — |",
+             f"| Точность строгая (непроверенные {res['unjudged']} и спорные {d} — как ложные) | "
+             f"{_pct(res['precision_strict'])} | — |",
              f1,
              f"| Критичные и противоречия | {res['critical_found']} из {res['critical_total']} | — |", "",
              "| Документ | Найдено |", "|---|---|"]
-    for d, (f, t) in res["by_doc"].items():
-        lines.append(f"| {d} | {f} из {t} |")
+    for doc, (f, t) in res["by_doc"].items():
+        lines.append(f"| {doc} | {f} из {t} |")
     return "\n".join(lines) + "\n"
 
 
@@ -241,7 +252,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--write", action="store_true",
                     help="обновить раздел в bench/RESULTS.md, сохранить bench/score.json и строку README")
     ap.add_argument("--readme", action="store_true", help="только обновить строку README по bench/score.json (без пересчёта)")
+    ap.add_argument("--labels", nargs="+", metavar="LABELS.json",
+                    help="перенести вердикты людей из файлов «Сохранить» bench/label_sheet.html (или bench/real/human_check.html)"
+                         " в bench/unmatched.md / bench/real/human_check.md по ключу строки")
+    ap.add_argument("--overwrite", action="store_true", help="с --labels: заменить уже вписанный другой вердикт")
+    ap.add_argument("--force", action="store_true", help="с --labels: перенести, даже если все метки одинаковые")
     a = ap.parse_args(argv)
+    if a.labels:
+        from label_sheet import apply_files
+
+        return apply_files([Path(x) for x in a.labels], overwrite=a.overwrite, force=a.force)
     if a.readme:
         res = json.loads((HERE / "score.json").read_text(encoding="utf-8"))
         n = update_readme(res)

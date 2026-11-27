@@ -583,13 +583,31 @@ gemini-3.5-flash-lite. Подробности — `bench/RESULTS.md`, разде
 |---|---|---|
 | Эталон: **150 дефектов** на 10 документах — 9 вымышленных (`bench/docs/`, в v13 добавлены рефинансирование, QR-оплата, обмен валют) и документ организаторов | `python bench/inject.py` | `bench/ground_truth.json`, `bench/real/notifications.json` |
 | Полнота, точность, F1 с **95 % интервалами** (бутстреп, 1000 повторов, seed 13) | `python bench/run.py` → `python bench/gold_score.py --write` | `bench/score.json`, `bench/RESULTS.md` |
-| Замечания, не совпавшие с эталоном, — ручная разметка «настоящий / ложное» (точность считается по ней) | `python bench/gold_score.py` | `bench/unmatched.md` |
+| Замечания, не совпавшие с эталоном, — ручная разметка «настоящий / ложное / спорно» (точность считается по ней) | `python bench/label_sheet.py` → `python bench/gold_score.py --labels labels.json` | `bench/label_sheet.html`, `bench/unmatched.md` |
 | Абляция «что даёт каждый слой» (из кэша, без квоты) | `python bench/ablation.py --write` | `bench/ablation.json` |
 | Независимая проверка находок: другая модель вслепую + человек | `VERIFY_MODEL=провайдер:модель python bench/verify_findings.py --write` | `bench/real/verify.json`, `bench/real/human_check.md` |
 | Стабильность: N прогонов, среднее и разброс | `python review.py <док> <отчёт>.md --runs 3` → `python bench/stability.py <отчёт>_runs.json` | `bench/stability.json` |
 | Реакция на исправления: 24 исправленных дефекта в 8 документах | `python bench/transitions.py --write` | `bench/transitions.json` |
 
 Цифры с моделью появляются в `bench/RESULTS.md` после прогона этих команд; без прогона они не пишутся.
+
+### Как проверить точность (3 шага)
+
+Точность нельзя посчитать автоматически: замечание, которого нет в эталоне, может быть и настоящим дефектом, и ложным.
+Поэтому его проверяет человек, а пока проверено не всё, README показывает точность диапазоном.
+
+1. **Открыть лист разметки** — [`bench/label_sheet.html`](bench/label_sheet.html) (офлайн, двойной щелчок; собирается
+   `python bench/label_sheet.py`). У каждого замечания — текст требования с соседними строками документа, цитата и
+   формулировка агента; замечания к одному месту стоят рядом. Впишите, кто размечает, и отмечайте **настоящий /
+   ложное / спорно** (клавиши 1 / 2 / 3). Ничего не предзаполнено; отметки сохраняются в браузере, можно делить по
+   документам на двоих. «Сохранить» скачивает `labels.json`.
+2. **Перенести вердикты** — `python bench/gold_score.py --labels labels.json` (два файла — через пробел; расхождения
+   разметчиков показываются, а не затираются). Вердикты попадают в `bench/unmatched.md` по ключу строки.
+3. **Пересчитать** — `python bench/gold_score.py --write`: `bench/score.json`, раздел «Единый замер» в
+   `bench/RESULTS.md` и строка README обновятся из разметки.
+
+Так же размечаются находки отчёта для сдачи: [`bench/real/human_check.html`](bench/real/human_check.html) («да / нет /
+спорно») → `python bench/gold_score.py --labels human_labels.json` → `bench/real/human_check.md`.
 
 ## Комплаенс, стоимость, ансамбль, сильная модель (v13)
 
