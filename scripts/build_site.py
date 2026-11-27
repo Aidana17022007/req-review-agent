@@ -396,6 +396,12 @@ def fill_numbers(html: str) -> str:
                  "deposit_kk": "Онлайн-депозит (қазақ тілі)", "cards": "Перевыпуск карты (DOCX, таблицы)", "cashback": "Кэшбэк по категориям"}
         vals["bench-rows"] = "".join(f"<tr><td>{names.get(k, k)}</td><td>{c['tp']} из {c['total']}</td><td>{pct(c['recall'])}</td>"
                                      f"<td>{pct(c['precision'])}</td></tr>" for k, c in d["cases"].items())
+    sj = ROOT / "bench" / "score.json"
+    if sj.exists():  # v15: эталон из 150 и честная точность — диапазон, пока проверены не все замечания
+        g = json.loads(sj.read_text(encoding="utf-8"))
+        prec = (f"{round(100 * g['precision_strict'])}–{round(100 * g['precision'])} %" if g.get("unjudged")
+                else f"{round(100 * g['precision'])} %")
+        vals["recall-precision"] = f"{round(100 * g['recall'])} % / {prec}"
     try:  # самопроверка соответствия ТЗ — тем же кодом, что в CI
         import subprocess
 
