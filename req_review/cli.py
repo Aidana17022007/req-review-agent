@@ -37,6 +37,11 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--no-pdf", dest="pdf", action="store_false", help="не создавать PDF-версию отчёта")
     ap.add_argument("--ensemble", default=None, metavar="M1,M2",
                     help="ансамбль двух моделей: два прогона и объединение подтверждённых замечаний (или LLM_ENSEMBLE)")
+    ap.add_argument("--strong", action="store_true",
+                    help="прогон на сильной модели из STRONG_MODEL=провайдер:модель (профиль deep по умолчанию); "
+                         "отчёт для сдачи остаётся на бесплатной модели — этот кладите рядом, например reports/strong/")
+    ap.add_argument("--runs", type=int, default=1, metavar="N",
+                    help="N независимых прогонов (разная температура): у замечаний «найдено в k из N», устойчивые — в ≥ 2")
     ap.add_argument("--answers", default=None, metavar="ОТВЕТЫ.md",
                     help="ответы аналитика (шаблон <отчёт>_answers_template.md): перепроверка, конкретные ответы закрывают замечания")
     ap.add_argument("--rules", default=None, metavar="ФАЙЛ",
@@ -74,22 +79,37 @@ def main(argv: list[str] | None = None) -> int:
     load_dotenv(args.env or ROOT / ".env")
     if args.no_cache:
         os.environ["LLM_CACHE"] = "refresh"  # не читать кэш (свежий прогон), но записать ответы для повторов
+    if args.strong:  # v13: сильная модель — на время прогона подменяются провайдер и модель
+        spec = os.getenv("STRONG_MODEL", "").strip()
+        if not spec:
+            sys.stderr.write("Ошибка: для --strong задайте STRONG_MODEL=провайдер:модель в .env (например "
+                             "openrouter:<модель> или openai:deepseek-chat) и ключ этого провайдера.\n")
+            return 2
+        from .ensemble import model_env
+
+        with model_env(spec):
+            return _main(args, strong=spec)
+    return _main(args)
+
+
+def _main(args, strong: str = "") -> int:
+    import os
 
     from .console import Console
     from .errors import DocumentError
     from .llm import LLMError
     from .pipeline import apply_profile_env, run
 
-    profile = args.profile or os.getenv("REQLENS_PROFILE", "fast")
+    profile = args.profile or ("deep" if strong else os.getenv("REQLENS_PROFILE", "fast"))
     opts = Options(
         profile=profile,
         html=not args.no_html, fixed=not args.no_fixed, xlsx=not args.no_xlsx, jira=not args.no_jira,
         json=not args.no_json, tests=not args.no_tests, critic=args.critic,
         rescore=True if args.fix_loop else args.rescore, fix_loop=args.fix_loop, answers=args.answers or "", rules=args.rules or os.getenv("REQLENS_RULES", ""), decisions_llm=args.decisions_llm,
-        ensemble=args.ensemble or os.getenv("LLM_ENSEMBLE", ""),
+        ensemble=args.ensemble or os.getenv("LLM_ENSEMBLE", ""), runs=max(1, args.runs),
         cascade=args.cascade or os.getenv("LLM_CASCADE", ""),
         domain=args.domain or os.getenv("REQLENS_DOMAIN", "fintech"), compare=args.compare,
-        batch_size=int(os.getenv("LLM_BATCH_SIZE", "20")), pdf=args.pdf,
+        batch_size=int(os.getenv("LLM_BATCH_SIZE", "20")), pdf=args.pdf, strong=strong,
     )
     con = Console(quiet=args.quiet)
     if opts.rules:  # v10: файл правил проверяется до прогона — понятная ошибка без трейсбека и без трат квоты

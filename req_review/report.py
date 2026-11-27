@@ -108,6 +108,12 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     if llm_stats.prompt_tokens:
         w(f"| Токены (вход / выход) | {llm_stats.prompt_tokens} / {llm_stats.output_tokens} |")
     w(f"| Длительность | {duration_s:.0f} с |")
+    if ctx is not None and (sg := ctx.passport.get("strong")):  # v13: сильная модель
+        w(f"| Сильная модель | {_cell(sg['model'])} — {sg['note']} |")
+    if ctx is not None and (rn := ctx.passport.get("runs")):  # v13: стабильность по N прогонам
+        w(f"| Стабильность ({rn['n']} прогона, температуры {', '.join(map(str, rn['temperatures']))}) | устойчивых "
+          f"замечаний {rn['stable']}, найдено только в одном прогоне {rn['unstable']}; замечаний по прогонам: "
+          f"{' / '.join(map(str, rn['findings_per_run']))} |")
     if ctx is not None and (cst := ctx.passport.get("cost")):  # v13: стоимость прогона
         from .cost import line as cost_line
 

@@ -10,7 +10,7 @@ models:
   "mock /":
     free_tier: true
     note: "mock — модель не вызывается"
-  "rules /":
+  "без модели":
     free_tier: true
     note: "только правила — модель не вызывается"
   "openai / deepseek-chat":

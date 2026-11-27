@@ -47,6 +47,10 @@ class MockLLM(BaseLLM):
                  "problem": f"[mock] {task}: поведение не определено.", "severity": "major", "fix": "[mock] Дописать."},
                 {"check": task, "type": "gap", "refs": [{"id": "DOC", "quote": "такой фразы в документе нет"}],
                  "problem": "[mock] выдуманный пропуск", "severity": "major", "fix": "—"}]}, ensure_ascii=False)
+        if task == "verify":  # v13: независимая проверка находок — «да», каждое пятое «спорно»
+            return json.dumps({"items": [{"n": x["n"], "verdict": "спорно" if x["n"] % 5 == 0 else "да",
+                                          "why": "[mock] проблема видна в цитате"} for x in context["items"]]},
+                              ensure_ascii=False)
         if task == "revise":  # v12: «модель» вписывает ответ в формулировку; у одного элемента — выдуманное число 999
             out = []
             for i, x in enumerate(context["items"]):

@@ -29,6 +29,7 @@ class Finding:
     critic_note: str = ""
     basis: list = field(default_factory=list)  # основания из базы знаний kb/: [{"source","section","quote","url"}]
     ensemble: str = ""  # v7: «модель A» / «модель B» / «обе» / «правило» — при прогоне ансамблем (--ensemble)
+    stability: str = ""  # v13: «k из N» — при --runs N (найдено в k независимых прогонах)
 
 
 @dataclass
@@ -69,6 +70,7 @@ class SetFinding:
     values: list = field(default_factory=list)  # конфликтующие значения: [{"rid", "value", "quote"}]
     basis: list = field(default_factory=list)
     ensemble: str = ""  # v7: источник при прогоне ансамблем
+    stability: str = ""  # v13: «k из N» при --runs N
 
 
 @dataclass

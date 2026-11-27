@@ -44,6 +44,8 @@ class Options:
     batch_size: int = 8
     pdf: bool | None = None  # PDF-версия отчёта; None — по профилю (deep — да)
     ensemble: str = ""  # v7: «модель1,модель2» — два прогона и объединение подтверждённых замечаний
+    strong: str = ""  # v13: «провайдер:модель» сильной модели (--strong) — для честной строки паспорта
+    runs: int = 1  # v13: N независимых прогонов (разная температура) — «найдено в k из N», устойчивые замечания
     fix_loop: bool = False  # v7: «исправил → проверил заново» — блок «До / После» и файл <отчёт>_before_after.md
     cascade: str = ""  # v9: «быстрая,сильная» — быстрая проверяет всё, сильная — подозрительные требования и набор
     decisions_llm: bool = False  # v9: модель перефразирует повестку решений на бизнес-язык (иначе — формулировки кода)
@@ -403,6 +405,8 @@ def build_context(rv, llm, opts: Options, started: datetime, t0: float, input_pa
                 ("тестовый (mock)" if llm.provider == "mock" else
                  "только правила: модель не вызывалась, смысловые противоречия не проверялись" if llm.provider == "rules"
                  else "облачная модель"),
+        **({"strong": {"model": opts.strong, "note": "прогон на сильной модели (--strong); отчёт для сдачи — на "
+                                                      "бесплатной модели"}} if getattr(opts, "strong", "") else {}),
         "calls": llm.stats.calls, "cached": llm.stats.cached, "retries": llm.stats.retries, "tokens_in": llm.stats.prompt_tokens,
         "tokens_out": llm.stats.output_tokens, "duration_s": round(time.monotonic() - t0),
         "model_switches": list(getattr(llm.stats, "switches", [])),
@@ -508,6 +512,25 @@ def _run(input_path, output_path, opts: Options, log, step, llm_wrap, make_llm, 
     if llm_wrap:
         llm = llm_wrap(llm)
     rv = review_document(input_path, llm, opts, log=log, step=tstep)
+    runs_info, runs_brief = None, []
+    if opts.runs > 1:  # v13: стабильность — ещё N−1 прогонов с другой температурой, сопоставление без новых запросов
+        from .stability import brief, mark, temperatures
+
+        temps = temperatures(opts.runs)
+        others = []
+        old_t = getattr(llm, "temperature", 0.0)
+        try:
+            for k, t in enumerate(temps[1:], start=2):
+                log(f"стабильность: прогон {k} из {opts.runs} (температура {t})")
+                if hasattr(llm, "temperature"):
+                    llm.temperature = t
+                others.append(review_document(input_path, llm, opts, log=lambda m: log("  [run] " + m)))
+        finally:
+            if hasattr(llm, "temperature"):
+                llm.temperature = old_t
+        runs_info = mark(rv, others)
+        runs_brief = [brief(x) for x in [rv, *others]]
+        log(f"стабильность: устойчивых замечаний {runs_info['stable']}, найдено в одном прогоне {runs_info['unstable']}")
     ens_info = None
     if models:  # v7: второй прогон другой моделью и объединение подтверждённых замечаний
         from .ensemble import merge, refresh_depth
@@ -555,6 +578,8 @@ def _run(input_path, output_path, opts: Options, log, step, llm_wrap, make_llm, 
     ctx.decisions = build_decisions(_to_json(ctx))  # v9: повестка решений — код из подтверждённых замечаний
     if opts.decisions_llm:
         ctx.decisions = rephrase(ctx.decisions, llm, log)
+    if runs_info:  # v13: стабильность по N прогонам
+        ctx.passport["runs"] = runs_info
     if ens_info:
         ctx.passport["ensemble"] = ens_info
         ctx.passport["model"] = " + ".join(ens_info["models"]) + " (ансамбль)"
@@ -678,6 +703,12 @@ def _run(input_path, output_path, opts: Options, log, step, llm_wrap, make_llm, 
         p = stem.with_suffix(".json")
         write_json(ctx, p)
         ctx.artifacts["Данные (JSON)"] = p
+    if runs_brief:  # v13: краткие копии каждого прогона — для bench/stability.py (среднее и разброс полноты)
+        import json as _json
+
+        p = out.parent / f"{stem.name}_runs.json"
+        p.write_text(_json.dumps({"runs": runs_brief, "info": runs_info}, ensure_ascii=False, indent=1), encoding="utf-8")
+        ctx.artifacts["Прогоны для оценки стабильности (JSON)"] = p
     if opts.xlsx:
         p = out.parent / f"{stem.name}_traceability.xlsx"
         write_xlsx(ctx, p)
