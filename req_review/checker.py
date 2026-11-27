@@ -430,7 +430,18 @@ def deterministic_set_checks(split: SplitResult, doc: Document) -> list[SetFindi
                                       "Оставить одно требование, второе удалить или явно разграничить область применения.", "правило"))
     # модальные утверждения без идентификаторов
     if split.method == "ids":
-        for ln, text in split.unnumbered[:15]:
+        # v13+: в разделах-описаниях («Назначение и рамки», «Введение», «Термины») «позволяет / должен» описывает
+        # функцию или термин, а не требование — без замечания (ложная тревога на полных ТЗ)
+        sec_of = {}
+        cur = ""
+        for x in doc.lines:
+            mh = re.match(r"^\s*#{1,6}\s+(.+?)\s*$", x.text)
+            if mh:
+                cur = mh.group(1)
+            sec_of[x.lineno] = cur
+        _DESCR = re.compile(r"назначени|рамк|введени|термин|глоссари|определени|обзор", re.I)
+        unnumbered = [(ln, t) for ln, t in split.unnumbered if not _DESCR.search(sec_of.get(ln.lineno, ""))]
+        for ln, text in unnumbered[:15]:
             m = MODAL_RE.search(text) or MODAL_RE.search(ln.text)
             word = m.group(0) if m else "должен"
             out.append(SetFinding("structure", "set_traceable", [SetRef("DOC", text[:120])],

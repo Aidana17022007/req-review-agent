@@ -27,6 +27,26 @@ class RulesOnlyLLM(BaseLLM):
         # без кэша, ретраев и счётчика обращений: в паспорте «обращений к модели» должно остаться 0
         return json.loads(self._call(system, prompt, task=task, context=context or {}))
 
+    @staticmethod
+    def _coverage(context) -> list[dict]:
+        """Область покрыта, если её ключевое слово есть в тексте (цитата — дословная строка документа, ≤ 160 символов);
+        раньше без модели все области считались непокрытыми — ложная тревога на любом полном ТЗ."""
+        doc = context.get("doc")
+        lines = [ln.text.strip() for ln in getattr(doc, "lines", [])] if doc is not None else []
+        out = []
+        for a in context.get("areas", []) or []:
+            kws = [k.lower() for k in a.get("keywords", []) if k]
+            hit = next((ln for ln in lines if ln and any(k in ln.lower() for k in kws)), None)
+            if hit:
+                low = hit.lower()
+                k = next(k for k in kws if k in low)
+                i = low.index(k)
+                q = hit[max(0, i - 60): i + 80].strip()
+                out.append({"id": a["id"], "status": "covered", "quotes": [q], "comment": "найдено ключевое слово (без модели)"})
+            else:
+                out.append({"id": a["id"], "status": "missing", "quotes": [], "comment": ""})
+        return out
+
     def _call(self, system, prompt, *, task, context):
         if task == "check":
             out = []
@@ -38,6 +58,8 @@ class RulesOnlyLLM(BaseLLM):
             return json.dumps({"results": out}, ensure_ascii=False)
         if task in ("set", "crosscheck"):
             return json.dumps({"findings": []}, ensure_ascii=False)
+        if task == "extras":  # v13+: без модели — покрытие областей доменного чек-листа по ключевым словам
+            return json.dumps({"coverage": self._coverage(context), "synonyms": []}, ensure_ascii=False)
         if task == "critic":
             return json.dumps({"verdicts": [{"n": it["n"], "verdict": "keep", "reason": "правило"}
                                             for it in context.get("items", [])]}, ensure_ascii=False)

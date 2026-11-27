@@ -690,6 +690,10 @@ def acceptance_coverage(rv) -> dict:
     acc = [r for r in reqs if _ACC_SECTION.search(r.section or "")]
     rules = [r for r in reqs if r.doc_id and not _ACC_SECTION.search(r.section or "")] or \
             [r for r in reqs if _RULE_SECTION.search(r.section or "")]
+    # v13+: НФТ проверяются измерением, а не примером «условия → действие → результат»: если в документе есть раздел
+    # функциональных требований, покрытие приёмкой считается по нему
+    func = [r for r in rules if re.search(r"функциональн", r.section or "", re.I) and not re.search(r"нефункциональн", r.section or "", re.I)]
+    rules = func or rules
     if not rules:
         return {"percent": None, "covered": [], "uncovered": [], "acceptance_rows": len(acc), "method": ""}
     linked = set()
@@ -697,10 +701,15 @@ def acceptance_coverage(rv) -> dict:
         ids = {x.req_id for x in f.refs}
         if ids & {a.rid for a in acc}:
             linked |= ids
+    # v13+: явная ссылка — ID правила в строке приёмки (в тексте, в первой колонке таблицы или в extra["refs"])
+    lines = {ln.lineno: ln.text for ln in rv.doc.lines}
+    acc_raw = " ".join(" ".join(lines.get(n, "") for n in range(a.line_start, a.line_end + 1)) + " " +
+                       " ".join(a.extra.get("refs", []) if isinstance(a.extra, dict) else []) for a in acc)
     covered, uncovered = [], []
     for r in rules:
         rs = _stems(r.text)
-        ok = r.rid in linked or any(len(rs & _stems(a.text)) >= 3 for a in acc)
+        explicit = bool(r.doc_id) and re.search(rf"(?<![\w-]){re.escape(r.doc_id.rstrip('.'))}(?![\w])", acc_raw)
+        ok = r.rid in linked or bool(explicit) or any(len(rs & _stems(a.text)) >= 3 for a in acc)
         (covered if ok else uncovered).append({"rid": r.rid, "doc_id": r.doc_id, "text": clip(r.text, 120)})
     pct = round(100 * len(covered) / len(rules))
     return {"percent": pct, "covered": covered, "uncovered": uncovered, "acceptance_rows": len(acc),

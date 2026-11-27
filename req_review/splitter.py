@@ -303,8 +303,24 @@ def split_requirements(doc: Document) -> SplitResult:
         # Смешанные документы: часть требований с ID, часть — без ID в разделах «НФТ», «Данные», «Интеграция»,
         # «Логика работы метода», «Критерии приёмки», параметры API… Такие пункты тоже требования: агент присваивает
         # им свои номера и сохраняет дословный текст (ТЗ: «если номеров не было — присвоить свои и сохранить цитату»).
+        # v13+: строка таблицы критериев приёмки, где в первой колонке — ID проверяемого правила («| TR-02 | … |»), —
+        # это ссылка на правило, а не повторное объявление ID: элемент — критерий приёмки, ID — в extra["refs"]
+        declared = {r["doc_id"] for r in reqs if r["doc_id"] and not _ACC_SECTION.search(r["section"] or "")}
+        by_no = {ln.lineno: ln.text for ln in lines}
+        for r in reqs:
+            if r["doc_id"] and r["doc_id"] in declared and _ACC_SECTION.search(r["section"] or ""):
+                raw = by_no.get(r["start"], "")
+                refs = [x for x in re.findall(r"[A-ZА-ЯЁ]{1,6}-\d{1,4}", raw.split("|")[1] if raw.count("|") >= 2 else raw)
+                        if x in declared] or [r["doc_id"]]
+                cells = [c.strip() for c in raw.strip().strip("|").split("|")] if raw.count("|") >= 2 else []
+                if len(cells) >= 2 and r["text"] in raw:  # текст строки приёмки — все колонки после ссылки на правило
+                    full = " | ".join(cells[1:])
+                    if full.strip():
+                        r["text"] = full
+                r["extra"] = {**(r["extra"] or {}), "refs": refs}
+                r["doc_id"] = None
         taken = {n for r in reqs for n in range(r["start"], r["end"] + 1)}
-        units = _section_units(lines, taken, {r["section"] for r in reqs})
+        units = _section_units(lines, taken, {r["section"] for r in reqs if r["doc_id"]})
         if units:
             reqs = sorted(reqs + units, key=lambda r: r["start"])
             unit_lines = {u["start"] for u in units}

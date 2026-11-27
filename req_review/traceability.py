@@ -174,12 +174,19 @@ def build(rv) -> dict:
 
     reqs = {rr.req.rid: rr.req for rr in rv.req_results if nodes.get(rr.req.rid, {}).get("type") == "requirement"}
     rules = {rid: r for rid, r in reqs.items() if r.doc_id} or reqs
+    # v13+: приёмка — для функциональных правил (НФТ проверяются измерением), как в depth.acceptance_coverage
+    func = {rid: r for rid, r in rules.items() if re.search(r"функциональн", r.section or "", re.I)
+            and not re.search(r"нефункциональн", r.section or "", re.I)}
+    rules = func or rules
+    raw_lines = {ln.lineno: ln.text for ln in doc.lines}
     # правило ↔ пример приёмки
     covered = set()
     for a in accs:
         sa = _stems(a.text)
+        a_raw = " ".join(raw_lines.get(n, "") for n in range(a.line_start, a.line_end + 1)) + " " + \
+            " ".join((a.extra or {}).get("refs", []) if isinstance(a.extra, dict) else [])
         for rid, r in rules.items():
-            if r.doc_id and re.search(rf"(?<![\w-]){re.escape(r.doc_id.rstrip('.'))}(?![\w])", a.text):
+            if r.doc_id and re.search(rf"(?<![\w-]){re.escape(r.doc_id.rstrip('.'))}(?![\w])", a_raw):
                 edge(rid, a.rid, DOC_EDGE, f"в строке приёмки указан {r.doc_id}")
                 covered.add(rid)
             elif len(_stems(r.text) & sa) >= 3:
