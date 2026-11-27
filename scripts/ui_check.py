@@ -132,7 +132,8 @@ def main() -> int:
     with sync_playwright() as p:
         b = p.chromium.launch()
         if a.report:
-            url = Path(a.report).resolve().as_uri()
+            rp = Path(a.report).resolve()  # по http: отчёт дочитывает соседний report.json, как в Studio и на сайте
+            url = f"http://127.0.0.1:{serve(rp.parent).server_port}/{rp.name}"
             check_page(b, url, report_keys, errors, "report", hashes=("", "#revised", "#trace", "#bank"), shots=shots,
                        shot_hashes=("", "#revised", "#trace", "#bank"))
         if a.studio:
