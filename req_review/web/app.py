@@ -54,6 +54,7 @@ class Job:
     cancelled: bool = False
     status: str = "queued"  # queued | running | done | error | cancelled
     on_finish: Callable | None = field(default=None, repr=False)
+    answers: Path | None = None  # v9: файл ответов аналитика — перепроверка (--answers)
 
     def push(self, kind: str, **data):
         self.events.append({"kind": kind, "t": time.time(), **data})
@@ -289,7 +290,8 @@ def _start(job: Job, src: Path, compare_with: Path | None = None) -> None:
             batch = 4 if provider_status()["mock"] or job.mode == "rules" else int(os.getenv("LLM_BATCH_SIZE", "20"))
             ctx = run(str(src), str(job.dir / "report.md"),
                       Options(profile=job.profile, domain=job.domain, batch_size=batch,
-                              compare=str(compare_with) if compare_with else None),
+                              compare=str(compare_with) if compare_with else None,
+                              answers=str(job.answers) if job.answers else ""),
                       log=log, step=step, llm_wrap=wrap, make_llm=make_llm)
             job.artifacts = {name: p.name for name, p in ctx.artifacts.items()}
             sc = ctx.scores

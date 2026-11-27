@@ -10,7 +10,7 @@ import json
 import re
 from pathlib import Path
 
-from fastapi import APIRouter, Body, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Body, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 
 from ..pipeline import PROFILES, STEPS
@@ -164,6 +164,68 @@ async def create_run(pid: str, file: UploadFile = File(...), profile: str = Form
     webapp._start(job, src, compare_with=compare_with)
     return {"duplicate": False, "run": _live(run), "job": rid, "compare_with": prev["id"] if compare_with else None,
             "events": f"/api/v1/jobs/{rid}/events"}
+
+
+ANSWERS_MAX = 1024 * 1024
+
+
+@router.post("/runs/{rid}/answers", status_code=202, summary="Ответы аналитика → новый прогон с учётом ответов")
+async def run_answers(rid: str, request: Request):
+    """Тело: multipart с полем `file` (.md/.txt, ≤ 1 МБ) или JSON {"text": "### Q-01\\nответ…"}. Тот же документ
+    проверяется заново с учётом ответов; новый прогон сравнивается с исходным (поле compare)."""
+    from ..answers import HEAD_RE, parse_answers
+
+    webapp = _app()
+    src_run = _run_or_404(rid)
+    if src_run["status"] != "done":
+        raise err(409, "not_ready", "Исходный прогон ещё не завершён — ответы можно отправить после отчёта")
+    ctype = request.headers.get("content-type", "")
+    if ctype.startswith("application/json"):
+        try:
+            body = await request.json()
+        except ValueError:
+            raise err(422, "invalid", "Тело запроса — не JSON") from None
+        text = str((body or {}).get("text", "")) if isinstance(body, dict) else ""
+    else:
+        form = await request.form()
+        up = form.get("file")
+        if up is None or not hasattr(up, "read"):
+            raise err(400, "bad_request", "Передайте файл ответов (поле file) или JSON {\"text\": …}")
+        raw = await up.read()
+        if len(raw) > ANSWERS_MAX:
+            raise err(413, "too_large", "Файл ответов больше 1 МБ")
+        text = raw.decode("utf-8", errors="replace")
+    if not HEAD_RE.search(text):
+        raise err(400, "bad_request", "Нет заголовков «### Q-xx» — возьмите шаблон ответов из файлов прогона")
+    parsed = parse_answers(text)
+    if not parsed:
+        raise err(400, "empty", "Ни один вопрос не получил ответа")
+    st = _store()
+    src_dir = st.run_dir(rid)
+    src_json = src_dir / "report.json"
+    inputs = sorted(src_dir.glob("input.*"))
+    if not src_json.exists() or not inputs:
+        raise err(404, "not_found", "Файлы исходного прогона не найдены")
+    qs = json.loads(src_json.read_text(encoding="utf-8")).get("questions", [])
+    keys = {(q.get("rid") or q.get("ref"), q.get("criterion")) for q in qs}
+    qids = {q.get("qid") for q in qs}
+    unknown = [k for k, v in parsed.items() if k not in qids and (v.get("key") not in keys)]
+    import uuid
+
+    new_id = uuid.uuid4().hex[:12]
+    run = st.create_run(new_id, src_run["project_id"], src_run["document_id"], src_run["doc_name"], src_run["doc_hash"],
+                        src_run.get("mode", "llm"))
+    job = webapp.Job(new_id, src_run["doc_name"], kind="review", mode=src_run.get("mode", "llm"), base=st.root / "runs")
+    job.dir.mkdir(parents=True, exist_ok=True)
+    src = job.dir / inputs[0].name
+    src.write_bytes(inputs[0].read_bytes())
+    job.answers = job.dir / "answers.md"
+    job.answers.write_text(text, encoding="utf-8")
+    job.parent = rid
+    job.on_finish = _on_finish
+    webapp._start(job, src, compare_with=src_json)
+    return {"run": _live(run), "job": new_id, "answers_of": rid, "events": f"/api/v1/jobs/{new_id}/events",
+            "matched": len(parsed) - len(unknown), "unknown_qids": unknown}
 
 
 def _on_finish(job) -> None:

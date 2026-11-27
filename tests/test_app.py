@@ -257,3 +257,31 @@ def test_studio_screens_use_api_v1(client):
         assert marker in html, marker
     # старые эндпоинты Studio остаются только для режима «Демо»
     assert "fetch(\"/api/review\"" not in html
+
+
+def test_answers_endpoint_new_run_with_answers_and_compare(client):
+    """v9: POST /runs/{rid}/answers — ответы аналитика (файлом или JSON) → новый прогон с полем answers и сравнением."""
+    c = client
+    pid = c.post("/api/v1/projects", json={"name": "Ответы"}).json()["id"]
+    r1 = _upload(c, pid).json()
+    _wait(r1["job"])
+    run1 = c.get(f"/api/v1/runs/{r1['job']}").json()
+    tpl_name = next(v for v in run1["artifacts"].values() if v.endswith("_answers_template.md"))
+    tpl = c.get(f"/api/v1/runs/{r1['job']}/files/{tpl_name}").text
+    assert "### Q-01." in tpl
+    # ошибки: нет заголовков, пустые ответы, неизвестный прогон
+    assert c.post(f"/api/v1/runs/{r1['job']}/answers", json={"text": "просто текст"}).json()["error"]["code"] == "bad_request"
+    assert c.post(f"/api/v1/runs/{r1['job']}/answers", json={"text": tpl}).json()["error"]["code"] == "empty"
+    assert c.post("/api/v1/runs/nope/answers", json={"text": tpl}).status_code == 404
+    text = tpl.replace("Ответ: ", "Ответ: Не дольше 2 секунд для 95 % запросов при 200 запросах в секунду.", 1) + \
+        "\n### Q-99. лишний\nОтвет: 5\n"
+    r = c.post(f"/api/v1/runs/{r1['job']}/answers", files={"file": ("answers.md", text.encode("utf-8"), "text/markdown")})
+    assert r.status_code == 202, r.text
+    body = r.json()
+    assert body["answers_of"] == r1["job"] and body["matched"] == 1 and body["unknown_qids"] == ["Q-99"]
+    _wait(body["job"])
+    run2 = c.get(f"/api/v1/runs/{body['job']}").json()
+    assert run2["status"] == "done" and run2["compare"] is not None
+    data = json.loads(c.get(f"/api/v1/runs/{body['job']}/files/report.json").text)
+    it = data["answers"]["items"][0]
+    assert it["qid"] == "Q-01" and it["type"] == "concrete" and it["closes"] and it["quote"] in it["answer"]
