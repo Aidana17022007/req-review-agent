@@ -29,6 +29,23 @@
 
 <p align="center"><img src="docs/assets/screenshot-overview-dark.png" alt="Интерактивный отчёт ReqLens: обзор" width="100%"></p>
 
+<!-- evidence:start -->
+## Доказательства
+
+Только измеренные числа; каждое — со ссылкой на файл, из которого взято. Таблицу собирает `python scripts/evidence.py --write`, руками её не правим.
+
+| Что проверяли | Результат | Где проверить |
+|---|---|---|
+| Документ организаторов (26 ожидаемых дефектов, список составлен командой) | **26 из 26**, критичных **7 из 7**; профиль deep, gemini / gemini-3.5-flash-lite, 36 запросов, без кэша, 820 с | [отчёт](reports/requirements-report.md) · `python bench/real_eval.py reports/requirements-report.json` |
+| Эталон из 150 дефектов (9 вымышленных документов + документ организаторов) | полнота **96 %** [93–99 %] (144 из 150), критичных и противоречий **17 из 17** | [`bench/score.json`](bench/score.json) · `python bench/gold_score.py` |
+| Точность на эталоне (каждое замечание проверено?) | точность — **от 50 % до 99 %**: проверено 157 из 313 существенных замечаний (сверкой с эталоном 157, вручную 0), верны 156; ещё 156 не проверены | [`bench/unmatched.md`](bench/unmatched.md) · разметка людьми — [`bench/label_sheet.html`](bench/label_sheet.html) |
+| Слепой набор (документы и ключ — не команда) | ещё не измерено — `python bench/blind_eval.py --results` | [`bench/blind/README.md`](bench/blind/README.md) |
+| Голая модель: та же модель одним запросом, без ReqLens | бенчмарк (5 документов) — 48 из 67 против 67 из 67 у ReqLens; документ организаторов — 4 из 26 против 26 из 26 | [`bench/baseline/results.json`](bench/baseline/results.json) |
+| Ответы аналитика, написанные не командой | ещё не измерено — `python bench/answers_eval.py --report … --key examples/answers/external/key.json` | — |
+| Скорость (документ организаторов, профиль fast, без кэша) | 127 с, 12 запросов (один прогон, v12; медианы 3 прогонов ещё нет) | [`bench/RESULTS.md`](bench/RESULTS.md), раздел «Замер v12» |
+| DeepSeek против Gemini (тот же код, без кэша) | документ организаторов: Gemini 26 из 26, критичных 7 из 7, DeepSeek 26 из 26, критичных 7 из 7; ложных существенных к чистым требованиям бенчмарка: Gemini **1**, DeepSeek **19** | [`bench/RESULTS.md`](bench/RESULTS.md), раздел «DeepSeek против Gemini» |
+<!-- evidence:end -->
+
 ## В двух словах
 
 ReqLens читает готовый документ требований (PDF, DOCX, Markdown, TXT), выделяет отдельные требования, проверяет каждое

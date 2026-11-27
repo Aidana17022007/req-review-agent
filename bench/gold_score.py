@@ -295,6 +295,10 @@ def main(argv: list[str] | None = None) -> int:
                                          encoding="utf-8")
         write_results(text)
         print(f"README: мест с метками — {update_readme(res)}")
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from evidence import write as write_evidence  # таблица «Доказательства» берёт точность из того же score.json
+
+        print("README: таблица «Доказательства» " + ("обновлена" if write_evidence() else "уже актуальна"))
     return 0
 
 
