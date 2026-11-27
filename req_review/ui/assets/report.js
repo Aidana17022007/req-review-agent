@@ -1,4 +1,4 @@
-/* ReqLens — интерактивный отчёт (структура «AI-агент», дизайн-система v3 «Ecliptic Dawn»). Ванильный JS, без зависимостей.
+/* ReqLens — интерактивный отчёт (структура «AI-агент», дизайн-система v5 «Daylight»). Ванильный JS, без зависимостей.
    Модули: ядро и разделы — здесь; «Граф» (3D/2D) — в report-graph.js и использует window.RL. */
 (function () {
   "use strict";
@@ -43,7 +43,7 @@
   const N_REQ = D.reqs.filter((r) => (r.kind || "requirement") === "requirement").length || D.reqs.length, N_OTHER = D.reqs.length - N_REQ;
 
   // ------------------------------------------------------------ тема, печать, тосты
-  function currentTheme() { return document.documentElement.dataset.theme || "dark"; }
+  function currentTheme() { return document.documentElement.dataset.theme || "light"; }
   function setThemeBtn() { const d = currentTheme() === "dark"; $("#btn-theme").innerHTML = ic(d ? "sun" : "moon") + `<span>${d ? "Светлая тема" : "Тёмная тема"}</span>`; }
   function toggleTheme() {
     const t = currentTheme() === "dark" ? "light" : "dark";
@@ -165,27 +165,6 @@
     node.textContent = (0).toFixed(dec); requestAnimationFrame(step);
   }
 
-  // ------------------------------------------------------------ декоративная «сфера агента» (детерминированная)
-  function sphere(w, h, n, seed, opts = {}) {
-    let s = seed; const rnd = () => ((s = (s * 9301 + 49297) % 233280) / 233280);
-    const cx = w * (opts.cx || 0.52), cy = h * 0.5, R = Math.min(w, h) * (opts.r || 0.38);
-    const fx = cx - R * 0.72, fy = cy + R * 0.05;
-    const col = opts.color || "var(--brand)";
-    let lines = "", dots = "";
-    const ga = Math.PI * (3 - Math.sqrt(5));
-    for (let i = 0; i < n; i++) {
-      const rr = R * Math.sqrt((i + 0.5) / n) * (0.92 + rnd() * 0.12);
-      const a = i * ga + (opts.twist || 0);
-      const squash = opts.broken && rnd() < 0.35 ? 0.6 + rnd() * 0.3 : 1;
-      const x = cx + Math.cos(a) * rr * (0.78 + 0.22 * Math.abs(Math.sin(a))) * squash, y = cy + Math.sin(a) * rr * squash;
-      const edge = rr / R;
-      const op = (0.25 + edge * 0.7).toFixed(2);
-      dots += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(0.7 + edge * 1.3).toFixed(2)}" fill="${col}" opacity="${op}"/>`;
-      if (i % (opts.lineEvery || 4) === 0 && edge > 0.45) lines += `<line x1="${fx.toFixed(1)}" y1="${fy.toFixed(1)}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${col}" stroke-width=".5" opacity="${(0.12 + edge * 0.25).toFixed(2)}"/>`;
-    }
-    for (let i = 0; i < n / 8; i++) { const a = rnd() * 6.28, d = R * (1.05 + rnd() * 0.35); dots += `<circle cx="${(cx + Math.cos(a) * d).toFixed(1)}" cy="${(cy + Math.sin(a) * d).toFixed(1)}" r="${(0.6 + rnd()).toFixed(2)}" fill="${col}" opacity=".35"/>`; }
-    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${lines}${dots}<circle cx="${fx}" cy="${fy}" r="3.5" fill="${col}"/><circle cx="${fx}" cy="${fy}" r="10" fill="${col}" opacity=".15"/></svg>`;
-  }
 
   // ------------------------------------------------------------ навигация (сайдбар)
   const VIEWS = [
@@ -600,66 +579,96 @@
           <span class="small faint grow" style="text-align:right">${d.wording === "модель" ? "перефразировано моделью" : "сформулировано кодом"}</span></div></li>`).join("")}</ol>
       ${SIBLING.decisions ? `<a class="btn btn-sm btn-ghost" href="${esc(SIBLING.decisions)}" download>${ic("download", 14)}Повестка решений (.md)</a>` : ""}</div>`;
   }
+  // v5 «Daylight»: вердикт сверху, 4 цифры, доска «что исправить» (из плана исправлений), справа — критерии и паспорт
+  const LANES = [
+    { id: "conflict", title: "Противоречия", color: "var(--critical-accent)", crit: ["consistent", "set_consistent"] },
+    { id: "gap", title: "Неполнота", color: "var(--major-accent)", crit: ["complete", "set_complete"] },
+    { id: "other", title: "Другие дефекты", color: "var(--minor-accent)", crit: null },
+  ];
+  const critColor = (v) => (v >= 90 ? "var(--ok-accent)" : v >= 60 ? "var(--major-accent)" : "var(--critical-accent)");
+  const reqLabel = (rid) => (reqById[rid] ? reqById[rid].doc_id || rid : rid);
+  function boardItems() {
+    const plan = (DP && DP.fix_plan) || [];
+    if (plan.length) return plan.map((p) => { const fid = fidFor((p.ids || [])[0], p.severity), f = D.findings[fid] || {};
+      return { fid, sev: p.severity === "critical" ? "critical" : p.severity === "minor" ? "minor" : "major", crit: f.criterion || "",
+        cname: f.cname || "", title: p.title || f.problem || "", fix: p.action || f.fix || "", reqs: p.reqs && p.reqs.length ? p.reqs : f.rid ? [f.rid] : [] }; });
+    return priorities(9).map(([, f]) => ({ fid: f.fid, sev: f.severity, crit: f.criterion, cname: f.cname, title: f.problem, fix: f.fix,
+      reqs: f.kind === "set" ? (f.refs || []).map((r) => r.rid) : [f.rid] }));
+  }
+  function dcardHTML(it) {
+    const reqs = [...new Set(it.reqs)].slice(0, 4);
+    return `<button type="button" class="dcard" data-open="${esc(it.fid)}">
+      <div class="tags"><span class="tagp t-${it.sev}">${esc(SEV[it.sev].label)}</span>${it.cname ? `<span class="tagp t-info">${esc(short(it.cname.replace(/\s*\(.*\)/, ""), 28))}</span>` : ""}</div>
+      <h4>${esc(short(it.title, 120))}</h4>
+      ${it.fix ? `<div class="fx">→ ${esc(short(it.fix, 130))}</div>` : ""}
+      ${reqs.length ? `<div class="ft">${reqs.map((r) => `<span>${esc(reqLabel(r))}</span>`).join("")}</div>` : ""}</button>`;
+  }
+  function boardHTML() {
+    const items = boardItems();
+    if (!items.length) return `<div class="box"><p class="small muted">Обязательных исправлений нет.</p></div>`;
+    const lanes = LANES.map((l) => ({ ...l, items: items.filter((it) => (l.crit ? l.crit.includes(it.crit) : !LANES.some((x) => x.crit && x.crit.includes(it.crit)))) }))
+      .filter((l) => l.items.length);
+    return `<div class="board" style="grid-template-columns:repeat(${Math.max(1, lanes.length)},minmax(0,1fr))">${lanes.map((l) => `<div>
+      <div class="lane-h"><i style="background:${l.color}"></i>${l.title} <span>${l.items.length}</span></div>
+      ${l.items.slice(0, 3).map(dcardHTML).join("")}
+      ${l.items.length > 3 ? `<button type="button" class="btn btn-sm btn-outline" style="width:100%" data-go-view="doc">Ещё ${l.items.length - 3}</button>` : ""}</div>`).join("")}</div>`;
+  }
+  function critBoxHTML() {
+    const rows = (list) => list.map((r) => `<div class="cr" title="${esc(r.name)}"><span>${esc(short(r.name.replace(/\s*\(.*\)/, ""), 22))}</span>
+      <span class="bar"><i style="width:${Math.max(2, r.v)}%;background:${critColor(r.v)}"></i></span><b>${r.v}</b></div>`).join("");
+    const req = D.scores.radar_req.slice().sort((a, b) => a.v - b.v), set = (D.scores.radar_set || []).slice().sort((a, b) => a.v - b.v);
+    return `<div class="box" id="ov-crit"><h3>Качество по критериям <span class="small faint" style="font-weight:500">%</span></h3>
+      ${set.length ? `<div class="ov-seg" role="group" aria-label="Что показать"><button type="button" aria-pressed="true" data-crit="req">Требования</button><button type="button" aria-pressed="false" data-crit="set">Набор</button></div>` : ""}
+      <div data-crit-list="req">${rows(req)}</div>${set.length ? `<div data-crit-list="set" hidden>${rows(set)}</div>` : ""}
+      <p class="small faint" style="margin-top:8px">Доля требований без нарушений, ISO/IEC/IEEE 29148 §5.2.5–5.2.6.</p></div>`;
+  }
+  function passportHTML() {
+    const kv = (k, v) => (v || v === 0 ? `<div class="kv"><span>${k}</span><span>${esc(v)}</span></div>` : "");
+    const dur = +P.duration_s ? `${Math.floor(P.duration_s / 60)} мин ${P.duration_s % 60} с` : "";
+    return `<div class="box"><h3>Паспорт прогона</h3>
+      ${kv("Документ", P.file || P.document)}${kv("Дата", P.started)}${kv("Модель", P.model)}${kv("Версия агента", P.agent_version)}
+      ${kv("Запросов к модели", P.calls)}${kv("Длительность", dur)}</div>`;
+  }
   function renderOverview(el) {
-    const s = D.scores;
-    const failedSteps = D.trace.filter((t) => t.status === "err").length;
-    const agentStatus = failedSteps ? ["st-fail", "x", "ОШИБКА · часть шагов"] : ["st-done", "check", "ЗАВЕРШЁН"];
-    const setCrit = D.set.filter((f) => D.findings[f].severity === "critical").length;
-    const tPct = s.tests_total ? Math.round((100 * s.tests_ok) / s.tests_total) : 0;
-    const crit = D.counts.critical;
-    el.innerHTML = `${errorBanner()}${trustHTML()}${summary30HTML() ? `<div style="margin-bottom:16px">${summary30HTML()}</div>` : ""}
-      ${ANS ? `<div style="margin-bottom:16px">${answersHTML()}</div>` : ""}${DEC.length ? `<div style="margin-bottom:16px">${decisionsHTML()}</div>` : ""}
-      <div class="grid g-4">
-        ${kpi("Всего требований", num(N_REQ), N_OTHER ? `<b>+${N_OTHER}</b>строк API и критериев приёмки проверены отдельно` : `<b>${D.split_method === "ids" ? "ID" : "R"}</b>нарезка ${D.split_method === "ids" ? "по ID документа" : "с номерами агента"}`, true, "reqs")}
-        ${kpi("Нарушений", num(totalFindings), `<b>${reqFindings}</b>по требованиям · <b>${D.set.length}</b>по набору`, false, "doc")}
-        ${kpi("Критичных", num(crit), `${ic("alert", 14)}непроверяемые, противоречивые, неполные`, false, "reqs", crit ? "var(--critical)" : "var(--ok)")}
-        ${kpi("Без замечаний", num(cleanReqs), `<b>${Math.round((100 * cleanReqs) / Math.max(1, D.reqs.length))}%</b>из ${D.reqs.length} требований`, false, "reqs", "var(--ok)")}
-      </div>
-      <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(280px,360px);margin-top:16px;align-items:stretch" id="ov-grid">
-        <div class="col-fill" style="min-width:0">
-          <article class="agent" aria-label="Агент проверки требований">
-            <span class="status ${agentStatus[0]}">${ic(agentStatus[1], 12)}${agentStatus[2]}</span>
-            <div class="vis">${sphere(320, 260, 520, 7)}</div>
-            <div class="info">
-              <div class="row between"><div><div class="h2">Агент проверки требований</div>
-                <div class="small muted">${esc(P.document)}</div></div><span class="chip chip-outline">${ic("cpu", 13)}${esc(P.calls)} обращений</span></div>
-              <div class="metrics">
-                <div class="metric"><div class="kpi-num">${num(s.readiness, "%")}</div><div class="small muted">готовность документа ${D.rescore ? deltaChip(D.rescore.readiness_after - D.rescore.readiness_before) : ""}</div></div>
-                <div class="metric"><div class="kpi-num" style="color:var(--text)">${num(s.doc)}<span class="h3 faint">/100</span></div><div class="small muted">балл качества</div></div>
-                <div class="metric"><div class="kpi-num" style="color:var(--text)">${esc(P.duration_s)}<span class="h3 faint"> с</span></div><div class="small muted">время прогона</div></div>
-              </div>
-              <div class="row wrap" style="gap:8px">${ctxChip()}${CTX && CTX.avg_prompt_tokens ? `<span class="chip chip-outline">${ic("cpu", 13)}~${Number(CTX.avg_prompt_tokens).toLocaleString("ru-RU")} токенов на запрос</span>` : ""}
-              </div>
-              <p class="small muted">Статическое ревью по ISO/IEC/IEEE 29148 §5.2.5–5.2.6 и IEEE 830 §4.3: нарезка, проверка каждого требования, тест-проба, проверка набора${P.critic ? ", критик-агент" : ""}.</p>
-            </div>
-            <div class="foot"><span class="live"><i></i>${esc(P.profile.toUpperCase())}</span><span class="small muted grow">${esc(P.model)} · ${esc(P.agent_version)}</span>
-              <button class="btn btn-sm btn-ghost" data-go-view="export">${ic("download", 14)}Артефакты</button></div>
-          </article>
-          <div class="mini-agents">
-            <article class="mini"><div class="vis">${sphere(110, 150, 140, 3, { r: 0.34, lineEvery: 6, color: setCrit ? "var(--critical-accent)" : "var(--brand)", broken: !!setCrit })}</div>
-              <div class="body"><span class="status ${setCrit ? "st-fail" : D.set.length ? "st-warn" : "st-done"}" style="align-self:flex-start">${ic(setCrit ? "x" : D.set.length ? "alert" : "check", 11)}${setCrit ? "КОНФЛИКТЫ" : D.set.length ? "ЗАМЕЧАНИЯ" : "ЧИСТО"}</span>
-                <div class="h3">Проверка набора</div><div class="small muted">${D.set.length} замечаний · балл набора ${s.set}/100</div>
-                <div class="row wrap" style="margin-top:auto;gap:4px"><button class="btn btn-sm btn-ghost" data-go-view="set">Открыть ${ic("arrow-right", 14)}</button><button class="btn btn-sm btn-ghost" data-go-view="graph">${ic("cube", 14)}Граф</button></div></div></article>
-            <article class="mini"><div class="vis">${sphere(110, 150, 140, 11, { r: 0.34, lineEvery: 6, color: "var(--brand-light)" })}</div>
-              <div class="body"><span class="status ${tPct >= 80 ? "st-done" : "st-warn"}" style="align-self:flex-start">${ic("flask", 11)}ТЕСТ-ПРОБА ${tPct}%</span>
-                <div class="h3">Приёмочные тесты</div><div class="small muted">${s.tests_ok} из ${s.tests_total} требований можно проверить тестом</div>
-                <button class="btn btn-sm btn-ghost" style="align-self:flex-start;margin-top:auto" data-go-view="tests">Открыть ${ic("arrow-right", 14)}</button></div></article>
+    const s = D.scores, v = D.verdict, dv = DP && DP.verdict, ca = DP && DP.citation_audit;
+    const vc = (x) => (x === "можно" ? "t-ok" : x === "нельзя" ? "t-critical" : "t-major");
+    const icn = { critical: "x", major: "alert", ok: "check" }[v.level] || "alert";
+    const sevMeter = ["critical", "major", "minor"].map((k) => (D.counts[k] ? `<i style="flex:${D.counts[k]};background:${SEV[k].color}"></i>` : "")).join("");
+    const stat = (lbl, val, meter, go) => `<button type="button" class="ov-stat" data-go-view="${go}"><small>${lbl}</small><div class="v">${val}</div>${meter ? `<div class="meter">${meter}</div>` : ""}</button>`;
+    el.innerHTML = `${errorBanner()}
+      <div class="ov">
+        <div class="ov-main">
+          <div class="ov-verdict lv-${esc(v.level)}" id="verdict">
+            <div class="vi">${ic(icn, 22)}</div>
+            <div class="grow"><h2>${esc(v.headline || v.title)}</h2><p>${esc(v.text)}</p></div>
+            ${dv ? `<div class="pills"><span class="tagp ${vc(dv.development)}">Разработка: ${esc(dv.development)}</span><span class="tagp ${vc(dv.testing)}">Тестирование: ${esc(dv.testing)}</span></div>` : ""}
           </div>
-          ${profileHTML()}
+          <div class="ov-stats">
+            ${stat("Требований", `${num(N_REQ)}${N_OTHER ? ` <span class="u">+ ${N_OTHER} прочих строк</span>` : ""}`, "", "reqs")}
+            ${stat("Замечаний", `${num(totalFindings)}${D.counts.critical ? ` <span class="u">${D.counts.critical} критичных</span>` : ""}`, sevMeter, "doc")}
+            ${stat("Балл документа", `${num(s.doc)}<span class="u"> / 100</span>`, `<i style="width:${s.doc}%;background:var(--brand)"></i>`, "reqs")}
+            ${ca && ca.total ? stat("Цитаты найдены в тексте", `${num(ca.percent != null ? ca.percent : Math.round((100 * ca.verified) / ca.total))}<span class="u"> %</span>`, `<i style="width:${ca.percent != null ? ca.percent : 100}%;background:var(--ok-accent)"></i>`, "doc")
+              : stat("Без замечаний", num(cleanReqs), "", "reqs")}
+          </div>
+          <div class="ov-h"><h3>Что исправить в первую очередь</h3><span>каждое замечание — с цитатой и местом в документе</span></div>
+          ${boardHTML()}
+          ${ANS ? answersHTML() : ""}${DEC.length ? decisionsHTML() : ""}
+          <div class="ov-h" style="margin-top:12px"><h3>Требования</h3>
+            <button class="btn btn-sm btn-outline" data-go-view="reqs">Все фильтры ${ic("arrow-right", 14)}</button></div>
+          ${D.reqs.length > 50 ? `<p class="small muted">Показаны 20 требований с наименьшим баллом из ${D.reqs.length}.</p>${reqTable(D.reqs.slice().sort((a, b) => a.score - b.score).slice(0, 20), "ov")}` : reqTable(D.reqs, "ov")}
+          ${acceptanceHTML() || matrixHTML() ? `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px;align-items:start">${acceptanceHTML()}${matrixHTML()}</div>` : ""}
         </div>
-        <div class="col-fill">
-          <div class="card"><div class="card-title">${ic("trace")}<span class="h2 grow">Трассировка агента</span><span class="chip chip-brand">${D.trace.filter((t) => t.status !== "skip").length}/${D.trace.length}</span></div>${traceHTML()}</div>
-          ${D.changes.length ? `<div class="card" style="display:flex;gap:14px;align-items:center"><span class="logo-mark" style="border-radius:14px;flex:none">${ic("wand")}</span>
-            <div class="grow"><div class="caption">Исправленный документ</div><div class="small muted">${D.changes.length} формулировок исправлено${D.rescore ? ` · балл ${D.rescore.before} → ${D.rescore.after}` : ""}</div></div>
-            <button class="btn btn-round" data-go-view="fixes" aria-label="Открыть исправления">${ic("arrow-right", 16)}</button></div>` : ""}
-          ${setSummaryHTML()}
-        </div>
-      </div>
-      <div class="section-title"><h2 class="h1">Требования</h2><div class="row"><span class="small muted hide-sm">${D.reqs.length} шт.</span>
-        <button class="btn btn-sm btn-outline" data-go-view="reqs">Все фильтры ${ic("arrow-right", 14)}</button></div></div>
-      ${D.reqs.length > 50 ? `<p class="small muted" style="margin-bottom:8px">Показаны 20 требований с наименьшим баллом из ${D.reqs.length} — полный список в разделе «Требования».</p>${reqTable(D.reqs.slice().sort((a, b) => a.score - b.score).slice(0, 20), "ov")}` : reqTable(D.reqs, "ov")}
-      <div style="margin-top:16px">${verdictHTML(true)}</div>
-      ${acceptanceHTML() || matrixHTML() ? `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px;margin-top:16px;align-items:start">${acceptanceHTML()}${matrixHTML()}</div>` : ""}`;
+        <aside class="ov-side">
+          ${critBoxHTML()}
+          ${passportHTML()}
+          ${trustHTML().replace('style="gap:8px;margin:0 0 16px"', 'style="gap:6px"')}
+          <details class="box"><summary style="cursor:pointer;font-weight:700">Шаги агента · ${D.trace.filter((t) => t.status !== "skip").length}/${D.trace.length}</summary><div style="margin-top:10px">${traceHTML()}</div></details>
+        </aside>
+      </div>`;
+    $$("[data-crit]", el).forEach((b) => (b.onclick = () => {
+      $$("[data-crit]", el).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      $$("[data-crit-list]", el).forEach((x) => (x.hidden = x.dataset.critList !== b.dataset.crit));
+    }));
     wireTable(el);
   }
 
