@@ -63,6 +63,10 @@ ReqLens читает готовый документ требований (PDF, 
 <td><img src="docs/assets/screenshot-fixes-dark.png" alt="Исправления"><br><sub><b>Исправления</b> — было → стало, построчно</sub></td>
 <td><img src="docs/assets/screenshot-set-dark.png" alt="Проверка набора"><br><sub><b>Проверка набора</b> — противоречия и пропуски между требованиями</sub></td>
 </tr>
+<tr>
+<td><img src="docs/assets/screenshot-studio-assistant.png" alt="AI-ассистент в Studio"><br><sub><b>Studio: ассистент</b> — отвечает со ссылками на требования и строки документа</sub></td>
+<td><img src="docs/assets/screenshot-studio-compare.png" alt="До / После"><br><sub><b>Studio: «До / После»</b> — балл, исправленные и новые дефекты новой версии</sub></td>
+</tr>
 </table>
 
 <p align="center">
@@ -70,6 +74,26 @@ ReqLens читает готовый документ требований (PDF, 
   <img src="docs/assets/screenshot-mobile-overview.png" alt="Отчёт на телефоне" width="24%">
   <img src="docs/assets/live-run.gif" alt="Живой прогон" width="48%">
 </p>
+
+<details><summary>Ещё скриншоты: обзор, трассировка, экспорт, светлая тема, мобильный вид, база знаний, қазақша</summary>
+
+| | |
+|---|---|
+| ![Обзор, тёмная тема (по умолчанию)](docs/assets/screenshot-overview-dark.png) | ![Обзор, светлая тема](docs/assets/screenshot-overview-light.png) |
+| ![Трассировка](docs/assets/screenshot-trace-dark.png) | ![Экспорт](docs/assets/screenshot-export-dark.png) |
+| ![Граф 2D](docs/assets/screenshot-graph2d-light.png) | ![Документ, светлая тема](docs/assets/screenshot-doc-light.png) |
+| ![Studio: живой прогон](docs/assets/screenshot-studio-live.png) | ![Studio: режим «Демо»](docs/assets/screenshot-studio-demo.png) |
+| ![Мобильный вид: документ](docs/assets/screenshot-mobile-doc.png) | ![Ассистент с источниками](docs/assets/screenshot-studio-sources.png) |
+| ![Основание замечания: пункт стандарта и закон РК](docs/assets/screenshot-basis-light.png) | ![База знаний: чаще всего нарушенные нормы](docs/assets/screenshot-kb-light.png) |
+| ![Покрытие процесса](docs/assets/screenshot-coverage-light.png) | ![Шаблон EARS в «Исправлениях»](docs/assets/screenshot-pattern-light.png) |
+| ![Интерфейс отчёта на казахском](docs/assets/screenshot-overview-kk.png) | |
+
+</details>
+
+Скриншоты отчёта сняты с настоящего отчёта по документу организаторов, Studio — в тестовом режиме без модели. Переснять:
+`pip install playwright pillow && playwright install chromium`, затем
+`python scripts/screenshots.py <report.html>` (без аргумента — mock-прогон, ключ не нужен; скрипт завершается с
+ошибкой, если в консоли браузера есть ошибки).
 
 ## Быстрый старт
 
@@ -91,8 +115,61 @@ OPENAI_API_KEY=...              # ключ только в .env / панели R
 
 Без ключа: `LLM_PROVIDER=rules` — только детерминированные правила. Офлайн для банковского контура — Ollama.
 
-**Деплой:** Studio и API — Render (`render.yaml`, передеплой на каждый push в `main`); сайт — Cloudflare Pages
-(`scripts/build_site.py`). Подробно — [`docs/DEPLOY.md`](docs/DEPLOY.md).
+## Дизайн и деплой
+
+<p align="center"><img src="docs/assets/screenshot-site-dark.png" alt="Сайт ReqLens, тёмная тема" width="100%"></p>
+
+**Дизайн — v3 «Ecliptic Dawn».** Сайт, Studio, HTML-отчёт, слайды и витрина компонентов собраны на одних токенах
+`design/tokens.json`. Тёмная тема — по умолчанию, светлая — переключателем. Один шрифт везде — Inter Variable, лежит
+локально (латиница, кириллица и расширенная кириллица для казахского; SIL OFL 1.1), поэтому офлайн-отчёт выглядит так
+же, как сайт. Подробно — [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md); витрина — `python -m req_review.ui.styleguide`
+→ `design/styleguide.html`.
+
+**Studio и API — Render** ([reqlens-studio.onrender.com](https://reqlens-studio.onrender.com)). Сервис описан в
+[`render.yaml`](render.yaml) и передеплоивается сам после каждого push в `main`.
+
+| Настройка | Значение на Render |
+|---|---|
+| Модель | DeepSeek `deepseek-chat` через OpenAI-совместимый API (`LLM_PROVIDER=openai`); ключ `OPENAI_API_KEY` — только в панели Render |
+| Профиль | `fast` для посетителей; отчёт для сдачи собирается локально профилем `deep` |
+| Лимит демо | проверок с моделью: **2** с одного адреса и **5** всего в сутки, **3** с адреса в час; готовый пример и «только правила» не считаются |
+| Когда лимит исчерпан | файл проверяется только правилами, Studio помечает это «собран только правилами» (`DEMO_LIMIT_FALLBACK=rules`) |
+| Файлы | до 5 МБ; загруженный документ удаляется с сервера через 60 минут, отчёт остаётся в истории |
+| Тариф | бесплатный: один прогон за раз, остальные в очереди; история очищается при передеплое |
+
+**Сайт — Cloudflare Pages** ([reqlens.pages.dev](https://reqlens.pages.dev)): собирается
+`python scripts/build_site.py --out public` с `STUDIO_URL=https://reqlens-studio.onrender.com`. Выкладка — через
+подключённый репозиторий или `.github/workflows/deploy-site.yml` с секретами Cloudflare; без секретов workflow только
+собирает сайт, тогда выкладка вручную: `npx wrangler@3 pages deploy public --project-name=reqlens --branch=main`.
+Кнопка «Оценить без установки» ведёт в Studio, если она отвечает (`/api/health` = 200), иначе — в интерактивный отчёт.
+Пошагово — [`docs/DEPLOY.md`](docs/DEPLOY.md).
+
+## Ветки в работе (v14–v15)
+
+Эти изменения ещё не в `main`: каждое лежит в своей ветке и попадёт сюда после слияния. Цифры — из коммитов веток.
+
+| Ветка | Что делает | Результат |
+|---|---|---|
+| `v14-blind` | Слепой набор: 3 финтех-ТЗ (Markdown на русском, Word с таблицами на казахском, PDF без ID) по 10 дефектов и 5 чистых требований; документы и ключи написал отдельный агент без доступа к коду, они закоммичены **до** прогона | ReqLens — **29 из 30** дефектов, критичных 7 из 7; голая модель — 20 из 30; только правила — 8 из 30. Цена полноты — шум: 16 ложных замечаний к чистым требованиям |
+| `v14-answers` | Нечёткое сопоставление ответов аналитика с вопросами нового прогона; ответы, написанные человеком вне команды до прогона | тип ответа распознан у 7 из 15, противоречивых найдено 0 из 3, закрыто блокеров 4 из 6 |
+| `v14-speed` | 4 запроса к модели одновременно, без пауз 6 с между стартами (окно `LLM_RPM_WINDOW`), при первом 429 «quota» — сразу резервная модель, профиль `fast` — пакеты по 10 | короткий прогон уходит без ожидания |
+| `v15-precision` | Честная точность: «проверено N из M» и диапазон, пока проверены не все замечания | вместо «точность 99 %» — **от 50 % до 99 %**: проверено 157 из 313 существенных замечаний, верны 156 |
+| `v15-labels` | Лист ручной разметки `bench/label_sheet.html` (настоящий / ложное / спорно, клавиши 1–3) и перенос вердиктов людей по ключу | точность пересчитывается из разметки: `python bench/gold_score.py --labels labels.json` |
+| `v15-ui` | Отчёт и Studio показывают всё, что уже считает движок: «Кратко» после ответов, «Исправленное ТЗ», трассировка «требование ↔ API», «Чек-лист банка» | ниже — скриншоты |
+
+<table>
+<tr>
+<td width="50%"><img src="docs/assets/screenshot-v15-brief-dark.png" alt="Блок «Кратко»"><br><sub><b>v15-ui: «Кратко»</b> — вердикты до и после ответов аналитика, закрытые блокеры</sub></td>
+<td width="50%"><img src="docs/assets/screenshot-v15-revised-dark.png" alt="Исправленное ТЗ"><br><sub><b>v15-ui: «Исправленное ТЗ»</b> — было → стало по ответам, что осталось уточнить</sub></td>
+</tr>
+<tr>
+<td><img src="docs/assets/screenshot-v15-bank-dark.png" alt="Чек-лист банка"><br><sub><b>v15-ui: «Чек-лист банка»</b> — сработавшие правила банка и комплаенс, без модели</sub></td>
+<td><img src="docs/assets/screenshot-v15-label-sheet.png" alt="Лист разметки точности"><br><sub><b>v15-labels: лист разметки</b> — замечание, строки документа вокруг и вердикт человека</sub></td>
+</tr>
+</table>
+
+Скриншоты v15-ui сняты на тестовом прогоне без модели (`LLM_PROVIDER=mock`, отсюда жёлтая плашка) с ответами аналитика
+и правилами банка: `python scripts/ui_check.py --report <report.html> --shots <папка>` в ветке `v15-ui`.
 
 ---
 
@@ -124,10 +201,7 @@ OPENAI_API_KEY=...              # ключ только в .env / панели R
 python review.py bench/real/notifications.md reports/report.md --profile deep --no-cache
 ```
 
-**Сайт и Studio:** сайт собирается `scripts/build_site.py` и выкладывается на Cloudflare Pages, Studio и API — на
-Render (`render.yaml`); оба передеплоиваются сами после каждого push в `main` — см. [`docs/DEPLOY.md`](docs/DEPLOY.md).
-**Оценить без установки:** кнопка на сайте ведёт в Studio, если она отвечает (`/api/health` = 200), иначе — в
-интерактивный отчёт; в Studio «Открыть готовый пример» (`/?example=1`) показывает отчёт по документу организаторов без
+**Оценить без установки:** в Studio «Открыть готовый пример» (`/?example=1`) показывает отчёт по документу организаторов без
 прогона и без квоты.
 
 **Чем ReqLens отличается от обычного «LLM-ревьюера»:**
@@ -145,41 +219,9 @@ Render (`render.yaml`); оба передеплоиваются сами пос�
 | 🕸️ **3D-граф требований** | Противоречия (красные рёбра), зависимости (серые) и дубликаты (пунктир); клик по узлу — детали и цепочка конфликта. 2D-вид — запасной вариант и fallback без WebGL. |
 | 🤖 **Studio: живой прогон и ассистент** | Перетащите файл — шаги и требования появляются вживую (SSE); AI-ассистент отвечает на «Почему R-006 критичное?» со ссылками; экран «До / После» для новой версии. |
 
-## Как это выглядит
-
-<p align="center"><img src="docs/assets/live-run.gif" alt="Живой прогон в ReqLens Studio: файл перетащили — таймлайн шагов и таблица требований заполняются по мере проверки" width="100%"></p>
-
-| Документ: дефекты подчёркнуты в тексте | 3D-граф: противоречия и цепочка конфликта |
-|---|---|
-| ![Документ с подсветкой дефектов, миникартой и карточкой замечания](docs/assets/screenshot-doc-dark.png) | ![3D-граф требований с боковой панелью деталей](docs/assets/screenshot-graph-dark.png) |
-| **Тесты: Gherkin и покрытие «тестируемо X из N»** | **Исправления: diff «было → стало» и вопросы аналитику** |
-| ![Тест-кейсы Gherkin с подсветкой синтаксиса](docs/assets/screenshot-tests-dark.png) | ![Side-by-side diff исправленных формулировок](docs/assets/screenshot-fixes-dark.png) |
-| **Studio: AI-ассистент рядом с отчётом** | **Studio: «До / После» для новой версии** |
-| ![AI-ассистент отвечает со ссылками на требования](docs/assets/screenshot-studio-assistant.png) | ![Экран сравнения версий: балл, исправленные и новые дефекты](docs/assets/screenshot-studio-compare.png) |
-
-<details><summary>Ещё скриншоты: обзор, требования, набор, трассировка, экспорт, светлая тема, мобильный вид</summary>
-
-| | |
-|---|---|
-| ![Обзор, тёмная тема (по умолчанию)](docs/assets/screenshot-overview-dark.png) | ![Обзор, светлая тема](docs/assets/screenshot-overview-light.png) |
-| ![Требования](docs/assets/screenshot-requirements-dark.png) | ![Проверка набора](docs/assets/screenshot-set-dark.png) |
-| ![Трассировка](docs/assets/screenshot-trace-dark.png) | ![Экспорт](docs/assets/screenshot-export-dark.png) |
-| ![Граф 2D](docs/assets/screenshot-graph2d-light.png) | ![Документ, светлая тема](docs/assets/screenshot-doc-light.png) |
-| ![Studio: загрузка](docs/assets/screenshot-studio-upload.png) | ![Studio: живой прогон](docs/assets/screenshot-studio-live.png) |
-| ![Мобильный вид: документ](docs/assets/screenshot-mobile-doc.png) | ![Мобильный вид: обзор](docs/assets/screenshot-mobile-overview.png) |
-| ![Основание замечания: пункт стандарта и закон РК](docs/assets/screenshot-basis-light.png) | ![База знаний: чаще всего нарушенные нормы](docs/assets/screenshot-kb-light.png) |
-| ![Покрытие процесса](docs/assets/screenshot-coverage-light.png) | ![Шаблон EARS в «Исправлениях»](docs/assets/screenshot-pattern-light.png) |
-| ![Studio: режим «Демо»](docs/assets/screenshot-studio-demo.png) | ![Ассистент с источниками](docs/assets/screenshot-studio-sources.png) |
-| ![Интерфейс отчёта на казахском](docs/assets/screenshot-overview-kk.png) | |
-
-</details>
-
-Скриншоты и GIF снимаются автоматически: `pip install playwright pillow && playwright install chromium`,
-затем `python scripts/screenshots.py` (mock-прогон, ключ не нужен; скрипт завершается с ошибкой, если в консоли браузера есть ошибки).
-
 ---
 
-## Быстрый старт
+## Установка и прогон для сдачи
 
 ```bash
 # 1. Python 3.10+ и зависимости
