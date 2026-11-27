@@ -1,6 +1,6 @@
 """v12: параллельные обращения к модели с общим ограничителем.
 
-LLM_CONCURRENCY (по умолчанию 3) — сколько запросов к модели одновременно «в полёте»; LLM_RPM / LLM_MIN_INTERVAL
+LLM_CONCURRENCY (по умолчанию 4; до v14 — 3) — сколько запросов к модели одновременно «в полёте»; LLM_RPM / LLM_MIN_INTERVAL
 соблюдаются ограничителем частоты в BaseLLM (старты запросов разносятся во времени, общий для всех потоков).
 Сборка детерминирована: результаты возвращаются в порядке входа, а не в порядке ответов модели."""
 from __future__ import annotations
@@ -15,9 +15,9 @@ R = TypeVar("R")
 
 def concurrency() -> int:
     try:
-        return max(1, int(os.getenv("LLM_CONCURRENCY", "3") or 3))
+        return max(1, int(os.getenv("LLM_CONCURRENCY", "4") or 4))  # v14: 4 по умолчанию (было 3)
     except ValueError:
-        return 3
+        return 4
 
 
 def pmap(fn: Callable[[T], R], items: Iterable[T], n: int | None = None) -> list[R]:
