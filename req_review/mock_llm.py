@@ -43,6 +43,15 @@ class MockLLM(BaseLLM):
                  "problem": f"[mock] {task}: поведение не определено.", "severity": "major", "fix": "[mock] Дописать."},
                 {"check": task, "type": "gap", "refs": [{"id": "DOC", "quote": "такой фразы в документе нет"}],
                  "problem": "[mock] выдуманный пропуск", "severity": "major", "fix": "—"}]}, ensure_ascii=False)
+        if task == "revise":  # v12: «модель» вписывает ответ в формулировку; у одного элемента — выдуманное число 999
+            out = []
+            for i, x in enumerate(context["items"]):
+                after = (x["before"].rstrip(". ") + ". " if x["before"] else "Система должна: ") + x["answer"]
+                if i == 1:
+                    after += " Не позднее 999 секунд."
+                out.append({"id": x["id"], "after": after, "gherkin": f"Дано требование {x['id']}\nКогда выполняется условие\n"
+                                                                      f"Тогда {x['answer']}"})
+            return json.dumps({"items": out}, ensure_ascii=False)
         if task == "answers":  # v9: «модель» считает все ответы конкретными и выдумывает цитату — правила обязаны это поправить
             return json.dumps({"items": [{"qid": q.qid, "type": "concrete", "quote": "[mock] цитаты нет в ответе",
                                           "note": "[mock] закрыто"} for q, _a in context["items"]]}, ensure_ascii=False)

@@ -373,9 +373,18 @@ def _apply_answers(rv, llm, path: str, log) -> dict:
                          "Возьмите шаблон <отчёт>_answers_template.md и впишите ответы под вопросами.")
     questions = build_questions(rv)
     before = summary_state(rv, compute(rv))
+    all_before = [f for rr in rv.req_results for f in rr.findings] + list(rv.set_findings)
     result = apply_answers(rv, questions, parsed, llm=llm, log=log)
+    # v12: исправленная редакция ТЗ — «было → стало», новые требования, критерии приёмки, что осталось уточнить
+    from . import revised as rev
+
+    revised = rev.write(rv, rev.plan(rv, questions, result, result["closed_list"]), llm=llm, log=log)
     refresh_depth(rv)
-    return {"questions": questions, "before": before, "result": result}
+    open_after = sum(len(rr.findings) for rr in rv.req_results) + len(rv.set_findings)
+    blockers = [c for c in result["closed_list"] if c["severity"] == "critical"]
+    summary = {"blockers_total": sum(f.severity == "critical" for f in all_before), "blockers_closed": len(blockers),
+               "open_before": len(all_before), "open_after": open_after, "closed_blockers": blockers}
+    return {"questions": questions, "before": before, "result": result, "revised": revised, "summary": summary}
 
 
 def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda i, label="": None, llm_wrap=None,
@@ -478,6 +487,8 @@ def _run(input_path, output_path, opts: Options, log, step, llm_wrap, make_llm, 
         ctx.questions = ans_state["questions"]  # исходные вопросы: Q-xx и closes — по нумерации до ответов
         ctx.answers = answers_json(Path(opts.answers).name, ans_state["result"], ans_state["before"],
                                    summary_state(rv, ctx.scores))
+        ctx.answers["revised"] = ans_state["revised"]  # v12: исправленная редакция ТЗ (SCHEMA 2.5)
+        ctx.answers["summary"] = ans_state["summary"]
         ctx.passport["answers"] = {"file": Path(opts.answers).name, "items": len(ctx.answers["items"]),
                                    "closed": ans_state["result"]["closed"]}
     from .decisions import build_decisions, rephrase
@@ -554,6 +565,23 @@ def _run(input_path, output_path, opts: Options, log, step, llm_wrap, make_llm, 
         p = out.parent / f"{stem.name}_fixed.diff"
         p.write_text(document_diff(rv, ctx.fixed_text), encoding="utf-8")
         ctx.artifacts["Исправления (unified diff)"] = p
+    if ctx.answers and ctx.answers.get("revised"):  # v12: исправленная редакция ТЗ после ответов
+        from .revised import agent_suggestions, revised_md
+
+        done = {c["rid"] for c in ctx.answers["revised"]["changed"]}
+        p = out.parent / f"{stem.name}_revised.md"
+        ctx.answers["revised"]["suggestions"] = agent_suggestions(rv, done)
+        p.write_text(revised_md(rv.doc.title, ctx.answers["revised"], ctx.answers["summary"],
+                                ctx.answers["revised"]["suggestions"]), encoding="utf-8")
+        ctx.artifacts["Исправленная редакция ТЗ"] = p
+        if opts.pdf if opts.pdf is not None else PROFILES.get(opts.profile, {}).get("pdf", False):
+            try:
+                from .pdf_report import PdfFontError, markdown_to_pdf
+
+                ctx.artifacts["Исправленная редакция ТЗ (PDF)"] = markdown_to_pdf(
+                    p.read_text(encoding="utf-8"), p.with_suffix(".pdf"), f"Исправленная редакция — {rv.doc.title}")
+            except PdfFontError as e:
+                log(f"PDF исправленной редакции не создан: {e}")
     if ctx.decisions:  # v9: повестка решений для владельца продукта
         from .decisions import decisions_file
 
@@ -561,10 +589,13 @@ def _run(input_path, output_path, opts: Options, log, step, llm_wrap, make_llm, 
         p.write_text(decisions_file(ctx.decisions, rv.doc.title), encoding="utf-8")
         ctx.artifacts["Решения для владельца продукта"] = p
     if ctx.questions:  # v9: шаблон ответов аналитика — вписать ответы и запустить --answers
-        from .answers import template_md
+        from .answers import question_options, template_md
 
+        set_values = {f"S-{i:02d}": [str(v.get("value", "")) for v in f.values if v.get("value")]
+                      for i, f in enumerate(rv.set_findings, 1) if f.values}
         p = out.parent / f"{stem.name}_answers_template.md"
-        p.write_text(template_md(ctx.questions, rv.doc.title), encoding="utf-8")
+        p.write_text(template_md(ctx.questions, rv.doc.title, question_options(ctx.questions, ctx.decisions, set_values)),
+                     encoding="utf-8")
         ctx.artifacts["Шаблон ответов аналитика"] = p
     if opts.tests and any(rr.test_possible for rr in rv.req_results):
         from .exports import feature_text

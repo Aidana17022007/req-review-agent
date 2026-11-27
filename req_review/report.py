@@ -57,6 +57,11 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
           "Этот отчёт не является результатом проверки и не подходит для сдачи.")
         w("")
 
+    if ctx is not None and (getattr(ctx, "answers", None) or {}).get("summary"):  # v12: «Кратко» после ответов — первым
+        from .revised import brief_md
+
+        for line in brief_md(ctx.answers):
+            w(line)
     ca = (getattr(rv, "depth", None) or {}).get("citation_audit")
     if ca:
         lc = (getattr(rv, "depth", None) or {}).get("line_coverage") or {}
