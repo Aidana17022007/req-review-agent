@@ -3,11 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ReqLens · Дизайн-система v2</title>
+<title>ReqLens · Дизайн-система v3 «Ecliptic Dawn»</title>
 <link rel="icon" href="{{ favicon_href() }}">
 <style>
 {{ tokens_css()|safe }}
 {{ asset("base.css")|safe }}
+body{background:var(--grad-glow),var(--bg)}
 .sg-section{padding:48px 0;border-bottom:1px solid var(--border)}
 .sg-h{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:24px}
 .sg-sub{font:var(--t-caption);text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin:24px 0 10px}
@@ -45,15 +46,15 @@
 </head>
 <body>
 <header class="pagebar">
-  <div class="logo"><span class="logo-mark">{{ logo_mark(36) }}</span><span>ReqLens<small>Дизайн-система v2 · токены v{{ tokens.version }}</small></span></div>
+  <div class="logo"><span class="logo-mark">{{ logo_mark(36) }}</span><span>ReqLens<small>Дизайн-система v3 «Ecliptic Dawn» · токены v{{ tokens.version }}</small></span></div>
   <div class="grow"></div><span class="small muted hide-sm">Источник правды: design/tokens.json</span>
 </header>
 <main class="container">
   <section class="sg-section">
     <div class="caption">ReqLens</div>
-    <h1 class="display" style="margin:8px 0">Дизайн-система v2</h1>
+    <h1 class="display" style="margin:8px 0">Дизайн-система v3 «Ecliptic Dawn»</h1>
     <p class="muted" style="max-width:760px">Единые токены, компоненты, иконки и логотип для трёх поверхностей: сайт, приложение (Studio) и HTML-отчёт.
-      Спокойный, точный инструмент аналитика: нейтральная шкала с зелёным оттенком, семантика серьёзности, сетка 4/8 pt,
+      Спокойный, точный инструмент аналитика: ночные панели на градиенте рассвета, кобальт и перивинкл, семантика серьёзности, сетка 4/8 pt,
       контраст текста WCAG AA в обеих темах, анимации не дольше 200 мс.</p>
     <p class="small faint" style="margin-top:12px">Сборка: <code class="mono">python -m req_review.ui.styleguide</code> (tokens.css, эта страница, слайды) ·
       логотип и иконки PWA: <code class="mono">python -m req_review.ui.brand</code> → design/brand/</p>
@@ -220,7 +221,7 @@
   <section class="sg-section" id="icons"><div class="sg-h"><h2 class="h2">Иконки</h2><span class="faint small">{{ ICONS|length }} шт. · 24×24 · линия 1.75 · currentColor · req_review/ui/icons.py</span></div>
     <div class="icons">{% for n in ICONS %}<div>{{ icon(n, 22) }}<span>{{ n }}</span></div>{% endfor %}</div>
   </section>
-  <footer class="footer">ReqLens · Дизайн-система v2 · сгенерировано командой <code class="mono">python -m req_review.ui.styleguide</code></footer>
+  <footer class="footer">ReqLens · Дизайн-система v3 «Ecliptic Dawn» · сгенерировано командой <code class="mono">python -m req_review.ui.styleguide</code></footer>
 </main>
 </body>
 </html>
