@@ -45,6 +45,8 @@ class Options:
     pdf: bool | None = None  # PDF-версия отчёта; None — по профилю (deep — да)
     ensemble: str = ""  # v7: «модель1,модель2» — два прогона и объединение подтверждённых замечаний
     strong: str = ""  # v13: «провайдер:модель» сильной модели (--strong) — для честной строки паспорта
+    journal: str = ""  # v13+: папка журналов (runs/) — вход и выход каждого обращения к модели, этапы; "" — без журнала
+    replay: str = ""  # v13+: runs/<id> — повтор прогона из журнала, без сети
     runs: int = 1  # v13: N независимых прогонов (разная температура) — «найдено в k из N», устойчивые замечания
     fix_loop: bool = False  # v7: «исправил → проверил заново» — блок «До / После» и файл <отчёт>_before_after.md
     cascade: str = ""  # v9: «быстрая,сильная» — быстрая проверяет всё, сильная — подозрительные требования и набор
@@ -421,6 +423,7 @@ def build_context(rv, llm, opts: Options, started: datetime, t0: float, input_pa
         "model": llm.label, "agent_version": version or agent_version(), "code": code or code_state(), "profile": opts.profile,
         "mode": "офлайн: документ не передавался третьим лицам" if offline and llm.provider != "mock" else
                 ("тестовый (mock)" if llm.provider == "mock" else
+                 "повтор из журнала: модель не вызывалась, ответы взяты из runs/<id>" if llm.provider == "replay" else
                  "только правила: модель не вызывалась, смысловые противоречия не проверялись" if llm.provider == "rules"
                  else "облачная модель"),
         **({"strong": {"model": opts.strong, "note": "прогон на сильной модели (--strong); отчёт для сдачи — на "
@@ -527,6 +530,20 @@ def _run(input_path, output_path, opts: Options, log, step, llm_wrap, make_llm, 
         log(f"каскад моделей: быстрая {cascade.fast.label}, сильная {cascade.strong.label}")
     else:
         llm = make_llm() if make_llm else build_llm_from_env()
+    if opts.replay:  # v13+: повтор из журнала — ответы модели берутся из runs/<id>/calls
+        from .journal import ReplayLLM
+
+        llm = ReplayLLM(opts.replay)
+        log(f"повтор прогона из журнала {opts.replay}")
+    journal_dir = None
+    if opts.journal:
+        import hashlib as _hl
+
+        from .journal import JournalLLM, new_dir
+
+        sha = _hl.sha256(Path(input_path).read_bytes()).hexdigest() if Path(input_path).exists() else "nofile"
+        journal_dir = new_dir(Path(opts.journal), sha)
+        llm = JournalLLM(llm, journal_dir)
     if llm_wrap:
         llm = llm_wrap(llm)
     rv = review_document(input_path, llm, opts, log=log, step=tstep)
@@ -572,6 +589,8 @@ def _run(input_path, output_path, opts: Options, log, step, llm_wrap, make_llm, 
     if opts.answers:  # v9: ответы аналитика — до построения отчёта, чтобы закрытые замечания не попали в разделы 3–6
         ans_state = _apply_answers(rv, llm, opts.answers, log)
     ctx = build_context(rv, llm, opts, started, t0, input_path, started_code, started_version)
+    if journal_dir is not None:  # v13+: путь к журналу — в паспорте
+        ctx.passport["journal"] = str(journal_dir)
     ctx.trace = timeline
     if cascade is not None:
         ctx.passport["cascade"] = cascade.passport()
@@ -650,6 +669,15 @@ def _run(input_path, output_path, opts: Options, log, step, llm_wrap, make_llm, 
         log("этапы: " + " · ".join(f"{x['stage']} {x['seconds']:.1f} с" + (" ‖" if x.get("parallel") else "")
                                    for x in sr["stages"])
             + f" | критический путь {sr['critical_path_s']:.1f} с: " + " → ".join(sr["critical_path"]))
+    try:  # v13+: самопроверка отчёта тем же кодом, что `review.py verify` (цитаты, SHA-256, нарезка, счётчики)
+        from .exports import to_json as _to_json
+        from .verify_report import verify_data
+
+        vd = verify_data(_to_json(ctx), rv.doc, rv.split)
+        ctx.passport["verify"] = {k: vd[k] for k in ("ok", "quotes_ok", "quotes_total", "sha_ok", "requirements_ok",
+                                                     "counts_ok")}
+    except Exception as e:  # noqa: BLE001 — самопроверка не ломает прогон
+        log(f"самопроверка отчёта не выполнена: {e}")
     out = Path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)
     stem = out.with_suffix("")
@@ -742,4 +770,9 @@ def _run(input_path, output_path, opts: Options, log, step, llm_wrap, make_llm, 
         timeline.append({"i": 7, "t": round(time.monotonic() - t0, 2)})  # конец записи отчётов
         write_html(ctx, p)
         ctx.artifacts["Интерактивный отчёт (HTML)"] = p
+    if journal_dir is not None:  # v13+: итог прогона в журнал runs/<id>/run.json
+        from .journal import finish
+
+        finish(journal_dir, ctx, input_path)
+        ctx.artifacts["Журнал прогона (runs/)"] = journal_dir
     return ctx

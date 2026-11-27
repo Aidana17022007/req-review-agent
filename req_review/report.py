@@ -108,6 +108,10 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     if llm_stats.prompt_tokens:
         w(f"| Токены (вход / выход) | {llm_stats.prompt_tokens} / {llm_stats.output_tokens} |")
     w(f"| Длительность | {duration_s:.0f} с |")
+    if ctx is not None and (vf := ctx.passport.get("verify")):  # v13+: самопроверка (как `review.py verify`)
+        w(f"| Проверка отчёта (verify) | {'✅' if vf['ok'] else '❌'} цитат {vf['quotes_ok']} из {vf['quotes_total']} "
+          f"найдены в исходнике · SHA-256 {'совпадает' if vf['sha_ok'] else 'не совпадает'} · повторно: "
+          "`python review.py verify <отчёт>.json <документ>` |")
     if ctx is not None and (sg := ctx.passport.get("strong")):  # v13: сильная модель
         w(f"| Сильная модель | {_cell(sg['model'])} — {sg['note']} |")
     if ctx is not None and (rn := ctx.passport.get("runs")):  # v13: стабильность по N прогонам
