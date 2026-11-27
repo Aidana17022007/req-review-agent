@@ -170,6 +170,22 @@ def compare_table(agg: dict[str, dict]) -> list[str]:
     return L
 
 
+def conclusion(agg: dict[str, dict]) -> str:
+    """Вывод по числам таблицы (без оценочных слов сверх того, что в ней есть)."""
+    a, b = agg.get("agent"), agg.get("baseline")
+    if not a:
+        return ""
+    s = (f"**Вывод.** ReqLens нашёл {a['found']} из {a['total']} дефектов ключа (критичных {a['critical_found']} из "
+         f"{a['critical_total']})")
+    if b:
+        s += (f" против {b['found']} из {b['total']} у той же модели одним запросом; цена — шум: ложных замечаний к "
+              f"заведомо чистым требованиям {a['false_clean']} (существенных {a['false_clean_significant']}) против "
+              f"{b['false_clean']} у голой модели, строгая точность {_pct(a['precision_strict'])} против "
+              f"{_pct(b['precision_strict'])}")
+    return s + (". Замечания к чистым требованиям — кандидаты в ложные: их список в `bench/blind/RESULTS.md`, "
+                "ручная проверка — задача F.")
+
+
 def _keys_commit(keys: Path) -> str:
     try:
         out = subprocess.run(["git", "log", "-1", "--format=%h %cd", "--date=format:%Y-%m-%d %H:%M", "--", str(keys)],
@@ -202,17 +218,16 @@ def write_compare(per_mode: dict[str, list], agg: dict[str, dict], keys: Path, p
     a = per_mode.get("agent") or next(iter(per_mode.values()))
     model = a[0][2].get("model", "—") if a else "—"
     version = a[0][2].get("version", "—") if a else "—"
-    author = (a[0][1].get("annotator") if a else "") or "—"
     body = [f"*Дата:* {datetime.now():%Y-%m-%d %H:%M} · *модель:* {model} · *агент:* {version} · профиль deep · "
             f"*ключи закоммичены до прогона:* {_keys_commit(keys)}.",
             "",
             f"Документы ({len(a)}: {', '.join(sorted({(k.get('format') or '').upper() or p for p, k, _ in a}))}) и ключи "
             f"дефектов написал **отдельный ИИ-агент**, которому не показывали код, промпты, словари, правила, bench/ и отчёты "
-            f"ReqLens ({author}). Это не человек: независимая разметка человеком — задача F (`KIT_outside_reviewer.md`). "
+            "ReqLens. Это не человек: независимая разметка человеком — задача F (`KIT_outside_reviewer.md`). "
             "После получения документов правила, промпты и словари не менялись; результат опубликован как есть. "
             "Оценка — `bench/external/score.py`: дефект найден, если цитата замечания лежит в отмеченных строках (±1) и "
             f"критерий совместим с классом дефекта; {agg[next(iter(agg))]['method']}. По документам — "
-            "`bench/blind/RESULTS.md`.", ""] + compare_table(agg)
+            "`bench/blind/RESULTS.md`.", ""] + compare_table(agg) + ["", conclusion(agg)]
     text = path.read_text(encoding="utf-8") if path.exists() else ""
     path.write_text(_replace_section(text, SECTION, body), encoding="utf-8")
     D = ["# Слепые документы: по документам", "", "Сводная таблица и условия — раздел «Слепые документы» в "

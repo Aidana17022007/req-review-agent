@@ -1,0 +1,2608 @@
+{
+  "schema_version": "2.5",
+  "passport": {
+    "document": "Техническое задание: P2P-переводы по номеру телефона",
+    "file": "C:\\req-review-agent\\.claude\\worktrees\\v14-blind\\bench\\blind\\docs\\ai_p2p_phone_transfers.md",
+    "format": "MD",
+    "pages": null,
+    "sha256": "b651952eab2a699b6a33672cdf6daec35b0e69bf24ed85a72edb1ef176ba167c",
+    "started": "2026-11-27 21:24:56 Кызылорда (зима)",
+    "model": "без модели / только детерминированные правила",
+    "agent_version": "v9.0.0, коммит ac5403c (v3.0.3-64-gac5403c)",
+    "code": {
+      "commit": "ac5403c",
+      "clean": true
+    },
+    "profile": "deep",
+    "mode": "только правила: модель не вызывалась, смысловые противоречия не проверялись",
+    "calls": 0,
+    "cached": 0,
+    "retries": 0,
+    "tokens_in": 0,
+    "tokens_out": 0,
+    "duration_s": 0,
+    "model_switches": [],
+    "rag": {
+      "kb_chunks": 33,
+      "search": "BM25",
+      "embedder": "none",
+      "basis": 15,
+      "law": 1,
+      "patterns": 0
+    },
+    "context": {
+      "mode": "полный текст",
+      "avg_prompt_tokens": 2934,
+      "doc_chars": 3978
+    },
+    "time_estimate": {
+      "doc_lines": 33,
+      "lines_per_hour": 40,
+      "norm_source": "по умолчанию",
+      "manual_hours": 0.8,
+      "agent_minutes": 0.1,
+      "estimate": true
+    },
+    "split_method": "ids",
+    "dropped": 0,
+    "rejected": 0,
+    "critic": true,
+    "domain": "fintech",
+    "log": "ai_p2p_phone_transfers.log",
+    "cost": {
+      "model": "без модели / только детерминированные правила",
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "calls": 0,
+      "free_tier": true,
+      "usd": 0.0,
+      "kzt": 0.0,
+      "per_call_usd": 0.0,
+      "price": "без модели",
+      "checked": null,
+      "note": "только правила — модель не вызывается"
+    },
+    "stages": [
+      {
+        "stage": "Чтение",
+        "start_s": 0.0,
+        "seconds": 0.0,
+        "calls": 0
+      },
+      {
+        "stage": "Нарезка",
+        "start_s": 0.0,
+        "seconds": 0.0,
+        "calls": 0
+      },
+      {
+        "stage": "Проверка требований",
+        "start_s": 0.02,
+        "seconds": 0.02,
+        "calls": null,
+        "parallel": true
+      },
+      {
+        "stage": "Проверка набора",
+        "start_s": 0.02,
+        "seconds": 0.03,
+        "calls": null,
+        "parallel": true
+      },
+      {
+        "stage": "Самосогласованность",
+        "start_s": 0.05,
+        "seconds": 0.0,
+        "calls": 0
+      },
+      {
+        "stage": "Узкие проходы",
+        "start_s": 0.05,
+        "seconds": 0.0,
+        "calls": 0
+      },
+      {
+        "stage": "Домен, глоссарий, покрытие",
+        "start_s": 0.05,
+        "seconds": 0.01,
+        "calls": 0
+      },
+      {
+        "stage": "Критик",
+        "start_s": 0.06,
+        "seconds": 0.0,
+        "calls": 0
+      },
+      {
+        "stage": "Калибровка, RAG, план",
+        "start_s": 0.06,
+        "seconds": 0.01,
+        "calls": 0
+      }
+    ],
+    "critical_path": {
+      "stages": [
+        "Чтение",
+        "Нарезка",
+        "Проверка набора",
+        "Самосогласованность",
+        "Узкие проходы",
+        "Домен, глоссарий, покрытие",
+        "Критик",
+        "Калибровка, RAG, план"
+      ],
+      "seconds": 0.05,
+      "stages_sum_s": 0.07,
+      "concurrency": 3
+    },
+    "verify": {
+      "ok": true,
+      "quotes_ok": 18,
+      "quotes_total": 18,
+      "sha_ok": true,
+      "requirements_ok": true,
+      "counts_ok": true
+    }
+  },
+  "scores": {
+    "document": 86,
+    "set": 84,
+    "readiness": 19,
+    "radar_requirements": {
+      "necessary": 100,
+      "appropriate": 100,
+      "unambiguous": 38,
+      "complete": 100,
+      "singular": 100,
+      "feasible": 100,
+      "verifiable": 88,
+      "correct": 100,
+      "conforming": 100
+    },
+    "radar_set": {
+      "set_complete": 88,
+      "set_consistent": 100,
+      "set_feasible": 100,
+      "set_comprehensible": 100,
+      "set_validatable": 80,
+      "set_ranked": 100,
+      "set_modifiable": 100,
+      "set_traceable": 100
+    },
+    "tests": {
+      "ok": 0,
+      "total": 0
+    },
+    "cost_hours": [
+      [
+        "Ревью требований (сейчас)",
+        14.5
+      ],
+      [
+        "Разработка",
+        72.5
+      ],
+      [
+        "Тестирование",
+        145.0
+      ],
+      [
+        "Эксплуатация",
+        1450.0
+      ]
+    ]
+  },
+  "requirements": [
+    {
+      "rid": "R-001",
+      "doc_id": "FR-01",
+      "text": "Поле «Номер телефона получателя» должно принимать только значения формата +7XXXXXXXXXX (код страны +7 и 10 цифр); при любом другом значении кнопка «Далее» должна оставаться неактивной. Приоритет: высокий.",
+      "section": "3.1. Создание перевода",
+      "kind": "requirement",
+      "location": "раздел «3.1. Создание перевода», строка 22",
+      "line_start": 22,
+      "line_end": 22,
+      "page": null,
+      "score": 85,
+      "ears": "",
+      "rewrite": "",
+      "llm_checked": true,
+      "rewrite_pattern": null,
+      "category": "interface",
+      "char_start": 1149,
+      "test": {
+        "possible": null,
+        "gherkin": "",
+        "blocker": "",
+        "reason": ""
+      },
+      "tests": [],
+      "findings": [
+        {
+          "req_id": "R-001",
+          "criterion": "unambiguous",
+          "quote": "должна оставаться неактивной. Приоритет: высокий.",
+          "problem": "Неколичественная оценка — каждый участник поймёт её по-своему.",
+          "severity": "major",
+          "fix": "Заменить конкретным числом с единицами измерения и границами.",
+          "source": "LLM + правило",
+          "confidence": "high",
+          "critic_note": "правило",
+          "basis": [
+            {
+              "source": "Критерии качества требований — пересказ ISO/IEC/IEEE 29148:2018 и IEEE Std 830-1998",
+              "section": "29148 §5.2.5 c) Однозначность",
+              "quote": "Требование допускает только одно толкование.",
+              "url": "https://www.iso.org/standard/72089.html",
+              "kind": "standards",
+              "license": "собственный краткий пересказ команды ReqLens (не текст стандарта; стандарты платные)",
+              "file": "kb/standards/iso29148_ieee830.md"
+            }
+          ],
+          "ensemble": "",
+          "stability": "",
+          "span": {
+            "line": 22,
+            "start": 166,
+            "end": 215,
+            "offset": 1315
+          },
+          "confidence_score": 0.9
+        }
+      ]
+    },
+    {
+      "rid": "R-002",
+      "doc_id": "FR-02",
+      "text": "Поиск Получателя по номеру телефона должен выполняться через Redis-кэш справочника клиентов с TTL 15 минут, который перезагружается из таблицы CLIENT_PHONES в Oracle по расписанию cron. Приоритет: средний.",
+      "section": "3.1. Создание перевода",
+      "kind": "requirement",
+      "location": "раздел «3.1. Создание перевода», строка 24",
+      "line_start": 24,
+      "line_end": 24,
+      "page": null,
+      "score": 100,
+      "ears": "",
+      "rewrite": "",
+      "llm_checked": true,
+      "rewrite_pattern": null,
+      "category": "functional",
+      "char_start": 1366,
+      "test": {
+        "possible": null,
+        "gherkin": "",
+        "blocker": "",
+        "reason": ""
+      },
+      "tests": [],
+      "findings": []
+    },
+    {
+      "rid": "R-003",
+      "doc_id": "FR-03",
+      "text": "Перед подтверждением перевода система должна показывать Отправителю имя Получателя в формате «Имя и первая буква фамилии» (например, «Айгерим С.»). Приоритет: высокий.",
+      "section": "3.1. Создание перевода",
+      "kind": "requirement",
+      "location": "раздел «3.1. Создание перевода», строка 26",
+      "line_start": 26,
+      "line_end": 26,
+      "page": null,
+      "score": 85,
+      "ears": "",
+      "rewrite": "",
+      "llm_checked": true,
+      "rewrite_pattern": null,
+      "category": "functional",
+      "char_start": 1584,
+      "test": {
+        "possible": null,
+        "gherkin": "",
+        "blocker": "",
+        "reason": ""
+      },
+      "tests": [],
+      "findings": [
+        {
+          "req_id": "R-003",
+          "criterion": "unambiguous",
+          "quote": "(например, «Айгерим С.»). Приоритет: высокий.",
+          "problem": "Неколичественная оценка — каждый участник поймёт её по-своему.",
+          "severity": "major",
+          "fix": "Заменить конкретным числом с единицами измерения и границами.",
+          "source": "LLM + правило",
+          "confidence": "high",
+          "critic_note": "правило",
+          "basis": [
+            {
+              "source": "Критерии качества требований — пересказ ISO/IEC/IEEE 29148:2018 и IEEE Std 830-1998",
+              "section": "29148 §5.2.5 c) Однозначность",
+              "quote": "Требование допускает только одно толкование.",
+              "url": "https://www.iso.org/standard/72089.html",
+              "kind": "standards",
+              "license": "собственный краткий пересказ команды ReqLens (не текст стандарта; стандарты платные)",
+              "file": "kb/standards/iso29148_ieee830.md"
+            }
+          ],
+          "ensemble": "",
+          "stability": "",
+          "span": {
+            "line": 26,
+            "start": 133,
+            "end": 178,
+            "offset": 1717
+          },
+          "confidence_score": 0.9
+        }
+      ]
+    },
+    {
+      "rid": "R-004",
+      "doc_id": "FR-04",
+      "text": "Система должна отклонять перевод на сумму менее 100 тенге с сообщением «Минимальная сумма перевода — 100 тенге». Приоритет: высокий.",
+      "section": "3.1. Создание перевода",
+      "kind": "requirement",
+      "location": "раздел «3.1. Создание перевода», строка 28",
+      "line_start": 28,
+      "line_end": 28,
+      "page": null,
+      "score": 100,
+      "ears": "",
+      "rewrite": "",
+      "llm_checked": true,
+      "rewrite_pattern": null,
+      "category": "functional",
+      "char_start": 1764,
+      "test": {
+        "possible": null,
+        "gherkin": "",
+        "blocker": "",
+        "reason": ""
+      },
+      "tests": [],
+      "findings": []
+    },
+    {
+      "rid": "R-005",
+      "doc_id": "FR-05",
+      "text": "Отправитель без статуса «Расширенный профиль» может выполнить не более 3 переводов в сутки. Приоритет: средний.",
+      "section": "3.1. Создание перевода",
+      "kind": "requirement",
+      "location": "раздел «3.1. Создание перевода», строка 30",
+      "line_start": 30,
+      "line_end": 30,
+      "page": null,
+      "score": 100,
+      "ears": "",
+      "rewrite": "",
+      "llm_checked": true,
+      "rewrite_pattern": null,
+      "category": "functional",
+      "char_start": 1909,
+      "test": {
+        "possible": null,
+        "gherkin": "",
+        "blocker": "",
+        "reason": ""
+      },
+      "tests": [],
+      "findings": []
+    },
+    {
+      "rid": "R-006",
+      "doc_id": "FR-06",
+      "text": "Система должна отклонять введённый OTP, если с момента отправки SMS прошло более 180 секунд. Приоритет: высокий.",
+      "section": "3.2. Подтверждение и выполнение перевода",
+      "kind": "requirement",
+      "location": "раздел «3.2. Подтверждение и выполнение перевода», строка 34",
+      "line_start": 34,
+      "line_end": 34,
+      "page": null,
+      "score": 100,
+      "ears": "",
+      "rewrite": "",
+      "llm_checked": true,
+      "rewrite_pattern": null,
+      "category": "interface",
+      "char_start": 2079,
+      "test": {
+        "possible": null,
+        "gherkin": "",
+        "blocker": "",
+        "reason": ""
+      },
+      "tests": [],
+      "findings": []
+    },
+    {
+      "rid": "R-007",
+      "doc_id": "FR-07",
+      "text": "Межбанковский перевод через СМП считается выполненным после получения от СМП подтверждения о зачислении средств Получателю; до получения подтверждения перевод отображается в истории операций в статусе «В обработке». Приоритет: высокий.",
+      "section": "3.2. Подтверждение и выполнение перевода",
+      "kind": "requirement",
+      "location": "раздел «3.2. Подтверждение и выполнение перевода», строка 36",
+      "line_start": 36,
+      "line_end": 36,
+      "page": null,
+      "score": 85,
+      "ears": "",
+      "rewrite": "",
+      "llm_checked": true,
+      "rewrite_pattern": null,
+      "category": "functional",
+      "char_start": 2204,
+      "test": {
+        "possible": null,
+        "gherkin": "",
+        "blocker": "",
+        "reason": ""
+      },
+      "tests": [],
+      "findings": [
+        {
+          "req_id": "R-007",
+          "criterion": "unambiguous",
+          "quote": "в статусе «В обработке». Приоритет: высокий.",
+          "problem": "Неколичественная оценка — каждый участник поймёт её по-своему.",
+          "severity": "major",
+          "fix": "Заменить конкретным числом с единицами измерения и границами.",
+          "source": "LLM + правило",
+          "confidence": "high",
+          "critic_note": "правило",
+          "basis": [
+            {
+              "source": "Критерии качества требований — пересказ ISO/IEC/IEEE 29148:2018 и IEEE Std 830-1998",
+              "section": "29148 §5.2.5 c) Однозначность",
+              "quote": "Требование допускает только одно толкование.",
+              "url": "https://www.iso.org/standard/72089.html",
+              "kind": "standards",
+              "license": "собственный краткий пересказ команды ReqLens (не текст стандарта; стандарты платные)",
+              "file": "kb/standards/iso29148_ieee830.md"
+            }
+          ],
+          "ensemble": "",
+          "stability": "",
+          "span": {
+            "line": 36,
+            "start": 202,
+            "end": 246,
+            "offset": 2406
+          },
+          "confidence_score": 0.9
+        }
+      ]
+    },
+    {
+      "rid": "R-008",
+      "doc_id": "FR-08",
+      "text": "Получатель — клиент Банка должен своевременно получать push-уведомление о зачислении перевода. Приоритет: средний.",
+      "section": "3.2. Подтверждение и выполнение перевода",
+      "kind": "requirement",
+      "location": "раздел «3.2. Подтверждение и выполнение перевода», строка 38",
+      "line_start": 38,
+      "line_end": 38,
+      "page": null,
+      "score": 65,
+      "ears": "",
+      "rewrite": "",
+      "llm_checked": true,
+      "rewrite_pattern": null,
+      "category": "interface",
+      "char_start": 2452,
+      "test": {
+        "possible": null,
+        "gherkin": "",
+        "blocker": "",
+        "reason": ""
+      },
+      "tests": [],
+      "findings": [
+        {
+          "req_id": "R-008",
+          "criterion": "verifiable",
+          "quote": "Получатель — клиент Банка должен своевременно получать push-уведомление о зачислении",
+          "problem": "Размытая характеристика скорости без числового порога — требование нельзя проверить.",
+          "severity": "critical",
+          "fix": "Задать измеримый порог: время отклика (например, ≤ N с для 95 % запросов) и условия измерения (нагрузка, среда).",
+          "source": "LLM + правило",
+          "confidence": "high",
+          "critic_note": "правило",
+          "basis": [
+            {
+              "source": "Критерии качества требований — пересказ ISO/IEC/IEEE 29148:2018 и IEEE Std 830-1998",
+              "section": "29148 §5.2.5 g) Проверяемость",
+              "quote": "Выполнение требования можно объективно проверить тестом, анализом, инспекцией или демонстрацией.",
+              "url": "https://www.iso.org/standard/72089.html",
+              "kind": "standards",
+              "license": "собственный краткий пересказ команды ReqLens (не текст стандарта; стандарты платные)",
+              "file": "kb/standards/iso29148_ieee830.md"
+            }
+          ],
+          "ensemble": "",
+          "stability": "",
+          "span": {
+            "line": 38,
+            "start": 11,
+            "end": 95,
+            "offset": 2463
+          },
+          "confidence_score": 0.9
+        }
+      ]
+    },
+    {
+      "rid": "R-009",
+      "doc_id": "FR-09",
+      "text": "Отправитель должен иметь возможность сохранить Получателя в «Избранное», повторить перевод из истории операций, скачать квитанцию о переводе в формате PDF и отправить квитанцию в мессенджер. Приоритет: низкий.",
+      "section": "3.2. Подтверждение и выполнение перевода",
+      "kind": "requirement",
+      "location": "раздел «3.2. Подтверждение и выполнение перевода», строка 40",
+      "line_start": 40,
+      "line_end": 40,
+      "page": null,
+      "score": 85,
+      "ears": "",
+      "rewrite": "",
+      "llm_checked": true,
+      "rewrite_pattern": null,
+      "category": "data",
+      "char_start": 2579,
+      "test": {
+        "possible": null,
+        "gherkin": "",
+        "blocker": "",
+        "reason": ""
+      },
+      "tests": [],
+      "findings": [
+        {
+          "req_id": "R-009",
+          "criterion": "unambiguous",
+          "quote": "квитанцию в мессенджер. Приоритет: низкий.",
+          "problem": "Неколичественная оценка — каждый участник поймёт её по-своему.",
+          "severity": "major",
+          "fix": "Заменить конкретным числом с единицами измерения и границами.",
+          "source": "LLM + правило",
+          "confidence": "high",
+          "critic_note": "правило",
+          "basis": [
+            {
+              "source": "Критерии качества требований — пересказ ISO/IEC/IEEE 29148:2018 и IEEE Std 830-1998",
+              "section": "29148 §5.2.5 c) Однозначность",
+              "quote": "Требование допускает только одно толкование.",
+              "url": "https://www.iso.org/standard/72089.html",
+              "kind": "standards",
+              "license": "собственный краткий пересказ команды ReqLens (не текст стандарта; стандарты платные)",
+              "file": "kb/standards/iso29148_ieee830.md"
+            }
+          ],
+          "ensemble": "",
+          "stability": "",
+          "span": {
+            "line": 40,
+            "start": 178,
+            "end": 220,
+            "offset": 2757
+          },
+          "confidence_score": 0.9
+        }
+      ]
+    },
+    {
+      "rid": "R-010",
+      "doc_id": "FR-10",
+      "text": "Переводы клиентам Банка по номеру телефона выполняются без комиссии независимо от суммы перевода. Приоритет: высокий.",
+      "section": "3.3. Комиссии и лимиты",
+      "kind": "requirement",
+      "location": "раздел «3.3. Комиссии и лимиты», строка 44",
+      "line_start": 44,
+      "line_end": 44,
+      "page": null,
+      "score": 85,
+      "ears": "",
+      "rewrite": "",
+      "llm_checked": true,
+      "rewrite_pattern": null,
+      "category": "functional",
+      "char_start": 2829,
+      "test": {
+        "possible": null,
+        "gherkin": "",
+        "blocker": "",
+        "reason": ""
+      },
+      "tests": [],
+      "findings": [
+        {
+          "req_id": "R-010",
+          "criterion": "unambiguous",
+          "quote": "независимо от суммы перевода. Приоритет: высокий.",
+          "problem": "Неколичественная оценка — каждый участник поймёт её по-своему.",
+          "severity": "major",
+          "fix": "Заменить конкретным числом с единицами измерения и границами.",
+          "source": "LLM + правило",
+          "confidence": "high",
+          "critic_note": "правило",
+          "basis": [
+            {
+              "source": "Критерии качества требований — пересказ ISO/IEC/IEEE 29148:2018 и IEEE Std 830-1998",
+              "section": "29148 §5.2.5 c) Однозначность",
+              "quote": "Требование допускает только одно толкование.",
+              "url": "https://www.iso.org/standard/72089.html",
+              "kind": "standards",
+              "license": "собственный краткий пересказ команды ReqLens (не текст стандарта; стандарты платные)",
+              "file": "kb/standards/iso29148_ieee830.md"
+            }
+          ],
+          "ensemble": "",
+          "stability": "",
+          "span": {
+            "line": 44,
+            "start": 79,
+            "end": 128,
+            "offset": 2908
+          },
+          "confidence_score": 0.9
+        }
+      ]
+    },
+    {
+      "rid": "R-011",
+      "doc_id": "FR-11",
+      "text": "За перевод клиенту Банка на сумму свыше 100 000 тенге взимается комиссия 0,2% от суммы перевода. Приоритет: высокий.",
+      "section": "3.3. Комиссии и лимиты",
+      "kind": "requirement",
+      "location": "раздел «3.3. Комиссии и лимиты», строка 46",
+      "line_start": 46,
+      "line_end": 46,
+      "page": null,
+      "score": 85,
+      "ears": "",
+      "rewrite": "",
+      "llm_checked": true,
+      "rewrite_pattern": null,
+      "category": "functional",
+      "char_start": 2959,
+      "test": {
+        "possible": null,
+        "gherkin": "",
+        "blocker": "",
+        "reason": ""
+      },
+      "tests": [],
+      "findings": [
+        {
+          "req_id": "R-011",
+          "criterion": "unambiguous",
+          "quote": "комиссия 0,2% от суммы перевода. Приоритет: высокий.",
+          "problem": "Неколичественная оценка — каждый участник поймёт её по-своему.",
+          "severity": "major",
+          "fix": "Заменить конкретным числом с единицами измерения и границами.",
+          "source": "LLM + правило",
+          "confidence": "high",
+          "critic_note": "правило",
+          "basis": [
+            {
+              "source": "Критерии качества требований — пересказ ISO/IEC/IEEE 29148:2018 и IEEE Std 830-1998",
+              "section": "29148 §5.2.5 c) Однозначность",
+              "quote": "Требование допускает только одно толкование.",
+              "url": "https://www.iso.org/standard/72089.html",
+              "kind": "standards",
+              "license": "собственный краткий пересказ команды ReqLens (не текст стандарта; стандарты платные)",
+              "file": "kb/standards/iso29148_ieee830.md"
+            }
+          ],
+          "ensemble": "",
+          "stability": "",
+          "span": {
+            "line": 46,
+            "start": 75,
+            "end": 127,
+            "offset": 3034
+          },
+          "confidence_score": 0.9
+        }
+      ]
+    },
+    {
+      "rid": "R-012",
+      "doc_id": "FR-12",
+      "text": "Суточный лимит переводов для одного плательщика составляет 1 000 000 тенге; перевод, после которого сумма переводов инициатора за календарные сутки по времени Астаны превысит лимит, отклоняется. Приоритет: высокий.",
+      "section": "3.3. Комиссии и лимиты",
+      "kind": "requirement",
+      "location": "раздел «3.3. Комиссии и лимиты», строка 48",
+      "line_start": 48,
+      "line_end": 48,
+      "page": null,
+      "score": 85,
+      "ears": "",
+      "rewrite": "",
+      "llm_checked": true,
+      "rewrite_pattern": null,
+      "category": "functional",
+      "char_start": 3088,
+      "test": {
+        "possible": null,
+        "gherkin": "",
+        "blocker": "",
+        "reason": ""
+      },
+      "tests": [],
+      "findings": [
+        {
+          "req_id": "R-012",
+          "criterion": "unambiguous",
+          "quote": "превысит лимит, отклоняется. Приоритет: высокий.",
+          "problem": "Неколичественная оценка — каждый участник поймёт её по-своему.",
+          "severity": "major",
+          "fix": "Заменить конкретным числом с единицами измерения и границами.",
+          "source": "LLM + правило",
+          "confidence": "high",
+          "critic_note": "правило",
+          "basis": [
+            {
+              "source": "Критерии качества требований — пересказ ISO/IEC/IEEE 29148:2018 и IEEE Std 830-1998",
+              "section": "29148 §5.2.5 c) Однозначность",
+              "quote": "Требование допускает только одно толкование.",
+              "url": "https://www.iso.org/standard/72089.html",
+              "kind": "standards",
+              "license": "собственный краткий пересказ команды ReqLens (не текст стандарта; стандарты платные)",
+              "file": "kb/standards/iso29148_ieee830.md"
+            }
+          ],
+          "ensemble": "",
+          "stability": "",
+          "span": {
+            "line": 48,
+            "start": 177,
+            "end": 225,
+            "offset": 3265
+          },
+          "confidence_score": 0.9
+        }
+      ]
+    },
+    {
+      "rid": "R-013",
+      "doc_id": "NFR-01",
+      "text": "Время ответа сервиса поиска Получателя по номеру телефона не должно превышать 2 секунд для 95% запросов при нагрузке до 300 запросов в секунду. Приоритет: высокий.",
+      "section": "4. Нефункциональные требования",
+      "kind": "requirement",
+      "location": "раздел «4. Нефункциональные требования», строка 52",
+      "line_start": 52,
+      "line_end": 52,
+      "page": null,
+      "score": 85,
+      "ears": "",
+      "rewrite": "",
+      "llm_checked": true,
+      "rewrite_pattern": null,
+      "category": "performance",
+      "char_start": 3350,
+      "test": {
+        "possible": null,
+        "gherkin": "",
+        "blocker": "",
+        "reason": ""
+      },
+      "tests": [],
+      "findings": [
+        {
+          "req_id": "R-013",
+          "criterion": "unambiguous",
+          "quote": "до 300 запросов в секунду. Приоритет: высокий.",
+          "problem": "Неколичественная оценка — каждый участник поймёт её по-своему.",
+          "severity": "major",
+          "fix": "Заменить конкретным числом с единицами измерения и границами.",
+          "source": "LLM + правило",
+          "confidence": "high",
+          "critic_note": "правило",
+          "basis": [
+            {
+              "source": "Критерии качества требований — пересказ ISO/IEC/IEEE 29148:2018 и IEEE Std 830-1998",
+              "section": "29148 §5.2.5 c) Однозначность",
+              "quote": "Требование допускает только одно толкование.",
+              "url": "https://www.iso.org/standard/72089.html",
+              "kind": "standards",
+              "license": "собственный краткий пересказ команды ReqLens (не текст стандарта; стандарты платные)",
+              "file": "kb/standards/iso29148_ieee830.md"
+            }
+          ],
+          "ensemble": "",
+          "stability": "",
+          "span": {
+            "line": 52,
+            "start": 129,
+            "end": 175,
+            "offset": 3479
+          },
+          "confidence_score": 0.9
+        }
+      ]
+    },
+    {
+      "rid": "R-014",
+      "doc_id": "NFR-02",
+      "text": "Сервис переводов должен быть доступен 100% времени, без плановых и внеплановых простоев. Приоритет: высокий.",
+      "section": "4. Нефункциональные требования",
+      "kind": "requirement",
+      "location": "раздел «4. Нефункциональные требования», строка 54",
+      "line_start": 54,
+      "line_end": 54,
+      "page": null,
+      "score": 85,
+      "ears": "",
+      "rewrite": "",
+      "llm_checked": true,
+      "rewrite_pattern": null,
+      "category": "functional",
+      "char_start": 3527,
+      "test": {
+        "possible": null,
+        "gherkin": "",
+        "blocker": "",
+        "reason": ""
+      },
+      "tests": [],
+      "findings": [
+        {
+          "req_id": "R-014",
+          "criterion": "unambiguous",
+          "quote": "плановых и внеплановых простоев. Приоритет: высокий.",
+          "problem": "Неколичественная оценка — каждый участник поймёт её по-своему.",
+          "severity": "major",
+          "fix": "Заменить конкретным числом с единицами измерения и границами.",
+          "source": "LLM + правило",
+          "confidence": "high",
+          "critic_note": "правило",
+          "basis": [
+            {
+              "source": "Критерии качества требований — пересказ ISO/IEC/IEEE 29148:2018 и IEEE Std 830-1998",
+              "section": "29148 §5.2.5 c) Однозначность",
+              "quote": "Требование допускает только одно толкование.",
+              "url": "https://www.iso.org/standard/72089.html",
+              "kind": "standards",
+              "license": "собственный краткий пересказ команды ReqLens (не текст стандарта; стандарты платные)",
+              "file": "kb/standards/iso29148_ieee830.md"
+            }
+          ],
+          "ensemble": "",
+          "stability": "",
+          "span": {
+            "line": 54,
+            "start": 68,
+            "end": 120,
+            "offset": 3595
+          },
+          "confidence_score": 0.9
+        }
+      ]
+    },
+    {
+      "rid": "R-015",
+      "doc_id": "NFR-03",
+      "text": "Интерфейс перевода должен вызывать у клиентов ощущение надёжности и доверия к Банку. Приоритет: низкий.",
+      "section": "4. Нефункциональные требования",
+      "kind": "requirement",
+      "location": "раздел «4. Нефункциональные требования», строка 56",
+      "line_start": 56,
+      "line_end": 56,
+      "page": null,
+      "score": 70,
+      "ears": "",
+      "rewrite": "",
+      "llm_checked": true,
+      "rewrite_pattern": null,
+      "category": "availability",
+      "char_start": 3649,
+      "test": {
+        "possible": null,
+        "gherkin": "",
+        "blocker": "",
+        "reason": ""
+      },
+      "tests": [],
+      "findings": [
+        {
+          "req_id": "R-015",
+          "criterion": "verifiable",
+          "quote": "должен вызывать у клиентов ощущение надёжности и доверия к Банку. Приоритет: низкий.",
+          "problem": "Качественная характеристика без метрики (доступность, MTBF, требования стандарта).",
+          "severity": "major",
+          "fix": "Указать метрику: доступность ≥ 99,9 % в месяц, RTO/RPO, конкретные требования/стандарт безопасности.",
+          "source": "LLM + правило",
+          "confidence": "high",
+          "critic_note": "правило",
+          "basis": [
+            {
+              "source": "Критерии качества требований — пересказ ISO/IEC/IEEE 29148:2018 и IEEE Std 830-1998",
+              "section": "29148 §5.2.5 g) Проверяемость",
+              "quote": "Выполнение требования можно объективно проверить тестом, анализом, инспекцией или демонстрацией.",
+              "url": "https://www.iso.org/standard/72089.html",
+              "kind": "standards",
+              "license": "собственный краткий пересказ команды ReqLens (не текст стандарта; стандарты платные)",
+              "file": "kb/standards/iso29148_ieee830.md"
+            }
+          ],
+          "ensemble": "",
+          "stability": "",
+          "span": {
+            "line": 56,
+            "start": 31,
+            "end": 115,
+            "offset": 3680
+          },
+          "confidence_score": 0.9
+        },
+        {
+          "req_id": "R-015",
+          "criterion": "unambiguous",
+          "quote": "надёжности и доверия к Банку. Приоритет: низкий.",
+          "problem": "Неколичественная оценка — каждый участник поймёт её по-своему.",
+          "severity": "major",
+          "fix": "Заменить конкретным числом с единицами измерения и границами.",
+          "source": "LLM",
+          "confidence": "medium",
+          "critic_note": "правило",
+          "basis": [
+            {
+              "source": "Критерии качества требований — пересказ ISO/IEC/IEEE 29148:2018 и IEEE Std 830-1998",
+              "section": "29148 §5.2.5 c) Однозначность",
+              "quote": "Требование допускает только одно толкование.",
+              "url": "https://www.iso.org/standard/72089.html",
+              "kind": "standards",
+              "license": "собственный краткий пересказ команды ReqLens (не текст стандарта; стандарты платные)",
+              "file": "kb/standards/iso29148_ieee830.md"
+            }
+          ],
+          "ensemble": "",
+          "stability": "",
+          "span": {
+            "line": 56,
+            "start": 67,
+            "end": 115,
+            "offset": 3716
+          },
+          "confidence_score": 0.75
+        }
+      ]
+    },
+    {
+      "rid": "R-016",
+      "doc_id": null,
+      "text": "Сервис переводов взаимодействует с автоматизированной банковской системой (АБС), СМП и SMS-шлюзом Банка.",
+      "section": "5. Интерфейсы и интеграции",
+      "kind": "requirement",
+      "location": "раздел «5. Интерфейсы и интеграции», строка 60",
+      "line_start": 60,
+      "line_end": 60,
+      "page": null,
+      "score": 100,
+      "ears": "",
+      "rewrite": "",
+      "llm_checked": true,
+      "rewrite_pattern": null,
+      "category": "integration",
+      "char_start": 3797,
+      "test": {
+        "possible": null,
+        "gherkin": "",
+        "blocker": "",
+        "reason": ""
+      },
+      "tests": [],
+      "findings": []
+    }
+  ],
+  "set_findings": [
+    {
+      "kind": "gap",
+      "criterion": "set_validatable",
+      "problem": "Критерии приёмки покрывают 0 % правил (0 из 15). Без примеров остаются: FR-01, FR-02, FR-03, FR-04, FR-05, FR-06, FR-07, FR-08. Приёмку нельзя провести по документу — каждый тестировщик придумает свои ожидаемые результаты.",
+      "severity": "major",
+      "fix": "Добавить по каждому правилу хотя бы один пример «исходные условия → действие → ожидаемый результат», включая граничные значения и отрицательные сценарии.",
+      "source": "правило",
+      "confidence": "medium",
+      "critic_note": "правило",
+      "values": [],
+      "basis": [
+        {
+          "source": "Критерии качества требований — пересказ ISO/IEC/IEEE 29148:2018 и IEEE Std 830-1998",
+          "section": "29148 §5.2.6 e) Возможность валидации",
+          "quote": "Можно подтвердить, что выполнение набора удовлетворит потребности заинтересованных сторон.",
+          "url": "https://www.iso.org/standard/72089.html",
+          "kind": "standards",
+          "license": "собственный краткий пересказ команды ReqLens (не текст стандарта; стандарты платные)",
+          "file": "kb/standards/iso29148_ieee830.md"
+        }
+      ],
+      "ensemble": "",
+      "stability": "",
+      "refs": [
+        {
+          "req_id": "R-001",
+          "quote": "Поле «Номер телефона получателя» должно принимать только",
+          "span": {
+            "line": 22,
+            "start": 11,
+            "end": 67,
+            "offset": 1160
+          }
+        },
+        {
+          "req_id": "R-002",
+          "quote": "Поиск Получателя по номеру телефона должен выполняться через",
+          "span": {
+            "line": 24,
+            "start": 11,
+            "end": 71,
+            "offset": 1377
+          }
+        },
+        {
+          "req_id": "R-003",
+          "quote": "Перед подтверждением перевода система должна показывать",
+          "span": {
+            "line": 26,
+            "start": 11,
+            "end": 66,
+            "offset": 1595
+          }
+        },
+        {
+          "req_id": "R-004",
+          "quote": "Система должна отклонять перевод на сумму менее 100 тенге с",
+          "span": {
+            "line": 28,
+            "start": 11,
+            "end": 70,
+            "offset": 1775
+          }
+        }
+      ],
+      "confidence_score": 0.6
+    },
+    {
+      "kind": "gap",
+      "criterion": "set_complete",
+      "problem": "Не покрыты области, типовые для банковского продукта (по доменному чек-листу): Шифрование данных при передаче и хранении; Роли и права доступа; Аудит-лог действий; Антифрод и AML-мониторинг; Защита персональных данных; Резервирование и восстановление; Мониторинг и оповещения; Уведомления клиента; Доступность интерфейса для людей с ограничениями.",
+      "severity": "minor",
+      "fix": "Добавить требования или явно зафиксировать, что области вне рамок проекта. Вопросы заказчику: Шифрование данных при передаче и хранении: Какие данные шифруются при хранении и передаче и по какому стандарту/алгоритму? Роли и права доступа: Какие роли есть в системе (клиент, оператор, администратор) и какие права у каждой? Аудит-лог действий: Какие действия журналируются, какие поля фиксируются и сколько хранится журнал? Антифрод и AML-мониторинг: Какие операции проверяются антифрод/AML-системой, какие действия при подозрении на мошенничество? Защита персональных данных: Какие персональные данные обрабатываются, где хранятся, как получается согласие клиента (Закон РК «О персональных данных и их защите»)? Резервирование и восстановление: Какие RTO/RPO, как часто делается резервное копирование, как восстанавливается сервис после аварии?",
+      "source": "домен",
+      "confidence": "medium",
+      "critic_note": "правило",
+      "values": [],
+      "basis": [
+        {
+          "source": "Критерии качества требований — пересказ ISO/IEC/IEEE 29148:2018 и IEEE Std 830-1998",
+          "section": "29148 §5.2.6 a) Полнота набора",
+          "quote": "Набор требований покрывает все нужные функции, ограничения, ошибки и интерфейсы, без незаполненных мест.",
+          "url": "https://www.iso.org/standard/72089.html",
+          "kind": "standards",
+          "license": "собственный краткий пересказ команды ReqLens (не текст стандарта; стандарты платные)",
+          "file": "kb/standards/iso29148_ieee830.md"
+        },
+        {
+          "source": "Нормы РК для финтех-требований — краткий пересказ (ориентир, не юридическое заключение)",
+          "section": "Закон РК «О банках и банковской деятельности» — банковская тайна",
+          "quote": "Сведения о счетах, операциях и остатках клиента относятся к банковской тайне; требования к уведомлениям и интерфейсам должны ограничивать состав раскрываемых данных, например маскировать номер карты.",
+          "url": "https://adilet.zan.kz",
+          "kind": "law_kz",
+          "license": "собственный пересказ команды ReqLens; перед использованием сверить с актуальной редакцией на adilet.zan.kz",
+          "file": "kb/law_kz/fintech_norms.md"
+        }
+      ],
+      "ensemble": "",
+      "stability": "",
+      "refs": [
+        {
+          "req_id": "DOC",
+          "quote": "Техническое задание: P2P-переводы по номеру телефона",
+          "span": {
+            "line": 1,
+            "start": 2,
+            "end": 54,
+            "offset": 2
+          }
+        }
+      ],
+      "confidence_score": 0.6
+    },
+    {
+      "kind": "gap",
+      "criterion": "set_complete",
+      "problem": "Шаги типового процесса не покрыты ни одним требованием: Журнал аудита.",
+      "severity": "minor",
+      "fix": "Добавить требования или явно указать, что шаг вне рамок. Вопросы аналитику: Журнал аудита: Какие действия журналируются и сколько хранится журнал?",
+      "source": "карта покрытия",
+      "confidence": "medium",
+      "critic_note": "правило",
+      "values": [],
+      "basis": [
+        {
+          "source": "Критерии качества требований — пересказ ISO/IEC/IEEE 29148:2018 и IEEE Std 830-1998",
+          "section": "29148 §5.2.6 a) Полнота набора",
+          "quote": "Набор требований покрывает все нужные функции, ограничения, ошибки и интерфейсы, без незаполненных мест.",
+          "url": "https://www.iso.org/standard/72089.html",
+          "kind": "standards",
+          "license": "собственный краткий пересказ команды ReqLens (не текст стандарта; стандарты платные)",
+          "file": "kb/standards/iso29148_ieee830.md"
+        }
+      ],
+      "ensemble": "",
+      "stability": "",
+      "refs": [
+        {
+          "req_id": "DOC",
+          "quote": "Техническое задание: P2P-переводы по номеру телефона",
+          "span": {
+            "line": 1,
+            "start": 2,
+            "end": 54,
+            "offset": 2
+          }
+        }
+      ],
+      "confidence_score": 0.75
+    }
+  ],
+  "domain": {
+    "name": "Финтех / банковские системы",
+    "disclaimer": "Чек-лист — ориентир для проверки полноты, а не юридическое или регуляторное заключение. Применимость каждой области определяет владелец продукта.",
+    "areas": [
+      {
+        "id": "auth",
+        "title": "Аутентификация и двухфакторная проверка",
+        "status": "covered",
+        "quotes": [
+          "В область не входят переводы по номеру карты, переводы в иностранной валюте и переводы юридич"
+        ],
+        "comment": "найдено ключевое слово (без модели)",
+        "question": "Как клиент подтверждает личность при входе и при операциях (пароль, OTP, биометрия)? Какие факторы обязательны?"
+      },
+      {
+        "id": "session",
+        "title": "Управление сессиями",
+        "status": "covered",
+        "quotes": [
+          "[ЗАПОЛНИТЬ: форматы сообщений, таймауты и коды ответа по каждой интеграции]"
+        ],
+        "comment": "найдено ключевое слово (без модели)",
+        "question": "Какой таймаут неактивной сессии, сколько одновременных сессий допустимо, что происходит при входе с нового устройства?"
+      },
+      {
+        "id": "crypto",
+        "title": "Шифрование данных при передаче и хранении",
+        "status": "missing",
+        "quotes": [],
+        "comment": "",
+        "question": "Какие данные шифруются при хранении и передаче и по какому стандарту/алгоритму?"
+      },
+      {
+        "id": "access",
+        "title": "Роли и права доступа",
+        "status": "missing",
+        "quotes": [],
+        "comment": "",
+        "question": "Какие роли есть в системе (клиент, оператор, администратор) и какие права у каждой?"
+      },
+      {
+        "id": "audit",
+        "title": "Аудит-лог действий",
+        "status": "missing",
+        "quotes": [],
+        "comment": "",
+        "question": "Какие действия журналируются, какие поля фиксируются и сколько хранится журнал?"
+      },
+      {
+        "id": "limits",
+        "title": "Лимиты и комиссии",
+        "status": "covered",
+        "quotes": [
+          "переводы в иностранной валюте и переводы юридическим лицам. Тарифы на межбанковские переводы утверждаются отдельным документом «Тарифы Банка"
+        ],
+        "comment": "найдено ключевое слово (без модели)",
+        "question": "Какие лимиты (на операцию, сутки, месяц) и комиссии действуют, от чего зависят и кто их меняет?"
+      },
+      {
+        "id": "status",
+        "title": "Статусы операций и идемпотентность",
+        "status": "covered",
+        "quotes": [
+          "**FR-05.** Отправитель без статуса «Расширенный профиль» может выполнить не более 3 переводов в сутки. Прио"
+        ],
+        "comment": "найдено ключевое слово (без модели)",
+        "question": "Какие статусы проходит операция и как исключается повторное списание при повторной отправке запроса?"
+      },
+      {
+        "id": "errors",
+        "title": "Обработка ошибок, таймаутов и повторов",
+        "status": "covered",
+        "quotes": [
+          "[ЗАПОЛНИТЬ: форматы сообщений, таймауты и коды ответа по каждой интеграции]"
+        ],
+        "comment": "найдено ключевое слово (без модели)",
+        "question": "Что видит клиент и что делает система при сбое, таймауте внешней системы, недостатке средств?"
+      },
+      {
+        "id": "fraud",
+        "title": "Антифрод и AML-мониторинг",
+        "status": "missing",
+        "quotes": [],
+        "comment": "",
+        "question": "Какие операции проверяются антифрод/AML-системой, какие действия при подозрении на мошенничество?"
+      },
+      {
+        "id": "pdata",
+        "title": "Защита персональных данных",
+        "status": "missing",
+        "quotes": [],
+        "comment": "",
+        "question": "Какие персональные данные обрабатываются, где хранятся, как получается согласие клиента (Закон РК «О персональных данных и их защите»)?"
+      },
+      {
+        "id": "pci",
+        "title": "Платёжные стандарты (PCI DSS — при работе с карточными данными)",
+        "status": "covered",
+        "quotes": [
+          "В область не входят переводы по номеру карты, переводы в иностранной валюте и переводы юридическим лицам. Тарифы на меж"
+        ],
+        "comment": "найдено ключевое слово (без модели)",
+        "question": "Обрабатываются ли карточные данные? Если да — как обеспечивается соответствие PCI DSS?"
+      },
+      {
+        "id": "sla",
+        "title": "Доступность и производительность (SLA)",
+        "status": "covered",
+        "quotes": [
+          "**NFR-01.** Время ответа сервиса поиска Получателя по номеру телефона не должно превышать 2"
+        ],
+        "comment": "найдено ключевое слово (без модели)",
+        "question": "Какой целевой уровень доступности (например, 99,9 % в месяц) и время отклика для ключевых операций?"
+      },
+      {
+        "id": "dr",
+        "title": "Резервирование и восстановление",
+        "status": "missing",
+        "quotes": [],
+        "comment": "",
+        "question": "Какие RTO/RPO, как часто делается резервное копирование, как восстанавливается сервис после аварии?"
+      },
+      {
+        "id": "monitoring",
+        "title": "Мониторинг и оповещения",
+        "status": "missing",
+        "quotes": [],
+        "comment": "",
+        "question": "Какие показатели мониторятся и кто получает оповещения об инцидентах?"
+      },
+      {
+        "id": "notify",
+        "title": "Уведомления клиента",
+        "status": "missing",
+        "quotes": [],
+        "comment": "найдено ключевое слово (без модели)",
+        "question": "О каких событиях и каким каналом уведомляется клиент (push, SMS, e-mail)?"
+      },
+      {
+        "id": "l10n",
+        "title": "Локализация (казахский / русский)",
+        "status": "covered",
+        "quotes": [
+          "и межбанковские переводы клиентам других банков Республики Казахстан через СМП."
+        ],
+        "comment": "найдено ключевое слово (без модели)",
+        "question": "На каких языках доступен интерфейс и сообщения (казахский, русский, английский)?"
+      },
+      {
+        "id": "a11y",
+        "title": "Доступность интерфейса для людей с ограничениями",
+        "status": "missing",
+        "quotes": [],
+        "comment": "",
+        "question": "Должен ли интерфейс соответствовать требованиям доступности (например, WCAG 2.1 AA)?"
+      }
+    ]
+  },
+  "categories": {
+    "interface": 3,
+    "functional": 9,
+    "data": 1,
+    "performance": 1,
+    "availability": 1,
+    "integration": 1
+  },
+  "coverage_map": [
+    {
+      "id": "entry",
+      "title": "Вход и аутентификация",
+      "reqs": [
+        "DOC"
+      ],
+      "covered": true,
+      "question": "Как клиент входит и подтверждает личность перед операцией или изменением настроек?"
+    },
+    {
+      "id": "operation",
+      "title": "Выполнение операции / изменение настройки",
+      "reqs": [
+        "R-003",
+        "R-004",
+        "R-005",
+        "R-007",
+        "R-008",
+        "R-009",
+        "R-010",
+        "R-011",
+        "R-012",
+        "R-014",
+        "R-015",
+        "R-016"
+      ],
+      "covered": true,
+      "question": "Какие входные данные и границы у операции?"
+    },
+    {
+      "id": "confirm",
+      "title": "Подтверждение",
+      "reqs": [
+        "R-003",
+        "R-006",
+        "R-007"
+      ],
+      "covered": true,
+      "question": "Как подтверждается операция (код, биометрия) и что при ошибке подтверждения?"
+    },
+    {
+      "id": "status",
+      "title": "Статусы и результат",
+      "reqs": [
+        "R-005",
+        "R-007"
+      ],
+      "covered": true,
+      "question": "Какие статусы и коды результата получает клиент для каждого исхода?"
+    },
+    {
+      "id": "errors",
+      "title": "Ошибки и исключения",
+      "reqs": [
+        "R-004",
+        "R-006",
+        "R-012"
+      ],
+      "covered": true,
+      "question": "Что видит клиент и что делает система при ошибке, таймауте, повторе?"
+    },
+    {
+      "id": "notify",
+      "title": "Уведомления клиента",
+      "reqs": [
+        "R-004",
+        "R-006",
+        "R-008",
+        "R-016"
+      ],
+      "covered": true,
+      "question": "О каких событиях, каким каналом и в какой срок уведомляется клиент?"
+    },
+    {
+      "id": "audit",
+      "title": "Журнал аудита",
+      "reqs": [],
+      "covered": false,
+      "question": "Какие действия журналируются и сколько хранится журнал?"
+    },
+    {
+      "id": "retention",
+      "title": "Хранение и удаление данных",
+      "reqs": [
+        "R-009"
+      ],
+      "covered": true,
+      "question": "Какие данные хранятся, в каких единицах, сколько и когда удаляются?"
+    }
+  ],
+  "line_coverage": {
+    "total": 33,
+    "requirements": 16,
+    "uncovered": [],
+    "accounted": 33,
+    "percent": 100,
+    "excluded": [
+      {
+        "reason": "разметка",
+        "lines": 9
+      },
+      {
+        "reason": "глоссарий",
+        "lines": 4
+      },
+      {
+        "reason": "вводный текст",
+        "lines": 2
+      },
+      {
+        "reason": "описание (контекст для проверки)",
+        "lines": 2
+      }
+    ],
+    "recovered": 0,
+    "uncovered_before_recovery": 0
+  },
+  "criteria_matrix": {
+    "criteria": [
+      {
+        "key": "necessary",
+        "name": "Необходимость"
+      },
+      {
+        "key": "appropriate",
+        "name": "Уместный уровень (без проектных решений)"
+      },
+      {
+        "key": "unambiguous",
+        "name": "Однозначность"
+      },
+      {
+        "key": "complete",
+        "name": "Полнота"
+      },
+      {
+        "key": "singular",
+        "name": "Единичность (атомарность)"
+      },
+      {
+        "key": "feasible",
+        "name": "Реализуемость"
+      },
+      {
+        "key": "verifiable",
+        "name": "Проверяемость"
+      },
+      {
+        "key": "correct",
+        "name": "Корректность"
+      },
+      {
+        "key": "conforming",
+        "name": "Соответствие шаблону"
+      }
+    ],
+    "rows": [
+      {
+        "rid": "R-001",
+        "doc_id": "FR-01",
+        "cells": {
+          "unambiguous": "major"
+        }
+      },
+      {
+        "rid": "R-002",
+        "doc_id": "FR-02",
+        "cells": {}
+      },
+      {
+        "rid": "R-003",
+        "doc_id": "FR-03",
+        "cells": {
+          "unambiguous": "major"
+        }
+      },
+      {
+        "rid": "R-004",
+        "doc_id": "FR-04",
+        "cells": {}
+      },
+      {
+        "rid": "R-005",
+        "doc_id": "FR-05",
+        "cells": {}
+      },
+      {
+        "rid": "R-006",
+        "doc_id": "FR-06",
+        "cells": {}
+      },
+      {
+        "rid": "R-007",
+        "doc_id": "FR-07",
+        "cells": {
+          "unambiguous": "major"
+        }
+      },
+      {
+        "rid": "R-008",
+        "doc_id": "FR-08",
+        "cells": {
+          "verifiable": "critical"
+        }
+      },
+      {
+        "rid": "R-009",
+        "doc_id": "FR-09",
+        "cells": {
+          "unambiguous": "major"
+        }
+      },
+      {
+        "rid": "R-010",
+        "doc_id": "FR-10",
+        "cells": {
+          "unambiguous": "major"
+        }
+      },
+      {
+        "rid": "R-011",
+        "doc_id": "FR-11",
+        "cells": {
+          "unambiguous": "major"
+        }
+      },
+      {
+        "rid": "R-012",
+        "doc_id": "FR-12",
+        "cells": {
+          "unambiguous": "major"
+        }
+      },
+      {
+        "rid": "R-013",
+        "doc_id": "NFR-01",
+        "cells": {
+          "unambiguous": "major"
+        }
+      },
+      {
+        "rid": "R-014",
+        "doc_id": "NFR-02",
+        "cells": {
+          "unambiguous": "major"
+        }
+      },
+      {
+        "rid": "R-015",
+        "doc_id": "NFR-03",
+        "cells": {
+          "verifiable": "major",
+          "unambiguous": "major"
+        }
+      },
+      {
+        "rid": "R-016",
+        "doc_id": null,
+        "cells": {}
+      }
+    ]
+  },
+  "acceptance_coverage": {
+    "percent": 0,
+    "covered": [],
+    "uncovered": [
+      {
+        "rid": "R-001",
+        "doc_id": "FR-01",
+        "text": "Поле «Номер телефона получателя» должно принимать только значения формата +7XXXXXXXXXX (код страны +7 и 10 цифр); при…"
+      },
+      {
+        "rid": "R-002",
+        "doc_id": "FR-02",
+        "text": "Поиск Получателя по номеру телефона должен выполняться через Redis-кэш справочника клиентов с TTL 15 минут, который…"
+      },
+      {
+        "rid": "R-003",
+        "doc_id": "FR-03",
+        "text": "Перед подтверждением перевода система должна показывать Отправителю имя Получателя в формате «Имя и первая буква…"
+      },
+      {
+        "rid": "R-004",
+        "doc_id": "FR-04",
+        "text": "Система должна отклонять перевод на сумму менее 100 тенге с сообщением «Минимальная сумма перевода — 100 тенге».…"
+      },
+      {
+        "rid": "R-005",
+        "doc_id": "FR-05",
+        "text": "Отправитель без статуса «Расширенный профиль» может выполнить не более 3 переводов в сутки. Приоритет: средний."
+      },
+      {
+        "rid": "R-006",
+        "doc_id": "FR-06",
+        "text": "Система должна отклонять введённый OTP, если с момента отправки SMS прошло более 180 секунд. Приоритет: высокий."
+      },
+      {
+        "rid": "R-007",
+        "doc_id": "FR-07",
+        "text": "Межбанковский перевод через СМП считается выполненным после получения от СМП подтверждения о зачислении средств…"
+      },
+      {
+        "rid": "R-008",
+        "doc_id": "FR-08",
+        "text": "Получатель — клиент Банка должен своевременно получать push-уведомление о зачислении перевода. Приоритет: средний."
+      },
+      {
+        "rid": "R-009",
+        "doc_id": "FR-09",
+        "text": "Отправитель должен иметь возможность сохранить Получателя в «Избранное», повторить перевод из истории операций, скачать…"
+      },
+      {
+        "rid": "R-010",
+        "doc_id": "FR-10",
+        "text": "Переводы клиентам Банка по номеру телефона выполняются без комиссии независимо от суммы перевода. Приоритет: высокий."
+      },
+      {
+        "rid": "R-011",
+        "doc_id": "FR-11",
+        "text": "За перевод клиенту Банка на сумму свыше 100 000 тенге взимается комиссия 0,2% от суммы перевода. Приоритет: высокий."
+      },
+      {
+        "rid": "R-012",
+        "doc_id": "FR-12",
+        "text": "Суточный лимит переводов для одного плательщика составляет 1 000 000 тенге; перевод, после которого сумма переводов…"
+      },
+      {
+        "rid": "R-013",
+        "doc_id": "NFR-01",
+        "text": "Время ответа сервиса поиска Получателя по номеру телефона не должно превышать 2 секунд для 95% запросов при нагрузке до…"
+      },
+      {
+        "rid": "R-014",
+        "doc_id": "NFR-02",
+        "text": "Сервис переводов должен быть доступен 100% времени, без плановых и внеплановых простоев. Приоритет: высокий."
+      },
+      {
+        "rid": "R-015",
+        "doc_id": "NFR-03",
+        "text": "Интерфейс перевода должен вызывать у клиентов ощущение надёжности и доверия к Банку. Приоритет: низкий."
+      }
+    ],
+    "acceptance_rows": 0,
+    "method": "оценка: общие термины правила и строки приёмки (≥ 3) или связь, найденная перекрёстной проверкой"
+  },
+  "review_stats": {
+    "proposed": 15,
+    "confirmed": 15,
+    "rejected": 0,
+    "unconfirmed_quotes": 0,
+    "calibration": {
+      "test_probe_dropped": 0,
+      "capped": 0,
+      "folded": 0
+    },
+    "self_check": null,
+    "focused": null
+  },
+  "verdict": {
+    "development": "нельзя",
+    "testing": "нельзя",
+    "rule": "Разработка: «нельзя» при любом критичном дефекте, «с оговорками» — при существенных. Тестирование: «нельзя» при критичных противоречиях, неоднозначностях или непроверяемости, «с оговорками» — при остальных критичных или существенных дефектах этих критериев."
+  },
+  "fix_plan": [
+    {
+      "severity": "critical",
+      "ids": [
+        "R-008"
+      ],
+      "reqs": [
+        "R-008"
+      ],
+      "title": "FR-08: Размытая характеристика скорости без числового порога — требование нельзя проверить.",
+      "action": "Задать измеримый порог: время отклика (например, ≤ N с для 95 % запросов) и условия измерения (нагрузка, среда).",
+      "example": "≤ N с для 95 % запросов",
+      "example_source": "из рекомендации"
+    },
+    {
+      "severity": "major",
+      "ids": [
+        "R-001",
+        "R-003",
+        "R-007",
+        "R-009",
+        "R-010",
+        "R-011",
+        "R-012",
+        "R-013",
+        "R-014",
+        "R-015"
+      ],
+      "reqs": [
+        "R-001",
+        "R-003",
+        "R-007",
+        "R-009",
+        "R-010",
+        "R-011",
+        "R-012",
+        "R-013",
+        "R-014",
+        "R-015"
+      ],
+      "title": "Однозначность: замечаний — 10",
+      "action": "Заменить конкретным числом с единицами измерения и границами.",
+      "example": "",
+      "example_source": ""
+    },
+    {
+      "severity": "major",
+      "ids": [
+        "R-015"
+      ],
+      "reqs": [
+        "R-015"
+      ],
+      "title": "Проверяемость: замечаний — 1",
+      "action": "Указать метрику: доступность ≥ 99,9 % в месяц, RTO/RPO, конкретные требования/стандарт безопасности.",
+      "example": "",
+      "example_source": ""
+    },
+    {
+      "severity": "major",
+      "ids": [
+        "S-01"
+      ],
+      "reqs": [],
+      "title": "Возможность валидации: замечаний — 1",
+      "action": "Добавить по каждому правилу хотя бы один пример «исходные условия → действие → ожидаемый результат», включая граничные значения и отрицательные сценарии.",
+      "example": "исходные условия → действие → ожидаемый результат",
+      "example_source": "из рекомендации"
+    }
+  ],
+  "citation_audit": {
+    "total": 18,
+    "exact": 18,
+    "fuzzy": 0,
+    "missing": 0,
+    "without_quote": 0,
+    "dropped": 0,
+    "verified": 18,
+    "percent": 100
+  },
+  "glossary": {
+    "terms": [
+      {
+        "term": "Получатель",
+        "definition": "физическое лицо, которому адресован перевод; идентифицируется по номеру мобильного телефона.",
+        "count": 8,
+        "defined": true,
+        "reqs": [
+          "R-001",
+          "R-002",
+          "R-003",
+          "R-007",
+          "R-008",
+          "R-009",
+          "R-013"
+        ]
+      },
+      {
+        "term": "Отправитель",
+        "definition": "клиент Банка (физическое лицо), инициирующий перевод в мобильном приложении.",
+        "count": 4,
+        "defined": true,
+        "reqs": [
+          "R-003",
+          "R-005",
+          "R-009"
+        ]
+      },
+      {
+        "term": "СМП",
+        "definition": "Система мгновенных платежей Национального Банка Республики Казахстан.",
+        "count": 0,
+        "defined": true,
+        "reqs": [
+          "R-007",
+          "R-016"
+        ]
+      },
+      {
+        "term": "OTP",
+        "definition": "одноразовый код подтверждения из 6 цифр, отправляемый в SMS на номер телефона Отправителя.",
+        "count": 0,
+        "defined": true,
+        "reqs": [
+          "R-006"
+        ]
+      },
+      {
+        "term": "перевода",
+        "definition": "",
+        "count": 19,
+        "defined": false,
+        "reqs": [
+          "R-003",
+          "R-004",
+          "R-005",
+          "R-007",
+          "R-008",
+          "R-009",
+          "R-010",
+          "R-011",
+          "R-012",
+          "R-014",
+          "R-015",
+          "R-016"
+        ]
+      },
+      {
+        "term": "Приоритет",
+        "definition": "",
+        "count": 15,
+        "defined": false,
+        "reqs": [
+          "R-001",
+          "R-002",
+          "R-003",
+          "R-004",
+          "R-005",
+          "R-006",
+          "R-007",
+          "R-008",
+          "R-009",
+          "R-010",
+          "R-011",
+          "R-012",
+          "R-013",
+          "R-014",
+          "R-015"
+        ]
+      },
+      {
+        "term": "высокий",
+        "definition": "",
+        "count": 10,
+        "defined": false,
+        "reqs": [
+          "R-001",
+          "R-003",
+          "R-004",
+          "R-006",
+          "R-007",
+          "R-010",
+          "R-011",
+          "R-012",
+          "R-013",
+          "R-014"
+        ]
+      },
+      {
+        "term": "телефона",
+        "definition": "",
+        "count": 4,
+        "defined": false,
+        "reqs": [
+          "R-001",
+          "R-002",
+          "R-010",
+          "R-013"
+        ]
+      },
+      {
+        "term": "тенге",
+        "definition": "",
+        "count": 4,
+        "defined": false,
+        "reqs": [
+          "R-004",
+          "R-011",
+          "R-012"
+        ]
+      },
+      {
+        "term": "Банка",
+        "definition": "",
+        "count": 4,
+        "defined": false,
+        "reqs": [
+          "R-008",
+          "R-010",
+          "R-011",
+          "R-016"
+        ]
+      },
+      {
+        "term": "номеру",
+        "definition": "",
+        "count": 3,
+        "defined": false,
+        "reqs": [
+          "R-002",
+          "R-010",
+          "R-013"
+        ]
+      },
+      {
+        "term": "средний",
+        "definition": "",
+        "count": 3,
+        "defined": false,
+        "reqs": [
+          "R-002",
+          "R-005",
+          "R-008"
+        ]
+      },
+      {
+        "term": "подтверждением",
+        "definition": "",
+        "count": 3,
+        "defined": false,
+        "reqs": [
+          "R-003",
+          "R-007"
+        ]
+      },
+      {
+        "term": "отклонять",
+        "definition": "",
+        "count": 3,
+        "defined": false,
+        "reqs": [
+          "R-004",
+          "R-006",
+          "R-012"
+        ]
+      }
+    ],
+    "synonyms": []
+  },
+  "questions": [
+    {
+      "section": "3.2. Подтверждение и выполнение перевода",
+      "ref": "R-008 (FR-08)",
+      "text": "Как проверить выполнение «Получатель — клиент Банка должен своевременно получать push-уведомлен…»? Укажите измеримый критерий приёмки (число, единицы, условия измерения). Предложение агента: Задать измеримый порог: время отклика (например, ≤ N с для 95 % запросов) и условия измерения (нагрузка, среда).",
+      "severity": "critical",
+      "rid": "R-008",
+      "criterion": "verifiable",
+      "qid": "Q-01",
+      "closes": [
+        "R-008.1"
+      ],
+      "refs": []
+    },
+    {
+      "section": "3.1. Создание перевода",
+      "ref": "R-001 (FR-01)",
+      "text": "Что именно означает «должна оставаться неактивной. Приоритет: высокий.»? Дайте одно толкование с конкретными значениями. Предложение агента: Заменить конкретным числом с единицами измерения и границами.",
+      "severity": "major",
+      "rid": "R-001",
+      "criterion": "unambiguous",
+      "qid": "Q-02",
+      "closes": [
+        "R-001.1"
+      ],
+      "refs": []
+    },
+    {
+      "section": "3.1. Создание перевода",
+      "ref": "R-003 (FR-03)",
+      "text": "Что именно означает «(например, «Айгерим С.»). Приоритет: высокий.»? Дайте одно толкование с конкретными значениями. Предложение агента: Заменить конкретным числом с единицами измерения и границами.",
+      "severity": "major",
+      "rid": "R-003",
+      "criterion": "unambiguous",
+      "qid": "Q-03",
+      "closes": [
+        "R-003.1"
+      ],
+      "refs": []
+    },
+    {
+      "section": "3.2. Подтверждение и выполнение перевода",
+      "ref": "R-007 (FR-07)",
+      "text": "Что именно означает «в статусе «В обработке». Приоритет: высокий.»? Дайте одно толкование с конкретными значениями. Предложение агента: Заменить конкретным числом с единицами измерения и границами.",
+      "severity": "major",
+      "rid": "R-007",
+      "criterion": "unambiguous",
+      "qid": "Q-04",
+      "closes": [
+        "R-007.1"
+      ],
+      "refs": []
+    },
+    {
+      "section": "3.2. Подтверждение и выполнение перевода",
+      "ref": "R-009 (FR-09)",
+      "text": "Что именно означает «квитанцию в мессенджер. Приоритет: низкий.»? Дайте одно толкование с конкретными значениями. Предложение агента: Заменить конкретным числом с единицами измерения и границами.",
+      "severity": "major",
+      "rid": "R-009",
+      "criterion": "unambiguous",
+      "qid": "Q-05",
+      "closes": [
+        "R-009.1"
+      ],
+      "refs": []
+    },
+    {
+      "section": "3.3. Комиссии и лимиты",
+      "ref": "R-010 (FR-10)",
+      "text": "Что именно означает «независимо от суммы перевода. Приоритет: высокий.»? Дайте одно толкование с конкретными значениями. Предложение агента: Заменить конкретным числом с единицами измерения и границами.",
+      "severity": "major",
+      "rid": "R-010",
+      "criterion": "unambiguous",
+      "qid": "Q-06",
+      "closes": [
+        "R-010.1"
+      ],
+      "refs": []
+    },
+    {
+      "section": "3.3. Комиссии и лимиты",
+      "ref": "R-011 (FR-11)",
+      "text": "Что именно означает «комиссия 0,2% от суммы перевода. Приоритет: высокий.»? Дайте одно толкование с конкретными значениями. Предложение агента: Заменить конкретным числом с единицами измерения и границами.",
+      "severity": "major",
+      "rid": "R-011",
+      "criterion": "unambiguous",
+      "qid": "Q-07",
+      "closes": [
+        "R-011.1"
+      ],
+      "refs": []
+    },
+    {
+      "section": "3.3. Комиссии и лимиты",
+      "ref": "R-012 (FR-12)",
+      "text": "Что именно означает «превысит лимит, отклоняется. Приоритет: высокий.»? Дайте одно толкование с конкретными значениями. Предложение агента: Заменить конкретным числом с единицами измерения и границами.",
+      "severity": "major",
+      "rid": "R-012",
+      "criterion": "unambiguous",
+      "qid": "Q-08",
+      "closes": [
+        "R-012.1"
+      ],
+      "refs": []
+    },
+    {
+      "section": "4. Нефункциональные требования",
+      "ref": "R-013 (NFR-01)",
+      "text": "Что именно означает «до 300 запросов в секунду. Приоритет: высокий.»? Дайте одно толкование с конкретными значениями. Предложение агента: Заменить конкретным числом с единицами измерения и границами.",
+      "severity": "major",
+      "rid": "R-013",
+      "criterion": "unambiguous",
+      "qid": "Q-09",
+      "closes": [
+        "R-013.1"
+      ],
+      "refs": []
+    },
+    {
+      "section": "4. Нефункциональные требования",
+      "ref": "R-014 (NFR-02)",
+      "text": "Что именно означает «плановых и внеплановых простоев. Приоритет: высокий.»? Дайте одно толкование с конкретными значениями. Предложение агента: Заменить конкретным числом с единицами измерения и границами.",
+      "severity": "major",
+      "rid": "R-014",
+      "criterion": "unambiguous",
+      "qid": "Q-10",
+      "closes": [
+        "R-014.1"
+      ],
+      "refs": []
+    },
+    {
+      "section": "4. Нефункциональные требования",
+      "ref": "R-015 (NFR-03)",
+      "text": "Как проверить выполнение «должен вызывать у клиентов ощущение надёжности и доверия к Банку. При…»? Укажите измеримый критерий приёмки (число, единицы, условия измерения). Предложение агента: Указать метрику: доступность ≥ 99,9 % в месяц, RTO/RPO, конкретные требования/стандарт безопасности.",
+      "severity": "major",
+      "rid": "R-015",
+      "criterion": "verifiable",
+      "qid": "Q-11",
+      "closes": [
+        "R-015.1"
+      ],
+      "refs": []
+    },
+    {
+      "section": "4. Нефункциональные требования",
+      "ref": "R-015 (NFR-03)",
+      "text": "Что именно означает «надёжности и доверия к Банку. Приоритет: низкий.»? Дайте одно толкование с конкретными значениями. Предложение агента: Заменить конкретным числом с единицами измерения и границами.",
+      "severity": "major",
+      "rid": "R-015",
+      "criterion": "unambiguous",
+      "qid": "Q-12",
+      "closes": [
+        "R-015.2"
+      ],
+      "refs": []
+    },
+    {
+      "section": "Набор требований",
+      "ref": "S-01",
+      "text": "Возможность валидации (R-001, R-002, R-003, R-004): Критерии приёмки покрывают 0 % правил (0 из 15). Без примеров остаются: FR-01, FR-02, FR-03, FR-04, FR-05, FR-06, FR-07, FR-08. Приёмку нельзя провести по документу — каждый тестировщик придумает свои ожидаемые результа… Как исправить: Добавить по каждому правилу хотя бы один пример «исходные условия → действие → ожидаемый результат», включая граничные значения и отрицательные сценарии.",
+      "severity": "major",
+      "rid": "S-01",
+      "criterion": "set_validatable",
+      "qid": "Q-13",
+      "closes": [
+        "S-01"
+      ],
+      "refs": [
+        "R-001",
+        "R-002",
+        "R-003",
+        "R-004"
+      ]
+    },
+    {
+      "section": "Доменная полнота (финтех)",
+      "ref": "crypto",
+      "text": "Шифрование данных при передаче и хранении: Какие данные шифруются при хранении и передаче и по какому стандарту/алгоритму?",
+      "severity": "major",
+      "rid": "",
+      "criterion": "",
+      "qid": "Q-14",
+      "closes": [],
+      "refs": []
+    },
+    {
+      "section": "Доменная полнота (финтех)",
+      "ref": "access",
+      "text": "Роли и права доступа: Какие роли есть в системе (клиент, оператор, администратор) и какие права у каждой?",
+      "severity": "major",
+      "rid": "",
+      "criterion": "",
+      "qid": "Q-15",
+      "closes": [],
+      "refs": []
+    },
+    {
+      "section": "Доменная полнота (финтех)",
+      "ref": "audit",
+      "text": "Аудит-лог действий: Какие действия журналируются, какие поля фиксируются и сколько хранится журнал?",
+      "severity": "major",
+      "rid": "",
+      "criterion": "",
+      "qid": "Q-16",
+      "closes": [],
+      "refs": []
+    },
+    {
+      "section": "Доменная полнота (финтех)",
+      "ref": "fraud",
+      "text": "Антифрод и AML-мониторинг: Какие операции проверяются антифрод/AML-системой, какие действия при подозрении на мошенничество?",
+      "severity": "major",
+      "rid": "",
+      "criterion": "",
+      "qid": "Q-17",
+      "closes": [],
+      "refs": []
+    },
+    {
+      "section": "Доменная полнота (финтех)",
+      "ref": "pdata",
+      "text": "Защита персональных данных: Какие персональные данные обрабатываются, где хранятся, как получается согласие клиента (Закон РК «О персональных данных и их защите»)?",
+      "severity": "major",
+      "rid": "",
+      "criterion": "",
+      "qid": "Q-18",
+      "closes": [],
+      "refs": []
+    },
+    {
+      "section": "Доменная полнота (финтех)",
+      "ref": "dr",
+      "text": "Резервирование и восстановление: Какие RTO/RPO, как часто делается резервное копирование, как восстанавливается сервис после аварии?",
+      "severity": "major",
+      "rid": "",
+      "criterion": "",
+      "qid": "Q-19",
+      "closes": [],
+      "refs": []
+    },
+    {
+      "section": "Доменная полнота (финтех)",
+      "ref": "monitoring",
+      "text": "Мониторинг и оповещения: Какие показатели мониторятся и кто получает оповещения об инцидентах?",
+      "severity": "major",
+      "rid": "",
+      "criterion": "",
+      "qid": "Q-20",
+      "closes": [],
+      "refs": []
+    },
+    {
+      "section": "Доменная полнота (финтех)",
+      "ref": "notify",
+      "text": "Уведомления клиента: О каких событиях и каким каналом уведомляется клиент (push, SMS, e-mail)?",
+      "severity": "major",
+      "rid": "",
+      "criterion": "",
+      "qid": "Q-21",
+      "closes": [],
+      "refs": []
+    },
+    {
+      "section": "Доменная полнота (финтех)",
+      "ref": "a11y",
+      "text": "Доступность интерфейса для людей с ограничениями: Должен ли интерфейс соответствовать требованиям доступности (например, WCAG 2.1 AA)?",
+      "severity": "major",
+      "rid": "",
+      "criterion": "",
+      "qid": "Q-22",
+      "closes": [],
+      "refs": []
+    }
+  ],
+  "changes": [],
+  "graph": {
+    "nodes": [
+      {
+        "id": "R-001",
+        "label": "FR-01",
+        "severity": "major",
+        "text": "Поле «Номер телефона получателя» должно принимать только значения формата +7XXXXXXXXXX (код страны +7 и 10 цифр); при любом другом значен…",
+        "section": "3.1. Создание перевода",
+        "type": "",
+        "nfind": 1,
+        "score": 85,
+        "degree": 0
+      },
+      {
+        "id": "R-002",
+        "label": "FR-02",
+        "severity": "ok",
+        "text": "Поиск Получателя по номеру телефона должен выполняться через Redis-кэш справочника клиентов с TTL 15 минут, который перезагружается из та…",
+        "section": "3.1. Создание перевода",
+        "type": "",
+        "nfind": 0,
+        "score": 100,
+        "degree": 0
+      },
+      {
+        "id": "R-003",
+        "label": "FR-03",
+        "severity": "major",
+        "text": "Перед подтверждением перевода система должна показывать Отправителю имя Получателя в формате «Имя и первая буква фамилии» (например, «Айг…",
+        "section": "3.1. Создание перевода",
+        "type": "",
+        "nfind": 1,
+        "score": 85,
+        "degree": 0
+      },
+      {
+        "id": "R-004",
+        "label": "FR-04",
+        "severity": "ok",
+        "text": "Система должна отклонять перевод на сумму менее 100 тенге с сообщением «Минимальная сумма перевода — 100 тенге». Приоритет: высокий.",
+        "section": "3.1. Создание перевода",
+        "type": "",
+        "nfind": 0,
+        "score": 100,
+        "degree": 0
+      },
+      {
+        "id": "R-005",
+        "label": "FR-05",
+        "severity": "ok",
+        "text": "Отправитель без статуса «Расширенный профиль» может выполнить не более 3 переводов в сутки. Приоритет: средний.",
+        "section": "3.1. Создание перевода",
+        "type": "",
+        "nfind": 0,
+        "score": 100,
+        "degree": 0
+      },
+      {
+        "id": "R-006",
+        "label": "FR-06",
+        "severity": "ok",
+        "text": "Система должна отклонять введённый OTP, если с момента отправки SMS прошло более 180 секунд. Приоритет: высокий.",
+        "section": "3.2. Подтверждение и выполнение перевода",
+        "type": "",
+        "nfind": 0,
+        "score": 100,
+        "degree": 0
+      },
+      {
+        "id": "R-007",
+        "label": "FR-07",
+        "severity": "major",
+        "text": "Межбанковский перевод через СМП считается выполненным после получения от СМП подтверждения о зачислении средств Получателю; до получения…",
+        "section": "3.2. Подтверждение и выполнение перевода",
+        "type": "",
+        "nfind": 1,
+        "score": 85,
+        "degree": 0
+      },
+      {
+        "id": "R-008",
+        "label": "FR-08",
+        "severity": "critical",
+        "text": "Получатель — клиент Банка должен своевременно получать push-уведомление о зачислении перевода. Приоритет: средний.",
+        "section": "3.2. Подтверждение и выполнение перевода",
+        "type": "",
+        "nfind": 1,
+        "score": 65,
+        "degree": 0
+      },
+      {
+        "id": "R-009",
+        "label": "FR-09",
+        "severity": "major",
+        "text": "Отправитель должен иметь возможность сохранить Получателя в «Избранное», повторить перевод из истории операций, скачать квитанцию о перев…",
+        "section": "3.2. Подтверждение и выполнение перевода",
+        "type": "",
+        "nfind": 1,
+        "score": 85,
+        "degree": 0
+      },
+      {
+        "id": "R-010",
+        "label": "FR-10",
+        "severity": "major",
+        "text": "Переводы клиентам Банка по номеру телефона выполняются без комиссии независимо от суммы перевода. Приоритет: высокий.",
+        "section": "3.3. Комиссии и лимиты",
+        "type": "",
+        "nfind": 1,
+        "score": 85,
+        "degree": 0
+      },
+      {
+        "id": "R-011",
+        "label": "FR-11",
+        "severity": "major",
+        "text": "За перевод клиенту Банка на сумму свыше 100 000 тенге взимается комиссия 0,2% от суммы перевода. Приоритет: высокий.",
+        "section": "3.3. Комиссии и лимиты",
+        "type": "",
+        "nfind": 1,
+        "score": 85,
+        "degree": 0
+      },
+      {
+        "id": "R-012",
+        "label": "FR-12",
+        "severity": "major",
+        "text": "Суточный лимит переводов для одного плательщика составляет 1 000 000 тенге; перевод, после которого сумма переводов инициатора за календа…",
+        "section": "3.3. Комиссии и лимиты",
+        "type": "",
+        "nfind": 1,
+        "score": 85,
+        "degree": 0
+      },
+      {
+        "id": "R-013",
+        "label": "NFR-01",
+        "severity": "major",
+        "text": "Время ответа сервиса поиска Получателя по номеру телефона не должно превышать 2 секунд для 95% запросов при нагрузке до 300 запросов в се…",
+        "section": "4. Нефункциональные требования",
+        "type": "",
+        "nfind": 1,
+        "score": 85,
+        "degree": 0
+      },
+      {
+        "id": "R-014",
+        "label": "NFR-02",
+        "severity": "major",
+        "text": "Сервис переводов должен быть доступен 100% времени, без плановых и внеплановых простоев. Приоритет: высокий.",
+        "section": "4. Нефункциональные требования",
+        "type": "",
+        "nfind": 1,
+        "score": 85,
+        "degree": 0
+      },
+      {
+        "id": "R-015",
+        "label": "NFR-03",
+        "severity": "major",
+        "text": "Интерфейс перевода должен вызывать у клиентов ощущение надёжности и доверия к Банку. Приоритет: низкий.",
+        "section": "4. Нефункциональные требования",
+        "type": "",
+        "nfind": 2,
+        "score": 70,
+        "degree": 0
+      },
+      {
+        "id": "R-016",
+        "label": "R-016",
+        "severity": "ok",
+        "text": "Сервис переводов взаимодействует с автоматизированной банковской системой (АБС), СМП и SMS-шлюзом Банка.",
+        "section": "5. Интерфейсы и интеграции",
+        "type": "",
+        "nfind": 0,
+        "score": 100,
+        "degree": 0
+      }
+    ],
+    "edges": []
+  },
+  "dropped": [],
+  "rejected": [],
+  "compare": null,
+  "rescore": null,
+  "decisions": [],
+  "traceability": {
+    "nodes": [
+      {
+        "id": "R-001",
+        "type": "requirement",
+        "label": "FR-01",
+        "quote": "Поле «Номер телефона получателя» должно принимать только значения формата",
+        "line": 22
+      },
+      {
+        "id": "R-002",
+        "type": "requirement",
+        "label": "FR-02",
+        "quote": "Поиск Получателя по номеру телефона должен выполняться через Redis-кэш",
+        "line": 24
+      },
+      {
+        "id": "R-003",
+        "type": "requirement",
+        "label": "FR-03",
+        "quote": "Перед подтверждением перевода система должна показывать Отправителю имя",
+        "line": 26
+      },
+      {
+        "id": "R-004",
+        "type": "requirement",
+        "label": "FR-04",
+        "quote": "Система должна отклонять перевод на сумму менее 100 тенге с сообщением",
+        "line": 28
+      },
+      {
+        "id": "R-005",
+        "type": "requirement",
+        "label": "FR-05",
+        "quote": "Отправитель без статуса «Расширенный профиль» может выполнить не более 3",
+        "line": 30
+      },
+      {
+        "id": "R-006",
+        "type": "requirement",
+        "label": "FR-06",
+        "quote": "Система должна отклонять введённый OTP, если с момента отправки SMS прошло более",
+        "line": 34
+      },
+      {
+        "id": "R-007",
+        "type": "requirement",
+        "label": "FR-07",
+        "quote": "Межбанковский перевод через СМП считается выполненным после получения от СМП",
+        "line": 36
+      },
+      {
+        "id": "R-008",
+        "type": "requirement",
+        "label": "FR-08",
+        "quote": "Получатель — клиент Банка должен своевременно получать push-уведомление о",
+        "line": 38
+      },
+      {
+        "id": "R-009",
+        "type": "requirement",
+        "label": "FR-09",
+        "quote": "Отправитель должен иметь возможность сохранить Получателя в «Избранное»",
+        "line": 40
+      },
+      {
+        "id": "R-010",
+        "type": "requirement",
+        "label": "FR-10",
+        "quote": "Переводы клиентам Банка по номеру телефона выполняются без комиссии независимо",
+        "line": 44
+      },
+      {
+        "id": "R-011",
+        "type": "requirement",
+        "label": "FR-11",
+        "quote": "За перевод клиенту Банка на сумму свыше 100 000 тенге взимается комиссия 0,2% от",
+        "line": 46
+      },
+      {
+        "id": "R-012",
+        "type": "requirement",
+        "label": "FR-12",
+        "quote": "Суточный лимит переводов для одного плательщика составляет 1 000 000 тенге",
+        "line": 48
+      },
+      {
+        "id": "R-013",
+        "type": "requirement",
+        "label": "NFR-01",
+        "quote": "Время ответа сервиса поиска Получателя по номеру телефона не должно превышать 2",
+        "line": 52
+      },
+      {
+        "id": "R-014",
+        "type": "requirement",
+        "label": "NFR-02",
+        "quote": "Сервис переводов должен быть доступен 100% времени, без плановых и внеплановых",
+        "line": 54
+      },
+      {
+        "id": "R-015",
+        "type": "requirement",
+        "label": "NFR-03",
+        "quote": "Интерфейс перевода должен вызывать у клиентов ощущение надёжности и доверия к",
+        "line": 56
+      },
+      {
+        "id": "R-016",
+        "type": "requirement",
+        "label": "R-016",
+        "quote": "Сервис переводов взаимодействует с автоматизированной банковской системой (АБС)",
+        "line": 60
+      }
+    ],
+    "edges": [],
+    "gaps": [],
+    "stats": {
+      "nodes": {
+        "requirement": 16
+      },
+      "edges": {},
+      "gaps": 0,
+      "new_findings": 0,
+      "linked": 0
+    }
+  },
+  "compliance": {
+    "checks": [
+      {
+        "id": "pii_unmasked",
+        "title": "Персональные данные без маскирования",
+        "norm": "Закон РК «О персональных данных и их защите» — хранение и защита",
+        "kb": "pdata_storage",
+        "status": "not_applicable",
+        "where": [],
+        "finding": ""
+      },
+      {
+        "id": "secrets_in_logs",
+        "title": "Секреты в журналах",
+        "norm": "Требования к информационной безопасности банков — аутентификация и журналирование",
+        "kb": "infosec",
+        "status": "not_applicable",
+        "where": [],
+        "finding": ""
+      },
+      {
+        "id": "card_storage",
+        "title": "Хранение CVV / ПИН / полного номера карты",
+        "norm": "PCI DSS — запрет хранения CVV/ПИН после авторизации, маскирование номера карты",
+        "kb": "pci",
+        "status": "not_applicable",
+        "where": [],
+        "finding": ""
+      },
+      {
+        "id": "optional_auth",
+        "title": "Необязательное подтверждение операции",
+        "norm": "Закон РК «О платежах и платёжных системах» — безопасность платёжных услуг",
+        "kb": "payments",
+        "status": "not_applicable",
+        "where": [],
+        "finding": ""
+      },
+      {
+        "id": "no_auth",
+        "title": "Денежные операции без описанного подтверждения",
+        "norm": "Закон РК «О платежах и платёжных системах» — безопасность платёжных услуг",
+        "kb": "payments",
+        "status": "passed",
+        "where": [],
+        "finding": ""
+      },
+      {
+        "id": "no_audit",
+        "title": "Нет журнала аудита операций и изменений",
+        "norm": "Требования к информационной безопасности банков — аутентификация и журналирование",
+        "kb": "infosec",
+        "status": "fired",
+        "where": [
+          "FR-03"
+        ],
+        "finding": "S-02",
+        "new": false
+      },
+      {
+        "id": "no_consent",
+        "title": "Сбор персональных данных без согласия",
+        "norm": "Закон РК «О персональных данных и их защите» — согласие",
+        "kb": "pdata",
+        "status": "not_applicable",
+        "where": [],
+        "finding": ""
+      }
+    ],
+    "fired": 1,
+    "new_findings": 0
+  }
+}
