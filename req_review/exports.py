@@ -66,6 +66,7 @@ def to_json(ctx) -> dict:
                    "tests": {"ok": sc.tests_ok, "total": sc.tests_total}, "cost_hours": sc.cost},
         "requirements": [{
             "rid": rr.req.rid, "doc_id": rr.req.doc_id, "text": rr.req.text, "section": rr.req.section,
+            "kind": getattr(rr.req, "kind", "requirement"),
             "location": rr.req.location, "line_start": rr.req.line_start, "line_end": rr.req.line_end, "page": rr.req.page,
             "score": sc.req[rr.req.rid], "ears": rr.ears, "rewrite": rr.rewrite, "llm_checked": rr.llm_checked,
             "rewrite_pattern": rr.rewrite_pattern, "category": rr.category,

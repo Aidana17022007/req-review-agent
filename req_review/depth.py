@@ -20,6 +20,7 @@ from .checker import SetFinding, SetRef, _ctx
 from .criteria import INDIVIDUAL, criterion_name
 from .reader import Document
 from .splitter import EXCLUDED_SECTION_RE, MODAL_RE, Requirement
+from .textutil import clip, clip_quote, first_sentence
 
 ORDER = {"critical": 0, "major": 1, "minor": 2}
 
@@ -191,7 +192,7 @@ def state_after_error(reqs: list[Requirement], doc: Document) -> list[SetFinding
     by_line = {r.line_start: r for r in reqs}
     refs = [_ref(by_line, s500[0], re.search(r"500", s500[0].text).group(0))]
     if mut_line:
-        refs.append(_ref(by_line, mut_line, mut_line.text.strip().split(" ", 1)[-1][:60]))
+        refs.append(_ref(by_line, mut_line, clip_quote(mut_line.text.strip().split(" ", 1)[-1], 60)))
     refs[0] = SetRef(refs[0].req_id, _ctx(s500[0].text.strip(), "500"))
     return [SetFinding(
         "gap", "set_complete", refs,
@@ -439,7 +440,7 @@ def missing_default(reqs: list[Requirement], doc: Document) -> list[SetFinding]:
     name = r.doc_id or r.rid
     return [SetFinding(
         "gap", "set_complete", [SetRef(r.rid, _ctx(r.text, q))],
-        f"Не задано значение по умолчанию для параметра, который настраивается в {name} («{q[:70]}»): неизвестно, что хранится и "
+        f"Не задано значение по умолчанию для параметра, который настраивается в {name} («{clip_quote(q, 70)}»): неизвестно, что хранится и "
         "что показывает экран до первого сохранения, и чем первое сохранение отличается от изменения. Разработчик "
         "выберет сам (0, пусто или минимум диапазона), тестировщику не с чем сравнивать.", "major",
         "Дописать: «До первого сохранения порог не задан: экран показывает пустое поле, уведомление выключено, метод "
@@ -587,7 +588,7 @@ def line_coverage(doc: Document, reqs: list[Requirement]) -> dict:
             skip("метаданные")
         elif MODAL_RE.search(t) and not EXCLUDED_SECTION_RE.search(section) and not t.startswith(">"):
             skip("утверждение без идентификатора — см. замечания к набору")
-            out.setdefault("unnumbered", []).append({"line": ln.lineno, "section": section, "text": t[:160]})
+            out.setdefault("unnumbered", []).append({"line": ln.lineno, "section": section, "text": clip(t, 160)})
         elif EXCLUDED_SECTION_RE.search(section):
             skip(f"раздел шаблона «{section[:40]}»")
         elif _DESCRIPTIVE.search(section):
@@ -599,7 +600,7 @@ def line_coverage(doc: Document, reqs: list[Requirement]) -> dict:
         elif re.fullmatch(r"(?:или|либо|or)\W*", t, re.I):
             skip("разметка")
         else:
-            out["uncovered"].append({"line": ln.lineno, "section": section, "text": t[:160]})
+            out["uncovered"].append({"line": ln.lineno, "section": section, "text": clip(t, 160)})
     out["accounted"] = out["total"] - len(out["uncovered"])
     out["percent"] = round(100 * out["accounted"] / out["total"]) if out["total"] else 100
     out["excluded"] = [{"reason": k, "lines": v} for k, v in sorted(reasons.items(), key=lambda kv: -kv[1])]
@@ -697,7 +698,7 @@ def acceptance_coverage(rv) -> dict:
     for r in rules:
         rs = _stems(r.text)
         ok = r.rid in linked or any(len(rs & _stems(a.text)) >= 3 for a in acc)
-        (covered if ok else uncovered).append({"rid": r.rid, "doc_id": r.doc_id, "text": r.text[:120]})
+        (covered if ok else uncovered).append({"rid": r.rid, "doc_id": r.doc_id, "text": clip(r.text, 120)})
     pct = round(100 * len(covered) / len(rules))
     return {"percent": pct, "covered": covered, "uncovered": uncovered, "acceptance_rows": len(acc),
             "method": "оценка: общие термины правила и строки приёмки (≥ 3) или связь, найденная перекрёстной проверкой"}
@@ -708,12 +709,107 @@ def acceptance_gap(rv, cov: dict) -> SetFinding | None:
         return None
     unc = cov["uncovered"][:4]
     return SetFinding(
-        "gap", "set_validatable", [SetRef(u["rid"], u["text"][:60]) for u in unc],
+        "gap", "set_validatable", [SetRef(u["rid"], clip_quote(next(rr.req.text for rr in rv.req_results if rr.req.rid == u["rid"]), 60)) for u in unc],
         f"Критерии приёмки покрывают {cov['percent']} % правил ({len(cov['covered'])} из {len(cov['covered']) + len(cov['uncovered'])}). "
         f"Без примеров остаются: {', '.join(u['doc_id'] or u['rid'] for u in cov['uncovered'][:8])}. "
         "Приёмку нельзя провести по документу — каждый тестировщик придумает свои ожидаемые результаты.",
         "major", "Добавить по каждому правилу хотя бы один пример «исходные условия → действие → ожидаемый результат», "
         "включая граничные значения и отрицательные сценарии.", "правило")
+
+
+# ---------------------------------------------------------------- калибровка серьёзности (v8)
+
+def _russian(text: str) -> bool:
+    """Текст замечания написан по-русски: кириллица — не меньше трети букв (английские термины и коды допустимы)."""
+    letters = [c for c in text if c.isalpha()]
+    return not letters or sum("а" <= c.lower() <= "я" or c in "ёЁ" for c in letters) >= len(letters) / 3
+
+
+def _same_problem(f, r) -> bool:
+    """Два замечания к набору — об одном, если совпадает не меньше половины ключевых слов (минимум 5).
+    Порог строгий: при более низком склеиваются разные дефекты (пример 31 января и Ф-3/Ф-4).
+    Общая цитата сама по себе не дубль: к одной строке таблицы приёмки могут относиться разные дефекты."""
+    a, b = _stems(f.problem), _stems(r.problem)
+    return len(a & b) >= max(5, min(len(a), len(b)) // 2)
+
+
+def calibrate_severity(rv) -> dict:
+    """Меньше шума в критичных:
+    1) тест-проба применяется к требованиям: строка таблицы API, строка приёмки или заглушка — не требование,
+       «тест составить невозможно» к ним не относится (замечание уходит в rejected с причиной);
+    2) замечание к элементу, который не является требованием (спецификация API, приёмка, заглушка), не выше
+       существенного: критичный дефект такого места — это дефект набора, и он описан замечанием S-xx;
+    3) замечание к требованию, повторяющее критичное замечание к набору про то же место, сворачивается в «дубль S-xx»;
+    0) в наборе: замечание модели, повторяющее замечание правила, — «дубль S-xx»; критичное замечание модели без
+       подтверждения правилом остаётся критичным только для противоречия.
+    Возвращает статистику {"test_probe_dropped", "capped", "folded"}."""
+    st = {"test_probe_dropped": 0, "capped": 0, "folded": 0}
+    # 0) набор: замечание модели, повторяющее замечание правила (та же суть), — дубль правила; критичное замечание
+    #    модели без подтверждения правилом — критично только для противоречия (два места документа спорят)
+    order = {"critical": 0, "major": 1, "minor": 2}
+    rules = [f for f in rv.set_findings if "правило" in f.source]
+    keep_set, merged = [], []
+    for f in rv.set_findings:
+        if "правило" not in f.source and not _russian(f.problem):  # отчёт — на русском (ТЗ)
+            rv.rejected.append({"where": "набор", "quote": " / ".join(x.quote for x in f.refs), "problem": f.problem,
+                                "reason": "ответ модели не на русском языке — отчёт по ТЗ на русском"})
+            continue
+        if "правило" not in f.source:
+            twin = next((r for r in rules if _same_problem(f, r)), None)
+            if twin is not None:  # серьёзность правила выверена бенчмарком — дубль модели её не повышает
+                if "LLM" not in twin.source:
+                    twin.source = f"{twin.source}+LLM"
+                from .critic import absorb
+
+                absorb(twin, f)
+                merged.append((f, twin))
+                continue
+            if f.severity == "critical" and f.kind != "contradiction":
+                f.severity = "major"
+                f.critic_note = (f.critic_note + " " if f.critic_note else "") + \
+                    "Серьёзность: существенная — пропуск найден моделью без подтверждения правилом."
+                st["capped"] += 1
+        keep_set.append(f)
+    rv.set_findings = sorted(keep_set, key=lambda f: order[f.severity])
+    sid = {id(f): f"S-{i:02d}" for i, f in enumerate(rv.set_findings, 1)}
+    for f, twin in merged:
+        rv.rejected.append({"where": "набор", "quote": " / ".join(x.quote for x in f.refs), "problem": f.problem,
+                            "reason": f"дубль {sid[id(twin)]}: та же проблема найдена правилом", "duplicate_of": sid[id(twin)]})
+        st["folded"] += 1
+    crit_set = [f for f in rv.set_findings if f.severity == "critical"]
+    for rr in rv.req_results:
+        kind = getattr(rr.req, "kind", "requirement")
+        keep = []
+        for f in rr.findings:
+            if "правило" not in f.source and not _russian(f.problem):
+                rv.rejected.append({"where": rr.req.rid, "quote": f.quote, "problem": f.problem,
+                                    "reason": "ответ модели не на русском языке — отчёт по ТЗ на русском"})
+                continue
+            if kind != "requirement" and f.source == "тест-проба":
+                rv.rejected.append({"where": rr.req.rid, "quote": f.quote, "problem": f.problem,
+                                    "reason": "тест-проба применяется к требованиям, а это "
+                                              + {"spec": "элемент спецификации API", "acceptance": "критерий приёмки",
+                                                 "placeholder": "незаполненное место"}.get(kind, kind)})
+                st["test_probe_dropped"] += 1
+                continue
+            dup = next((s for s in crit_set if any(x.req_id == rr.req.rid for x in s.refs)
+                        and f.severity == "critical" and len(_stems(f.problem) & _stems(s.problem)) >= 3), None)
+            if dup is not None:
+                rv.rejected.append({"where": rr.req.rid, "quote": f.quote, "problem": f.problem,
+                                    "reason": f"дубль {sid[id(dup)]}: то же место и та же проблема описаны замечанием к набору",
+                                    "duplicate_of": sid[id(dup)]})
+                st["folded"] += 1
+                continue
+            if kind != "requirement" and f.severity == "critical":
+                f.severity = "major"
+                f.critic_note = (f.critic_note + " " if f.critic_note else "") + \
+                    "Серьёзность: не выше существенной — место не является требованием (дефект набора описан отдельно)."
+                st["capped"] += 1
+            keep.append(f)
+        rr.findings = keep
+        if kind != "requirement":  # тест-проба к этому элементу не применялась
+            rr.test_possible, rr.test_gherkin, rr.test_blocker, rr.test_reason = None, "", "", ""
+    return st
 
 
 # ---------------------------------------------------------------- вердикты и план исправлений
@@ -734,8 +830,20 @@ def verdicts(rv) -> dict:
                     "остальных критичных или существенных дефектах этих критериев."}
 
 
-def _example(rv, rids: list[str], fix: str) -> tuple[str, str]:
-    """Пример правильной формулировки: переписанное моделью требование, шаблон kb/patterns или пример из рекомендации."""
+def _from_fix(fix: str) -> str:
+    m = re.search(r"[«\"]([^»\"]{20,})[»\"]", fix or "")
+    if m:
+        return m.group(1)
+    m = re.search(r"\b[Нн]апример[,:]?\s*([^);]{12,240}?)(?:\)|;|\.\s|\.$|$)", fix or "")
+    return m.group(1).strip(" ,") if m else ""
+
+
+def _example(rv, rids: list[str], fix: str, set_item: bool = False) -> tuple[str, str]:
+    """Пример правильной формулировки: переписанное моделью требование, шаблон kb/patterns или пример из рекомендации.
+    Для замечания к набору сначала — пример из его рекомендации: переписанное требование из ссылок может быть про
+    другой дефект (у S-03 «нет метода чтения» первая ссылка — строка с адресом Prod)."""
+    if set_item and (ex := _from_fix(fix)):
+        return ex, "из рекомендации"
     by = {rr.req.rid: rr for rr in rv.req_results}
     for rid in rids:
         rr = by.get(rid)
@@ -762,12 +870,12 @@ def fix_plan(rv, limit: int = 8) -> list[dict]:
     for f in sorted(rv.set_findings, key=lambda f: ORDER[f.severity]):
         if f.severity == "critical":
             items.append({"severity": "critical", "ids": [sid[id(f)]], "reqs": [r.req_id for r in f.refs if r.req_id != "DOC"],
-                          "title": f.problem.split(". ")[0][:140], "action": f.fix})
+                          "title": first_sentence(f.problem, 140), "action": f.fix})
     for rr in rv.req_results:
         for f in rr.findings:
             if f.severity == "critical":
                 items.append({"severity": "critical", "ids": [rr.req.rid], "reqs": [rr.req.rid],
-                              "title": f"{rr.req.doc_id or rr.req.rid}: {f.problem.split('. ')[0][:120]}", "action": f.fix})
+                              "title": f"{rr.req.doc_id or rr.req.rid}: {first_sentence(f.problem, 120)}", "action": f.fix})
     groups: dict[str, list] = {}
     for rr in rv.req_results:
         for f in rr.findings:
@@ -781,7 +889,8 @@ def fix_plan(rv, limit: int = 8) -> list[dict]:
                       "title": f"{criterion_name(crit)}: замечаний — {len(lst)}", "action": lst[0][1].fix})
     items = items[:limit]
     for it in items:
-        it["example"], it["example_source"] = _example(rv, it["reqs"], it["action"])
+        it["example"], it["example_source"] = _example(rv, it["reqs"], it["action"],
+                                                       set_item=any(i.startswith("S-") for i in it["ids"]))
     return items
 
 

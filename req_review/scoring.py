@@ -58,10 +58,12 @@ def req_score(findings) -> int:
 
 
 def compute(rv: ReviewResult) -> Scores:
-    reqs = rv.req_results
-    rs = {rr.req.rid: req_score(rr.findings) for rr in reqs}
+    # баллы и готовность — по требованиям; элементы спецификации API, строки приёмки и незаполненные места
+    # проверяются и попадают в отчёт, но не раздувают число требований (если требований нет — по всем элементам)
+    reqs = [rr for rr in rv.req_results if getattr(rr.req, "kind", "requirement") == "requirement"] or rv.req_results
+    rs = {rr.req.rid: req_score(rr.findings) for rr in rv.req_results}  # балл — у каждого элемента
     set_score = max(0, 100 - sum(SET_PENALTY[f.severity] for f in rv.set_findings))
-    avg = sum(rs.values()) / len(rs) if rs else 0
+    avg = sum(rs[rr.req.rid] for rr in reqs) / len(reqs) if reqs else 0
     doc_score = round(0.7 * avg + 0.3 * set_score)
     # требование, на которое ссылается критичное/существенное замечание к набору (противоречие, пропуск), тоже не готово
     blocked = {r.req_id for f in rv.set_findings if f.severity in ("critical", "major") for r in f.refs}

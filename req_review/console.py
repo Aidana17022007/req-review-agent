@@ -70,7 +70,8 @@ class Console:
             else:
                 print("⚠ " + warn, file=sys.stderr)
         if not self.rich:
-            print(f"Готово: требований {len(rv.req_results)}, нарушений {n_f} (критичных {n_crit}), "
+            n_req = sum(1 for rr in rv.req_results if getattr(rr.req, "kind", "requirement") == "requirement") or len(rv.req_results)
+            print(f"Готово: требований {n_req}, нарушений {n_f} (критичных {n_crit}), "
                   f"балл {sc.doc_score}/100, готовность {sc.readiness}%, обращений к модели {ctx.llm_stats.calls}, "
                   f"отброшено неподтверждённых цитат {len(rv.dropped)}")
             for name, p in ctx.artifacts.items():

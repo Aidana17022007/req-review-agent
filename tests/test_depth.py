@@ -344,7 +344,8 @@ def test_critic_merges_duplicates_and_calibrates(tmp_path):
                                  {"n": 5, "verdict": "keep", "severity": "minor"}]}
 
     run_critic(rv, Fake(), log=lambda *a: None)
-    assert [f.problem for f in rv.set_findings] == ["Нет метода чтения.", "НФТ без перцентиля.", "Шаблон."]
+    assert [f.problem for f in rv.set_findings][1:] == ["НФТ без перцентиля.", "Шаблон."]
+    assert rv.set_findings[0].problem == "Нет метода чтения. Также: API не позволяет прочитать порог."  # конкретика дубля
     assert rv.set_findings[0].source == "правило+LLM (проход полноты)" and rv.set_findings[0].confidence == "high"
     assert rv.set_findings[1].severity == "major"  # калибровка повысила LLM-замечание
     assert rv.set_findings[2].severity == "major"  # правило калибровкой не понижается
@@ -815,3 +816,193 @@ def test_tz_self_check_passes_on_submission_report():
     failed = [r["what"] for r in rows if r["required"] and not r["ok"]]
     assert failed == [], failed
     assert all(r["evidence"] for r in rows)
+
+
+def test_split_kinds_on_organizers_document():
+    """v8: строки таблиц API, описания кодов ответа и заглушки не считаются требованиями; пункты с номером,
+    НФТ, данные, логика метода — требования; строки приёмки — отдельно."""
+    from collections import Counter
+
+    s = split_requirements(read_document(REAL))
+    by = {r.text[:30]: r.kind for r in s.requirements}
+    c = Counter(r.kind for r in s.requirements)
+    assert c["requirement"] == 16 and c["acceptance"] == 3 and c["placeholder"] == 1 and c["spec"] == 23
+    assert all(r.kind == "requirement" for r in s.requirements if r.doc_id)
+    assert by["REST type | GET"] == "spec" and by["заполняются тестировщиками"] == "placeholder"
+    assert by["Тело не используется."] == "spec" and by["Не используются."] == "spec"
+    for p in CLEAN:  # в бенчмарке и фикстурах — только требования
+        assert {r.kind for r in split_requirements(read_document(p)).requirements} == {"requirement"}, p
+
+
+def test_calibration_drops_test_probe_on_spec_and_folds_duplicates(tmp_path):
+    """v8: тест-проба к строке таблицы API снимается; критичное замечание к ней понижается до существенного;
+    замечание, повторяющее критичное замечание набора про то же место, сворачивается в «дубль S-01»."""
+    from req_review.checker import Finding, ReqResult, ReviewResult, SetFinding, SetRef
+    from req_review.depth import calibrate_severity
+
+    doc = read_document(REAL)
+    s = split_requirements(doc)
+    get = next(r for r in s.requirements if r.text.startswith("REST type"))
+    prod = next(r for r in s.requirements if r.text.startswith("Request URL"))
+    rule = SetFinding("contradiction", "set_consistent", [SetRef(get.rid, "GET")],
+                      "Метод объявлен как GET, но выполняет изменение данных (сохранение порога).", "critical", "—", "правило")
+    probe = Finding(get.rid, "verifiable", "GET", "Тест составить невозможно.", "critical", "—", "тест-проба")
+    dup = Finding(get.rid, "correct", "GET", "Метод GET выполняет изменение данных — сохранение порога.", "critical", "—", "LLM ×2")
+    other = Finding(prod.rid, "complete", "Prod: —", "Не указан адрес Prod.", "critical", "—", "LLM")
+    rv = ReviewResult(doc=doc, split=s, req_results=[ReqResult(get, [probe, dup]), ReqResult(prod, [other])],
+                      set_findings=[rule], dropped=[])
+    st = calibrate_severity(rv)
+    assert st == {"test_probe_dropped": 1, "capped": 1, "folded": 1}
+    assert rv.req_results[0].findings == [] and other.severity == "major"
+    reasons = [r["reason"] for r in rv.rejected]
+    assert any("тест-проба применяется к требованиям" in x for x in reasons) and any(x.startswith("дубль S-01") for x in reasons)
+
+
+def test_report_counts_only_requirements(tmp_path, monkeypatch):
+    from req_review.cli import main
+
+    monkeypatch.setenv("LLM_PROVIDER", "rules")
+    monkeypatch.setenv("RAG", "off")
+    out = tmp_path / "r.md"
+    assert main([str(REAL), str(out), "--env", str(tmp_path / "x.env"), "--quiet", "--no-xlsx", "--no-jira", "--no-html"]) == 0
+    md = out.read_text(encoding="utf-8")
+    assert "Всего выделено требований: **16**" in md and "23 элемента спецификации API" in md
+    d = json.loads(out.with_suffix(".json").read_text(encoding="utf-8"))
+    assert {r["kind"] for r in d["requirements"]} == {"requirement", "spec", "acceptance", "placeholder"}
+
+
+def test_clip_cuts_on_word_boundary_and_quotes_stay_verbatim():
+    from req_review.textutil import clip, clip_quote, first_sentence
+
+    s = "Метод объявлен как GET («REST type | GET»), но выполняет изменение данных («Сохранение») 🔴 и ещё текст"
+    for n in range(10, len(s)):
+        c = clip(s, n)
+        assert len(c) <= n and "�" not in c
+        if c != s:
+            assert c.endswith("…") and s.startswith(c[:-1].rstrip()) and (s[len(c[:-1].rstrip())] in " ,;:—-(«\"")
+        q = clip_quote(s, n)
+        assert quote_in(q, s) and len(q) <= n
+    assert first_sentence("Первое предложение. Второе.", 100) == "Первое предложение"
+
+
+def test_passport_authenticity_line():
+    from types import SimpleNamespace as NS
+
+    from req_review.report import _authenticity
+
+    ctx = NS(passport={"code": {"commit": "abc1234", "clean": True}})
+    fresh = _authenticity(NS(calls=12, cached=0), ctx, "gemini / m")
+    assert "✅ свежий прогон: все 12" in fresh and "✅ код агента — чистый коммит `abc1234`" in fresh
+    old = _authenticity(NS(calls=0, cached=31), NS(passport={"code": {"commit": "abc", "clean": False}}), "gemini / m")
+    assert "⚠️ повторный прогон: 31" in old and "--no-cache" in old and "⚠️ код агента с незакоммиченными" in old
+    assert "модель не вызывалась" in _authenticity(NS(calls=0, cached=0), ctx, "без модели / только правила")
+
+
+def test_fix_plan_titles_are_not_cut_mid_word(tmp_path, monkeypatch):
+    from req_review.cli import main
+
+    monkeypatch.setenv("LLM_PROVIDER", "rules")
+    monkeypatch.setenv("RAG", "off")
+    out = tmp_path / "r.md"
+    assert main([str(REAL), str(out), "--env", str(tmp_path / "x.env"), "--quiet", "--no-xlsx", "--no-jira", "--no-html",
+                 "--no-cache"]) == 0
+    d = json.loads(out.with_suffix(".json").read_text(encoding="utf-8"))
+    for it in d["fix_plan"]:
+        t = it["title"]
+        assert "\ufffd" not in t and (len(t) <= 140 or t.endswith("…")), t
+    assert d["passport"]["code"]["commit"] and "cached" in d["passport"]
+    assert "Подлинность прогона" in out.read_text(encoding="utf-8")
+
+
+def test_external_annotation_scoring_by_location_and_class():
+    """Внешняя разметка: дефект найден, если цитата замечания в отмеченных строках (±1) и критерий совместим с классом;
+    замечания агента вне разметки выводятся для ручной оценки precision. Формулировки не сравниваются."""
+    import sys
+
+    sys.path.insert(0, str(ROOT / "bench" / "external"))
+    import score
+
+    rep = {"requirements": [], "set_findings": [
+        {"criterion": "set_consistent", "severity": "critical", "problem": "Ф-3 и Ф-4 противоречат.",
+         "refs": [{"quote": "максимум один такой push за календарный месяц"}, {"quote": "независимо от истории"}]},
+        {"criterion": "set_complete", "severity": "major", "problem": "Нет метода чтения.", "refs": [{"quote": "Сохранение порога"}]}]}
+    ann = {"document": "bench/real/notifications.md", "annotator": "тест", "defects": [
+        {"lines": [39, 40], "class": "contradiction", "severity": "critical"},
+        {"lines": [39], "class": "compound", "severity": "minor"},
+        {"lines": [57], "class": "structure", "severity": "major"}]}
+    res = score.score(ann, rep)
+    assert [r["found"] for r in res["rows"]] == [True, False, False]
+    assert res["found"] == 1 and [f["id"] for f in res["agent_only"]] == ["S-02"]
+    assert "Пропуски агента" in score.to_md(res)
+
+
+def test_calibration_folds_llm_twin_of_rule_and_caps_unconfirmed_critical(tmp_path):
+    """v8: замечание модели к набору, повторяющее правило, — «дубль S-xx»; критичный пропуск модели без правила —
+    существенный; критичное противоречие модели остаётся критичным."""
+    from req_review.checker import ReviewResult, SetFinding, SetRef
+    from req_review.depth import calibrate_severity
+
+    doc, s = _doc(tmp_path, API_DOC)
+    rule = SetFinding("gap", "set_complete", [SetRef("DOC", "a")], "В спецификации API описан только метод изменения данных "
+                      "saveLimit, метода чтения настроек и порога нет; приложение не покажет сохранённый порог.", "critical", "—", "правило")
+    twin = SetFinding("gap", "set_complete", [SetRef("DOC", "b")], "В спецификации API только метод изменения данных saveLimit: "
+                      "нет метода чтения настроек и порога, приложение не покажет порог.", "critical", "—", "LLM")
+    gap = SetFinding("gap", "set_complete", [SetRef("DOC", "c")], "Не описана идемпотентность повторной доставки.", "critical", "—", "LLM")
+    contra = SetFinding("contradiction", "set_consistent", [SetRef("DOC", "d")], "Пример 31 января противоречит Ф-2.",
+                        "critical", "—", "LLM (перекрёстная проверка)")
+    rv = ReviewResult(doc=doc, split=s, req_results=[], set_findings=[rule, twin, gap, contra], dropped=[])
+    st = calibrate_severity(rv)
+    assert twin not in rv.set_findings and rule.source == "правило+LLM" and st["folded"] == 1
+    assert gap.severity == "major" and contra.severity == "critical"
+    assert any(r.get("duplicate_of") == "S-01" for r in rv.rejected)
+
+
+def test_site_build_uses_project_design_and_readme_features(tmp_path):
+    """Сайт для Cloudflare: дизайн-система проекта (токены, base.css, логотип), функции из README, отчёт и слайды."""
+    import subprocess
+    import sys
+
+    out = tmp_path / "public"
+    r = subprocess.run([sys.executable, str(ROOT / "scripts" / "build_site.py"), "--out", str(out), "--studio", "https://studio.example"],
+                       capture_output=True, text=True, cwd=ROOT)
+    assert r.returncode == 0, r.stderr
+    home = (out / "index.html").read_text(encoding="utf-8")
+    assert "--brand" in home and "logo-mark" in home and "kpi-hero" in home and "https://studio.example" in home
+    assert home.count('class="card feat"') >= 10 and "Тест-проба" in home
+    assert (out / "report" / "index.html").exists() and (out / "slides" / "index.html").exists()
+    assert "<script>alert" not in (out / "report" / "index.html").read_text(encoding="utf-8")
+
+
+def test_merge_keeps_specifics_of_duplicate():
+    """При объединении дублей конкретика поглощённого замечания (31 января, февраль) остаётся в цели."""
+    from types import SimpleNamespace as NS
+
+    from req_review.critic import absorb
+
+    t = NS(problem="Пример демонстрирует стык месяцев по времени проведения, что противоречит Ф-2.")
+    d = NS(problem="Покупка совершена 31 января, проведена 1 февраля, а вырос февральский счётчик — противоречит правилу. Ещё.")
+    absorb(t, d)
+    assert "Также: Покупка совершена 31 января" in t.problem
+    same = NS(problem="Пример демонстрирует стык месяцев по времени проведения.")
+    before = t.problem
+    absorb(t, same)
+    assert t.problem == before
+
+
+def test_calibration_drops_non_russian_model_findings_and_keeps_rule_severity(tmp_path):
+    """Замечание модели не на русском — в rejected (отчёт по ТЗ на русском); дубль модели не повышает серьёзность правила."""
+    from req_review.checker import ReviewResult, SetFinding, SetRef
+    from req_review.depth import _russian, calibrate_severity
+
+    assert _russian("Content-Type указан, а тело не используется") and not _russian("API specification defines Content-Type")
+    doc, s = _doc(tmp_path, API_DOC)
+    rule = SetFinding("gap", "set_complete", [SetRef("DOC", "a")], "В спецификации API описан только метод изменения данных "
+                      "saveLimit, метода чтения настроек и порога нет; приложение не покажет сохранённый порог.", "major", "—", "правило")
+    twin = SetFinding("gap", "set_complete", [SetRef("DOC", "b")], "В спецификации API только метод изменения данных saveLimit: "
+                      "нет метода чтения настроек и порога, приложение не покажет порог.", "critical", "—", "LLM")
+    eng = SetFinding("contradiction", "set_consistent", [SetRef("DOC", "c")], "API specification defines Content-Type as "
+                     "application/json, but the body is not used.", "critical", "—", "LLM")
+    rv = ReviewResult(doc=doc, split=s, req_results=[], set_findings=[rule, twin, eng], dropped=[])
+    calibrate_severity(rv)
+    assert rv.set_findings == [rule] and rule.severity == "major"
+    assert any("не на русском" in r["reason"] for r in rv.rejected)

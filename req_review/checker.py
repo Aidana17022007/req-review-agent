@@ -84,6 +84,7 @@ class ReviewResult:
     glossary: object = None  # GlossaryResult
     critic_used: bool = False
     critic_scope: str = ""  # "all" | "critical" (self-consistency в профиле fast)
+    calibration: dict = field(default_factory=dict)  # v8: {"test_probe_dropped", "capped", "folded"}
     self_check: dict = field(default_factory=dict)  # v6: самосогласованность {"confirmed", "removed"}
     focus: dict = field(default_factory=dict)  # v6: узкие проходы {task: добавлено замечаний}
     critic_merged: int = 0  # v5: дубли, объединённые критиком (ушли в rejected с причиной «дубль S-xx»)
@@ -358,12 +359,17 @@ def _apply_test_probe(res: ReqResult, t: dict, dropped: list[dict]) -> None:
         dropped.append({"where": r.rid + " (тест-проба)", "quote": q, "problem": reason})
         return
     res.test_possible, res.test_blocker, res.test_reason = False, q, reason
+    # невозможность теста блокирует приёмку явного требования (номер документа — Ф-1, PAY-03…, или «должен/shall») —
+    # критично; для описательной строки без номера и модальности (строка раздела данных, шаг логики метода) —
+    # существенно: это повод уточнить, а не стоп
+    sev = "critical" if r.doc_id or MODAL_RE.search(r.text) else "major"
     for f in res.findings:
         if f.criterion == "verifiable":
             f.problem += f" Подтверждено тест-пробой: тест составить невозможно — {reason}"
-            f.severity = "critical"
+            if sev == "critical" or f.severity == "minor":
+                f.severity = sev
             return
-    res.findings.append(Finding(r.rid, "verifiable", q, f"Тест составить невозможно: {reason}", "critical",
+    res.findings.append(Finding(r.rid, "verifiable", q, f"Тест составить невозможно: {reason}", sev,
                                 "Переформулировать так, чтобы появился объективный критерий приёмки (число, условие, ожидаемый результат).",
                                 "тест-проба"))
 
