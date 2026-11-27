@@ -53,6 +53,8 @@ class AnswerItem:
     closes: list = field(default_factory=list)
     quote: str = ""
     note: str = ""
+    matched_by: str = ""  # v14: как ответ сопоставлен с вопросом прогона — «метка», «похожий вопрос», «номер»
+    answer_qid: str = ""  # v14: номер вопроса в файле ответов (в новом прогоне номер может быть другим)
 
 
 # ------------------------------------------------------------------ шаблон и разбор
@@ -112,9 +114,11 @@ def parse_answers(text: str) -> dict[str, dict]:
         body = text[m.end(): heads[i + 1].start() if i + 1 < len(heads) else len(text)]
         km = KEY_RE.search(body)
         key = (km.group(1), km.group(2), km.group(3) or "") if km else None
-        lines, opts = [], {}
+        lines, opts, question = [], {}, ""
         for ln in body.splitlines():
             s = ln.strip()
+            if s.startswith(("**Вопрос.**", "**Вопрос**")) and not question:  # v14: текст вопроса — для сопоставления
+                question = re.sub(r"^\*\*Вопрос\.?\*\*\s*", "", s)
             om = _OPTION_LINE.match(s)
             if om:
                 opts[_LAT.get(om.group(1).lower(), om.group(1).lower())] = om.group(2)
@@ -139,7 +143,8 @@ def parse_answers(text: str) -> dict[str, dict]:
             elif opt_text == "свой ответ":
                 ans = lm.group(2).strip()
         if ans:
-            out[m.group(1)] = {"answer": ans, "key": key, **({"option": option} if option else {})}
+            out[m.group(1)] = {"answer": ans, "key": key, **({"option": option} if option else {}),
+                               **({"question": question} if question else {})}
     return out
 
 
@@ -307,24 +312,110 @@ def classify(items: list[tuple], rv, llm=None, log=print) -> list[tuple[str, str
 
 # ------------------------------------------------------------------ применение к результату
 
+class Match(tuple):
+    """(вопрос, ответ, вариант) + как сопоставлено (how: метка / похожий вопрос / номер), исходный Q-xx и сходство."""
+
+    def __new__(cls, q, answer, option, how: str = "", src: str = "", score: float = 0.0):
+        t = super().__new__(cls, (q, answer, option))
+        t.how, t.src, t.score = how, src, score
+        return t
+
+
+# v14: родственные критерии — вопрос о том же дефекте модель в другом прогоне может отнести к соседнему критерию
+_CRIT_GROUPS = ({"set_consistent", "consistent", "correct"}, {"complete", "set_complete"},
+                {"unambiguous", "set_comprehensible"}, {"verifiable", "set_validatable"}, {"feasible", "set_feasible"},
+                {"traceable", "set_traceable", "conforming"})
+FUZZY_MIN = 0.5  # порог сходства для «похожего вопроса»
+FUZZY_TEXT_MIN = 0.2  # и минимальное сходство текста вопроса, если текст есть с обеих сторон
+
+
+def _crit_rel(a: str, b: str) -> float:
+    if a == b:
+        return 1.0
+    return 0.6 if any(a in g and b in g for g in _CRIT_GROUPS) else 0.0
+
+
+def _key_reqs(rid: str, refs: str) -> set[str]:
+    s = {r for r in (refs or "").split(",") if r and r != "DOC"}
+    return s | ({rid} if rid and not rid.startswith("S-") else set())
+
+
+def _q_reqs(q) -> set[str]:
+    rid = q.rid or getattr(q, "ref", "") or ""
+    return {r for r in (q.refs or []) if r != "DOC"} | ({rid} if rid and not rid.startswith("S-") else set())
+
+
+def _dice(a: set, b: set) -> float:
+    return 2 * len(a & b) / (len(a) + len(b)) if a and b else 0.0
+
+
+def match_score(key: tuple, qtext: str, q) -> tuple[float, str]:
+    """Сходство ответа (метка шаблона + текст вопроса из шаблона) с вопросом нового прогона → (0..1, «метка» | «похожий»).
+
+    Точная метка: то же требование и критерий, а для замечания набора — тот же критерий и то же множество требований.
+    Иначе «похожий вопрос»: требования обязаны пересекаться, критерий — тот же или родственный, текст вопроса — похож
+    (доля общих основ слов); без текста вопроса порог строже. 0 — вопрос точно не этот.
+    """
+    rid, crit, refs = key
+    q_rid = q.rid or getattr(q, "ref", "") or ""
+    txt = _dice(_stems(qtext), _stems(getattr(q, "text", "") or "")) if qtext and getattr(q, "text", "") else None
+    if rid.startswith("S-") and refs:
+        exact = q_rid.startswith("S-") and q.criterion == crit and _key_reqs("", refs) == _q_reqs(q)
+    else:
+        exact = not q_rid.startswith("S-") and q_rid == rid and q.criterion == crit
+    if exact:
+        return 0.7 + 0.3 * (0.5 if txt is None else txt), "метка"
+    a, b = _key_reqs(rid, refs), _q_reqs(q)
+    rel = _crit_rel(crit, q.criterion)
+    if not (a & b) or not rel:
+        return 0.0, ""
+    req = len(a & b) / len(a | b)
+    if txt is None:  # текста вопроса нет (старый файл ответов) — нужна хотя бы половина общих требований
+        return ((0.5 * req + 0.5 * rel) * 0.8, "похожий вопрос") if req >= 0.5 else (0.0, "")
+    if txt < FUZZY_TEXT_MIN:
+        return 0.0, ""
+    return 0.35 * req + 0.25 * rel + 0.4 * txt, "похожий вопрос"
+
+
 def _resolve(questions, parsed: dict) -> list[tuple]:
-    """Сопоставить ответы с вопросами: по метке (rid, criterion) из шаблона, иначе по Q-xx."""
-    by_key = {(q.rid or q.ref, q.criterion): q for q in questions if not (q.rid or "").startswith("S-")}
-    by_refs = {(q.criterion, ",".join(q.refs)): q for q in questions if (q.rid or "").startswith("S-") and q.refs}
+    """Сопоставить ответы с вопросами нового прогона: по метке шаблона, иначе по похожему вопросу, без метки — по Q-xx.
+
+    v14: модель от прогона к прогону находит немного разный набор замечаний — номера S-xx и состав требований
+    сдвигаются, и строгое равенство метки теряло ответы. Теперь каждому ответу ищется лучший вопрос (match_score) с
+    порогом FUZZY_MIN; распределение жадное по убыванию сходства, каждый вопрос — не больше одного ответа. Ответ
+    остаётся «неизвестным», только если похожего вопроса действительно нет (или его уже занял более похожий ответ).
+    """
     by_qid = {q.qid: q for q in questions}
-    out, unknown, used = [], [], set()
-    for qid, v in parsed.items():
-        if v.get("key"):  # метка шаблона есть — только по ней: номер Q-xx в другом прогоне может означать другой вопрос
-            rid, crit, refs = v["key"]
-            # замечания набора перенумеровываются от прогона к прогону — узнаём по критерию и затронутым требованиям
-            q = by_refs.get((crit, refs)) if rid.startswith("S-") and refs else by_key.get((rid, crit))
-        else:
-            q = by_qid.get(qid)
-        if q is None or q.qid in used:
-            unknown.append(qid)
+    items = list(parsed.items())
+    cand = []
+    for ai, (_qid, v) in enumerate(items):
+        if not v.get("key"):
             continue
+        for qi, q in enumerate(questions):
+            s, how = match_score(v["key"], v.get("question", ""), q)
+            if s >= FUZZY_MIN or how == "метка":
+                cand.append((-s, ai, qi, how))
+    got: dict[int, Match] = {}
+    used: set[str] = set()
+    for neg, ai, qi, how in sorted(cand):
+        q = questions[qi]
+        if ai in got or q.qid in used:
+            continue
+        qid, v = items[ai]
+        got[ai] = Match(q, v["answer"], v.get("option"), how, qid, round(-neg, 2))
         used.add(q.qid)
-        out.append((q, v["answer"], v.get("option")))
+    out, unknown = [], []
+    for ai, (qid, v) in enumerate(items):
+        m = got.get(ai)
+        if m is None and not v.get("key"):  # метки нет — по номеру Q-xx, если этот вопрос ещё свободен
+            q = by_qid.get(qid)
+            if q is not None and q.qid not in used:
+                used.add(q.qid)
+                m = Match(q, v["answer"], v.get("option"), "номер", qid, 0.0)
+        if m is None:
+            unknown.append(qid)
+        else:
+            out.append(m)
     return out, unknown
 
 
@@ -332,6 +423,7 @@ def apply_answers(rv, questions, parsed: dict, llm=None, log=print) -> dict:
     """Учесть ответы в результате проверки rv (меняет его). Возвращает {"items","unknown_qids","closed","added"}."""
     triples, unknown = _resolve(questions, parsed)
     pairs = [(q, a) for q, a, _o in triples]
+    how = [(getattr(m, "how", ""), getattr(m, "src", "")) for m in triples]
     kinds = classify(pairs, rv, llm, log)
     for i, (q, a, opt) in enumerate(triples):  # выбранный вариант «а / б» — конкретное решение владельца ТЗ
         if opt and kinds[i][0] != "contradictory":
@@ -344,7 +436,7 @@ def apply_answers(rv, questions, parsed: dict, llm=None, log=print) -> dict:
     close: dict[int, tuple] = {}  # id(finding) → (qid, quote)
     closed_list: list[dict] = []  # v12: что закрыто (серьёзность, критерий) — для «Кратко» и исправленного ТЗ
     added: list[SetFinding] = []
-    for (q, ans), (t, quote, note) in zip(pairs, kinds):
+    for (q, ans), (t, quote, note), (m_how, m_src) in zip(pairs, kinds, how):
         closes = []
         if t == "concrete" and quote:
             for fid in q.closes:
@@ -373,7 +465,7 @@ def apply_answers(rv, questions, parsed: dict, llm=None, log=print) -> dict:
                 fix="Согласовать одно значение с владельцем продукта и записать его в одном требовании.",
                 severity="critical" if base_f and base_f.severity == "critical" else "major",
                 source=f"ответ {q.qid}", confidence="high", values=vals))
-        items.append(AnswerItem(q.qid, q.text, ans, t, closes, quote, note))
+        items.append(AnswerItem(q.qid, q.text, ans, t, closes, quote, note, m_how, m_src))
     # закрыть замечания: в rejected с причиной, из активных — убрать
     for rr in rv.req_results:
         keep = []
@@ -396,7 +488,9 @@ def apply_answers(rv, questions, parsed: dict, llm=None, log=print) -> dict:
     rv.set_findings = keep_set + added
     log(f"ответы аналитика: {len(items)} учтено — конкретных {sum(i.type == 'concrete' for i in items)}, "
         f"уклончивых {sum(i.type == 'evasive' for i in items)}, противоречивых {sum(i.type == 'contradictory' for i in items)}; "
-        f"закрыто замечаний {len(close)}" + (f"; неизвестные вопросы: {', '.join(unknown)}" if unknown else ""))
+        f"закрыто замечаний {len(close)}"
+        + (f"; по похожему вопросу: {sum(h == 'похожий вопрос' for h, _ in how)}" if any(h == "похожий вопрос" for h, _ in how) else "")
+        + (f"; неизвестные вопросы: {', '.join(unknown)}" if unknown else ""))
     return {"items": items, "unknown_qids": unknown, "closed": len(close), "added": len(added), "closed_list": closed_list}
 
 
