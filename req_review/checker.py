@@ -326,7 +326,7 @@ def check_requirements(reqs: list[Requirement], doc: Document, llm: BaseLLM, bat
                     break
             if covered:
                 continue
-            if res.llm_checked and h.severity == "minor":
+            if res.llm_checked and h.severity == "minor" and not getattr(h, "keep", False):
                 continue  # мелкие сигналы без подтверждения модели не выводим, чтобы не шуметь
             res.findings.append(Finding(r.rid, h.criterion, h.quote, h.problem + f" (маркер: {h.terms_label or '«' + h.term + '»'})",
                                         h.severity, h.fix, "правило"))

@@ -532,6 +532,9 @@ def completeness_rules(reqs: list[Requirement], doc: Document) -> list[SetFindin
                unit_mix, nfr_metric,
                state_after_error, message_texts, acceptance_preconditions, template_unfilled):
         out.extend(fn(reqs, doc))
+    from .depth_v12 import v12_rules  # v12: модель данных, повторное действие, заглушки, названия, ошибки без кода
+
+    out.extend(v12_rules(reqs, doc))
     return out
 
 

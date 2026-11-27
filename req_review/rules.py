@@ -120,6 +120,7 @@ class RuleHit:
     fix: str
     terms: list | None = None
     terms_label: str = ""
+    keep: bool = False  # v12: показывать и без подтверждения модели (структурный сигнал, а не словарный)
 
 
 def check_requirement(req: Requirement) -> list[RuleHit]:
@@ -150,7 +151,34 @@ def check_requirement(req: Requirement) -> list[RuleHit]:
         hits.append(RuleHit(req.rid, "singular", "minor", q, m.group(0) if m else ";",
                             "Похоже, в одной формулировке объединено несколько требований.",
                             "Разделить на отдельные требования с собственными идентификаторами."))
+    elif getattr(req, "kind", "requirement") == "requirement" and not text.lstrip().startswith("|"):
+        rules = _rule_sentences(text)
+        if len(rules) >= 3:  # v12: несколько самостоятельных правил в одном пункте (Ф-2: месяц, состав, возврат, исключения)
+            a, b = rules[0], rules[1]
+            hits.append(RuleHit(req.rid, "singular", "minor", text[a[0]:b[1]].strip(), text[b[0]:b[1]].strip()[:40],
+                                f"Неатомарное требование: в одном пункте {len(rules)} самостоятельных правила — их нельзя по "
+                                "отдельности трассировать к "
+                                "критериям приёмки и изменять, не задев соседние.",
+                                "Разбить пункт на отдельные требования (например, Ф-2.1, Ф-2.2 …) — по одному правилу в каждом, "
+                                "с собственным критерием приёмки.", keep=True))
     return hits
+
+
+_SENT = re.compile(r"[^.!?]+(?:[.!?]+|$)")
+
+
+def _rule_sentences(text: str) -> list[tuple[int, int]]:
+    """Предложения-правила: от 4 слов, не пример и не пояснение. Начало ID («Ф-2.») к первому предложению не считается."""
+    body_start = 0
+    mid = re.match(r"\s*\**\s*[\w-]{1,10}\s*[-.]?\s*\d+[.)]?\**\s*", text)
+    if mid and re.search(r"\d", mid.group(0)):
+        body_start = mid.end()
+    out = []
+    for m in _SENT.finditer(text, body_start):
+        s = m.group(0).strip()
+        if len(s.split()) >= 4 and "→" not in s and not re.match(r"(?:например|т\.\s?е\.|то есть|пример)", s, re.I):
+            out.append((m.start(), m.end()))
+    return out
 
 
 def _context(text: str, start: int, end: int, width: int = 45) -> str:
