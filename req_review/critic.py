@@ -34,6 +34,11 @@ SYSTEM_CRITIC = """Ты — независимый строгий рецензе
 Калибровка серьёзности ("severity", для keep и merge-цели): critical — функцию нельзя реализовать или проверить
 однозначно (противоречие правил, нет метода или контракта интеграции, ошибка под успешным кодом); major — нужно
 исправить до написания тест-кейсов (пропуск сценария, неизмеримость, неопределённый термин); minor — оформление.
+ПРОТИВОРЕЧИЕ проверяй сам, шаг за шагом: (1) пересчитай арифметику примера (суммы, даты, границы «включительно»);
+(2) найди в правилах условия, которые разводят случаи («если … ещё не …», «кроме», «в том числе», «до / после»): если
+одно правило применяется только тогда, когда другое не применяется, — противоречия нет; (3) если пример даёт ровно тот
+результат, который следует из правил, — противоречия нет. В таких случаях — "drop" с причиной «противоречия нет: …»
+(такое замечание не удаляется, а понижается и помечается «судья сомневается» — человек решит сам).
 Не добавляй новых замечаний. Будь объективен: отклоняй только явно ложные.
 Пиши на русском. Верни ТОЛЬКО JSON: {"verdicts":[{"n":1,"verdict":"keep|downgrade|drop|merge","into":null,
 "severity":"critical|major|minor","reason":"кратко, почему"}]}"""
@@ -66,6 +71,10 @@ def _collect(rv: ReviewResult) -> list[tuple[str, object, object]]:
     return items
 
 
+def _llm_contradiction(f) -> bool:
+    return getattr(f, "kind", "") == "contradiction" and "LLM" in (f.source or "") and not getattr(f, "values", None)
+
+
 def _protected(f) -> bool:
     """Объективные факты критик не отклоняет: невозможность теста и числовые противоречия, найденные правилом."""
     return f.source == "тест-проба" or (getattr(f, "values", None) and "правило" in f.source)
@@ -74,7 +83,9 @@ def _protected(f) -> bool:
 def run_critic(rv: ReviewResult, llm: BaseLLM, log=print, only_critical: bool = False) -> None:
     """only_critical=True — self-consistency для профиля fast: второй проход только по критичным замечаниям (1 запрос)."""
     all_items = _collect(rv)
-    items = [it for it in all_items if not only_critical or it[1].severity == "critical"]
+    # v13+: в fast судья видит критичные и все противоречия, заявленные моделью (ложное противоречие на чистом ТЗ —
+    # главный источник вердикта «нельзя» без причины)
+    items = [it for it in all_items if not only_critical or it[1].severity == "critical" or _llm_contradiction(it[1])]
     rv.critic_scope = "critical" if only_critical else "all"
     if not items:
         rv.critic_used = True
@@ -161,6 +172,15 @@ def run_critic(rv: ReviewResult, llm: BaseLLM, log=print, only_critical: bool = 
             continue
         if verdict == "merge":  # некорректная ссылка «into» — оставляем как keep
             verdict = "keep"
+        if verdict == "drop" and _llm_contradiction(f):
+            # v13+: противоречие, заявленное моделью, судья не удаляет, а понижает до незначительного с пометкой:
+            # судья тоже ошибается (может «оправдать» настоящее противоречие), а ложное противоречие не должно
+            # давать вердикт «нельзя» на чистом ТЗ
+            f.severity = "minor"
+            f.critic_note = f"Судья сомневается: {reason}" if reason else "Судья сомневается в противоречии"
+            f.confidence = "low"
+            keep_set.append(f)
+            continue
         if verdict == "drop" and not _protected(f):
             where = rr.req.rid if kind == "req" else "набор"
             quote = f.quote if kind == "req" else " / ".join(r.quote for r in f.refs)

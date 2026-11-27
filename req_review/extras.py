@@ -174,7 +174,7 @@ def run_extras(rv: ReviewResult, llm: BaseLLM, domain: dict | None, log=print, p
                 "gap", "set_complete", [SetRef("DOC", anchor)],
                 "Не покрыты области, типовые для банковского продукта (по доменному чек-листу): "
                 + "; ".join(a.title for a in missing) + ".",
-                "major" if len(missing) >= 3 else "minor",
+                "major" if len(missing) >= 3 and getattr(llm, "provider", "") != "rules" else "minor",
                 "Добавить требования или явно зафиксировать, что области вне рамок проекта. Вопросы заказчику: "
                 + " ".join(f"{a.title}: {a.question}" for a in missing[:6]),
                 "домен"))

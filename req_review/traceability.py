@@ -150,6 +150,13 @@ def extract(doc, rv) -> dict:
             if t2.strip().startswith(("```", "{")):
                 s["example"] = True
                 break
+    for no, text, sec in lines:  # v13+: таблица статусов «| 403 | когда возвращается | тело |»
+        if text.lstrip().startswith("|"):
+            cells = _cells(text)
+            if cells and re.fullmatch(r"[1-5]\d\d", cells[0]):
+                s = st.setdefault(cells[0], {"line": no, "quote": text.strip()[:80], "described": False, "example": False})
+                s["described"] = s["described"] or any(len(re.findall(r"[а-яёa-z]{3,}", c.lower())) >= 2 for c in cells[1:])
+                s["example"] = s["example"] or any("{" in c for c in cells[1:])
     for no, text, sec in lines:  # «Если результат 200 или 201 — успешный»: код упомянут в тексте
         if _API_SECTION.search(sec or "") and not _STATUS_LINE.match(text):
             for m in _STATUS_ANY.finditer(text):
@@ -175,8 +182,8 @@ def build(rv) -> dict:
     reqs = {rr.req.rid: rr.req for rr in rv.req_results if nodes.get(rr.req.rid, {}).get("type") == "requirement"}
     rules = {rid: r for rid, r in reqs.items() if r.doc_id} or reqs
     # v13+: приёмка — для функциональных правил (НФТ проверяются измерением), как в depth.acceptance_coverage
-    func = {rid: r for rid, r in rules.items() if re.search(r"функциональн", r.section or "", re.I)
-            and not re.search(r"нефункциональн", r.section or "", re.I)}
+    func = {rid: r for rid, r in rules.items() if re.search(r"функциональн|функционалдық", r.section or "", re.I)
+            and not re.search(r"нефункциональн|функционалдық емес", r.section or "", re.I)}
     rules = func or rules
     raw_lines = {ln.lineno: ln.text for ln in doc.lines}
     # правило ↔ пример приёмки

@@ -205,7 +205,7 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
         rv.set_findings.append(SetFinding(
             "gap", "set_complete", [SetRef("DOC", _anchor(rv))],
             "Шаги типового процесса не покрыты ни одним требованием: " + "; ".join(s["title"] for s in gaps) + ".",
-            "major" if len(gaps) >= 3 else "minor",
+            "minor",  # v13+: карта процесса — подсказка по ключевым словам (без модели), не повод для «с оговорками»
             "Добавить требования или явно указать, что шаг вне рамок. Вопросы аналитику: "
             + " ".join(f"{s['title']}: {s['question']}" for s in gaps), "карта покрытия"))
     # v5: покрытие правил критериями приёмки (после перекрёстной проверки — её связи «пример ↔ правило» учитываются)
@@ -220,8 +220,9 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
     step(5)
     if critic:
         run_critic(rv, llm, log=log)
-    elif os.getenv("REQLENS_CRITIC_CRITICAL", "1") != "0" and any(
-            f.severity == "critical" for rr in rv.req_results for f in rr.findings):
+    elif os.getenv("REQLENS_CRITIC_CRITICAL", "1") != "0" and (any(
+            f.severity == "critical" for rr in rv.req_results for f in rr.findings) or any(
+            f.severity == "critical" or (f.kind == "contradiction" and "LLM" in (f.source or "")) for f in rv.set_findings)):
         # self-consistency: даже в fast критичные замечания перепроверяются вторым проходом (1 запрос)
         run_critic(rv, llm, log=log, only_critical=True)
     # Шум: «не по шаблону / нет субъекта» к пунктам без ID (шаги логики, строки таблиц, критерии приёмки) — это одно

@@ -316,6 +316,9 @@ def check_requirements(reqs: list[Requirement], doc: Document, llm: BaseLLM, bat
             if not isinstance(f, dict):  # ответ модели не по схеме — пропускаем элемент
                 continue
             quote = str(f.get("quote", "")).strip()
+            if not str(f.get("problem", "")).strip():  # v13+: замечание без формулировки проблемы — не замечание
+                dropped.append({"where": r.rid, "quote": quote, "problem": "(модель не сформулировала проблему)"})
+                continue
             if not quote_in(quote, r.text):
                 dropped.append({"where": r.rid, "quote": quote, "problem": f.get("problem", "")})
                 continue
@@ -485,10 +488,10 @@ def deterministic_set_checks(split: SplitResult, doc: Document) -> list[SetFindi
                 "правило"))
     # ранжирование
     has_priority = any(
-        any(re.search(r"приоритет|priority|важност", k, re.I) for k in r.extra) or
-        re.search(r"\b(приоритет|must|should|could|высокий|средний|низкий)\b", r.text, re.I)
+        any(re.search(r"приоритет|priority|важност|басымдық", k, re.I) for k in r.extra) or
+        re.search(r"\b(приоритет|must|should|could|высокий|средний|низкий|жоғары|орташа|төмен)\b", r.text, re.I)
         for r in reqs)
-    if reqs and not has_priority and not re.search(r"приоритет|priority", doc.text, re.I):
+    if reqs and not has_priority and not re.search(r"приоритет|priority|басымдық", doc.text, re.I):
         out.append(SetFinding("structure", "set_ranked", [SetRef(reqs[0].rid, reqs[0].text[:80])],
                               "Ни у одного требования нет приоритета или признака стабильности (IEEE 830 §4.3.5) — "
                               "невозможно спланировать порядок реализации и объём MVP.",

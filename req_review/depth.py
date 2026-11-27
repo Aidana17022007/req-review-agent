@@ -87,7 +87,7 @@ _EVENT = re.compile(r"\bсобыти\w*|\bevent\w*|\bсообщени\w* (?:от
 _EXT_SYSTEM = re.compile(r"процессинг\w*|внешн\w+ систем\w*|шин\w* данных|kafka|очеред\w*|брокер\w*|абс\b|core banking", re.I)
 # контракт описан, если рядом со словом «событие» есть описание его структуры (UI-«сообщения» не в счёт)
 _CONTRACT = re.compile(r"(?:формат|схем|структур|состав|пол[яе]\b|атрибут|payload|json|avro|protobuf)\w*[^.\n]{0,40}(?:событи|event)|"
-                       r"(?:событи|event)\w*[^.\n]{0,40}(?:формат|схем|структур|состав|пол[яе]\b|атрибут|payload|json|содерж)",
+                       r"(?:событи|event)\w*[^.\n]{0,80}(?:формат|схем|структур|состав|пол[яе]\b|атрибут|payload|json|содерж)",
                        re.I)
 _DELIVERY = re.compile(r"at[- ]least[- ]once|exactly[- ]once|порядок (?:доставки|событий|обработки)|ключ\w* (?:идемпотент|дедуплик)|"
                        r"дедупликац\w*|гаранти\w* доставк\w*", re.I)
@@ -425,7 +425,9 @@ def session_lifecycle(reqs: list[Requirement], doc: Document) -> list[SetFinding
         "поведение приложения (повторный вход) и пример заголовка Authorization.", "правило")]
 
 
-_RANGE_SET = re.compile(r"(?:зада\w*|устанавлива\w*|указыва\w*|выбира\w*|настраива\w*)[^.\n]{0,60}?\bот\s+[\d\s ]+\s+до\s+[\d\s ]+",
+# v13+: только сохраняемые настройки («задаёт порог», «устанавливает лимит»); выбор суммы в каждой операции
+# («выбирает сумму кредита от … до …») — не настройка, у неё нет «значения до первого сохранения»
+_RANGE_SET = re.compile(r"(?:зада\w*|устанавлива\w*|настраива\w*)[^.\n]{0,60}?\bот\s+[\d\s ]+\s+до\s+[\d\s ]+",
                         re.I)
 _DEFAULT_VAL = re.compile(r"по умолчанию[^.\n]{0,60}(?:\d|порог|значени|сумм|лимит|равн)|(?:начальн|исходн)\w* значени", re.I)
 
@@ -449,7 +451,7 @@ def missing_default(reqs: list[Requirement], doc: Document) -> list[SetFinding]:
 
 _REFUND = re.compile(r"возврат\w*[^.\n]{0,80}(?:уменьша\w*|вычита\w*|учитыва\w*|снижа\w*|корректиру\w*)", re.I)
 _REFUND_EDGE = re.compile(r"частичн\w* возврат|возврат\w*[^.\n]{0,60}(?:частичн|друг\w* месяц|следующ\w* месяц|после отправ|"
-                          r"уже отправ|ниже порог)", re.I)
+                          r"уже отправ|ниже порог|частичн\w*[^.\n]{0,40}возврат)", re.I)
 _TRIGGER = re.compile(r"порог\w*|лимит\w*|\bpush\b|уведомлени\w*", re.I)
 
 
@@ -676,8 +678,9 @@ def criteria_matrix(rv) -> dict:
 
 _STOP = set("если когда должен должна должно должны система клиент держатель сумма сумму суммы при для или как это что все "
             "всех также только после через более менее одного один одна".split())
-_ACC_SECTION = re.compile(r"критери\w* при[её]мк|acceptance|пример\w* (?:сценари|приёмк)|сценари\w* приёмк", re.I)
-_RULE_SECTION = re.compile(r"функциональн|бизнес[- ]?правил|правила", re.I)
+_ACC_SECTION = re.compile(r"критери\w* при[её]мк|acceptance|пример\w* (?:сценари|приёмк)|сценари\w* приёмк|"
+                         r"қабылдау критери\w*", re.I)  # v13+: и казахские документы
+_RULE_SECTION = re.compile(r"функциональн|бизнес[- ]?правил|правила|функционалдық", re.I)
 
 
 def _stems(text: str) -> set[str]:
@@ -692,7 +695,8 @@ def acceptance_coverage(rv) -> dict:
             [r for r in reqs if _RULE_SECTION.search(r.section or "")]
     # v13+: НФТ проверяются измерением, а не примером «условия → действие → результат»: если в документе есть раздел
     # функциональных требований, покрытие приёмкой считается по нему
-    func = [r for r in rules if re.search(r"функциональн", r.section or "", re.I) and not re.search(r"нефункциональн", r.section or "", re.I)]
+    func = [r for r in rules if re.search(r"функциональн|функционалдық", r.section or "", re.I)
+            and not re.search(r"нефункциональн|функционалдық емес", r.section or "", re.I)]
     rules = func or rules
     if not rules:
         return {"percent": None, "covered": [], "uncovered": [], "acceptance_rows": len(acc), "method": ""}
