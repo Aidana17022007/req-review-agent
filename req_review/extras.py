@@ -123,20 +123,32 @@ SYSTEM_EXTRAS = """Ты — аналитик требований банковс
  "synonyms":[{"terms":["клиент","пользователь"],"preferred":"клиент","problem":"..."}]}"""
 
 
-def run_extras(rv: ReviewResult, llm: BaseLLM, domain: dict | None, log=print) -> None:
+def extras_call(rv, llm: BaseLLM, domain: dict | None):
+    """Запрос доменной проверки и глоссария (зависит только от документа и нарезки) → (термины, ответ | исключение).
+    v13: вызывается заранее, параллельно с проверкой требований и набора (prefetch в review_document)."""
     doc = rv.doc
     terms = extract_glossary(rv)
     areas = (domain or {}).get("areas", [])
-    log("  доменная проверка полноты и глоссарий")
     payload = {"AREAS": [{"id": a["id"], "title": a["title"]} for a in areas],
                "TERMS_CANDIDATES": [t.term for t in terms]}
     text = doc.text[:60_000]
     try:
-        data = llm.generate_json(SYSTEM_EXTRAS, f"ДОКУМЕНТ:\n<<<\n{text}\n>>>\n\nВХОДНЫЕ ДАННЫЕ:\n{json.dumps(payload, ensure_ascii=False)}",
-                                 task="extras", context={"doc": doc, "areas": areas})
+        return terms, llm.generate_json(SYSTEM_EXTRAS, f"ДОКУМЕНТ:\n<<<\n{text}\n>>>\n\nВХОДНЫЕ ДАННЫЕ:\n"
+                                        f"{json.dumps(payload, ensure_ascii=False)}", task="extras",
+                                        context={"doc": doc, "areas": areas})
     except LLMFatalError:
         raise
     except LLMError as e:
+        return terms, e
+
+
+def run_extras(rv: ReviewResult, llm: BaseLLM, domain: dict | None, log=print, prefetched=None) -> None:
+    doc = rv.doc
+    areas = (domain or {}).get("areas", [])
+    log("  доменная проверка полноты и глоссарий")
+    terms, data = prefetched.result() if prefetched is not None else extras_call(rv, llm, domain)
+    if isinstance(data, Exception):
+        e = data
         rv.notes.append(f"Доменная проверка и глоссарий не выполнены: модель не ответила ({e}).")
         rv.glossary = GlossaryResult(terms, [])
         return

@@ -142,3 +142,22 @@ def test_strong_passport_line(tmp_path, mock_env):
     data = json.loads(out.with_suffix(".json").read_text(encoding="utf-8"))
     assert data["passport"]["strong"]["model"] == "openrouter:some-model"
     assert "| Сильная модель |" in out.read_text(encoding="utf-8")
+
+
+def test_set_branches_and_extras_run_in_parallel(tmp_path, mock_env, monkeypatch):
+    """v13 (скорость): запрос набора, перекрёстная проверка, проход полноты и доменная проверка не ждут друг друга."""
+    from req_review.pipeline import Options, run
+
+    monkeypatch.setenv("MOCK_LATENCY", "0.3")
+    res = {}
+    for par in ("0", "1"):
+        monkeypatch.setenv("REQLENS_SET_PARALLEL", par)
+        monkeypatch.setenv("REQLENS_EXTRAS_PREFETCH", par)
+        monkeypatch.setenv("LLM_CONCURRENCY", "4")
+        out = tmp_path / par / "r.md"
+        run(str(REAL), str(out), Options(html=False, xlsx=False, jira=False, pdf=False), log=lambda m: None)
+        res[par] = json.loads(out.with_suffix(".json").read_text(encoding="utf-8"))
+    cp0, cp1 = res["0"]["passport"]["critical_path"]["seconds"], res["1"]["passport"]["critical_path"]["seconds"]
+    assert cp1 < cp0 - 0.4  # минус ≥ 2 «раунда» запросов
+    keys = lambda d: sorted((f["criterion"], f["problem"]) for f in d["set_findings"])  # noqa: E731
+    assert keys(res["0"]) == keys(res["1"])  # те же замечания набора, меняется только время

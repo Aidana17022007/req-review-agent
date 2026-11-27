@@ -496,12 +496,34 @@ def check_set(split: SplitResult, doc: Document, llm: BaseLLM, dropped: list[dic
     doc_part = _doc_context(doc) if mode_for(doc) == "full" else outline(doc, 8000)  # длинный документ: оглавление + термины
     prompt = (f"НАЗВАНИЕ ДОКУМЕНТА: {doc.title}\n\nДОКУМЕНТ:\n<<<\n{doc_part}\n>>>\n\n"
               f"НАРЕЗКА ТРЕБОВАНИЙ (JSON):\n{json.dumps(payload, ensure_ascii=False, indent=1)}")
-    try:
-        data = llm.generate_json(SYSTEM_SET, prompt, task="set", context={"reqs": reqs, "doc": doc})
-    except LLMFatalError:
-        raise
-    except LLMError:
+    # v13: запрос набора, перекрёстная проверка и проход полноты независимы — параллельно; каждый видит только
+    # детерминированные находки, слияние (отсев повторов) — в прежнем порядке: набор → числа → перекрёстная → полнота
+    import os as _os
+
+    from .depth import completeness_pass
+    from .parallel import concurrency, pmap
+
+    base = list(found)
+    side: dict[str, tuple[list, list]] = {"cross": (list(base), []), "gaps": (list(base), [])}
+
+    def branch(name):
+        if name == "set":
+            try:
+                return llm.generate_json(SYSTEM_SET, prompt, task="set", context={"reqs": reqs, "doc": doc})
+            except LLMFatalError:
+                raise
+            except LLMError as e:
+                return e
+        fl, dl = side[name]
+        (crosscheck if name == "cross" else completeness_pass)(split, doc, llm, dl, fl, log)
+        return None
+
+    parallel = _os.getenv("REQLENS_SET_PARALLEL", "1") != "0" and concurrency() > 1
+    data = pmap(branch, ["set", "cross", "gaps"] if parallel else ["set"])[0]
+    if isinstance(data, Exception):
         add_numeric_conflicts(found, reqs, log)
+        if parallel:
+            _merge_side(found, side, dropped)
         return found, False
     for f in data.get("findings", []) or []:
         if not isinstance(f, dict):  # ответ модели не по схеме — пропускаем элемент
@@ -529,12 +551,37 @@ def check_set(split: SplitResult, doc: Document, llm: BaseLLM, dropped: list[dic
                                 str(f.get("problem", "")).strip(), _norm_sev(f.get("severity")),
                                 str(f.get("fix", "")).strip(), "LLM"))
     add_numeric_conflicts(found, reqs, log)
-    crosscheck(split, doc, llm, dropped, found, log)
-    from .depth import completeness_pass  # v5: узкий проход полноты по чек-листу (1 запрос)
-
-    completeness_pass(split, doc, llm, dropped, found, log)
+    if parallel:
+        _merge_side(found, side, dropped)
+    else:
+        crosscheck(split, doc, llm, dropped, found, log)
+        completeness_pass(split, doc, llm, dropped, found, log)  # v5: узкий проход полноты по чек-листу (1 запрос)
     found.sort(key=lambda f: {"critical": 0, "major": 1, "minor": 2}[f.severity])
     return found, True
+
+
+def _merge_side(found: list[SetFinding], side: dict, dropped: list[dict]) -> None:
+    """Слить параллельные ветки набора в found с теми же правилами отсева повторов, что при последовательном прогоне:
+    перекрёстная — противоречие по той же паре требований не дублируется; полнота — тот же критерий и цитата."""
+    n0 = {id(f) for f in found}
+    cross_f, cross_d = side["cross"]
+    have = {frozenset(r.req_id for r in f.refs) for f in found if f.kind == "contradiction"}
+    for f in cross_f:
+        if id(f) in n0 or f.kind != "contradiction":
+            continue
+        k = frozenset(r.req_id for r in f.refs)
+        if k not in have:
+            have.add(k)
+            found.append(f)
+    dropped.extend(cross_d)
+    gaps_f, gaps_d = side["gaps"]
+    seen = {(f.criterion, x.quote) for f in found for x in f.refs}
+    for f in gaps_f:
+        if id(f) in n0 or any((f.criterion, r.quote) in seen for r in f.refs):
+            continue
+        seen |= {(f.criterion, r.quote) for r in f.refs}
+        found.append(f)
+    dropped.extend(gaps_d)
 
 
 def add_numeric_conflicts(found: list[SetFinding], reqs: list[Requirement], log=print) -> None:

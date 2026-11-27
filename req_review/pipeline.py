@@ -148,6 +148,20 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
 
     recovered = recover_uncovered(doc, split, llm, log=log)
     stt["Нарезка"] = (a, time.monotonic(), calls() - c)
+    # v13: доменная проверка и глоссарий зависят только от документа и нарезки — запрос уходит сразу, параллельно
+    # с проверкой требований и набора (общий ограничитель LLM_CONCURRENCY); ответ разбирается на своём этапе
+    from types import SimpleNamespace
+
+    from .extras import extras_call
+    from .parallel import concurrency
+
+    domain = load_domain(opts.domain)
+    extras_pool = extras_future = None
+    if concurrency() > 1 and os.getenv("REQLENS_EXTRAS_PREFETCH", "1") != "0":
+        from concurrent.futures import ThreadPoolExecutor
+
+        extras_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="extras")
+        extras_future = extras_pool.submit(extras_call, SimpleNamespace(doc=doc, split=split), llm, domain)
     step(2)
     c = calls()
     # размер пакета: явный LLM_BATCH_SIZE важнее профиля; deep — 6 требований на запрос
@@ -174,8 +188,11 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
             rr.test_possible, rr.test_gherkin, rr.test_blocker, rr.test_reason = None, "", "", ""
     step(4)
     a, c = time.monotonic(), calls()
-    domain = load_domain(opts.domain)
-    run_extras(rv, llm, domain, log=log)
+    try:
+        run_extras(rv, llm, domain, log=log, prefetched=extras_future)
+    finally:
+        if extras_pool is not None:
+            extras_pool.shutdown(wait=True)
     # R4: категории требований и карта покрытия процесса (без обращений к модели)
     from .categories import apply_categories, coverage_map
     from .checker import SetFinding, SetRef
