@@ -94,6 +94,7 @@ class ReviewResult:
     coverage: list = field(default_factory=list)  # карта покрытия шагов процесса домена
     bank_rules: dict = field(default_factory=dict)  # v10: чек-лист банка (--rules): сводка по правилам
     stage_times: dict = field(default_factory=dict)  # v12: {этап: (начало, конец)} по time.monotonic()
+    compliance: dict = field(default_factory=dict)  # v13: комплаенс и безопасность {checks, fired, findings}
     traceability: dict = field(default_factory=dict)  # v12: граф трассировки {nodes, edges, gaps}
     depth: dict = field(default_factory=dict)  # v5: учёт строк, матрица критериев, покрытие приёмкой, вердикты, план
 

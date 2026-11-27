@@ -242,6 +242,11 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
         ts = rv.traceability["stats"]
         log(f"  трассировка: узлов {sum(ts['nodes'].values())}, связей {sum(ts['edges'].values())}, разрывов "
             f"{ts['gaps']} (новых замечаний {ts['new_findings']}, связано с найденными {ts['linked']})")
+    if os.getenv("REQLENS_COMPLIANCE", "1") != "0":  # v13: комплаенс и безопасность (правила, нормы kb/law_kz)
+        from .compliance import run as run_compliance
+
+        rv.compliance = run_compliance(rv)
+        log(f"  комплаенс и безопасность: нарушений {rv.compliance['fired']}, новых замечаний {rv.compliance['findings']}")
     default_confidence(rv)
     rv.depth = depth_summary(rv, acc)
     rv.depth["review_stats"]["calibration"] = rv.calibration  # v8: калибровка серьёзности
@@ -589,6 +594,10 @@ def _run(input_path, output_path, opts: Options, log, step, llm_wrap, make_llm, 
 
     tstep(6)
     ctx.passport["duration_s"] = round(time.monotonic() - t0)
+    from .cost import estimate  # v13: оценка стоимости прогона по config/prices.yaml
+
+    ctx.passport["cost"] = estimate(ctx.passport.get("model", llm.label), llm.stats.prompt_tokens, llm.stats.output_tokens,
+                                    llm.stats.calls)
     if sr := stage_report(rv.stage_times):  # v12: время этапов и критический путь
         from .parallel import concurrency
 

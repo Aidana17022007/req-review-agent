@@ -108,6 +108,13 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     if llm_stats.prompt_tokens:
         w(f"| Токены (вход / выход) | {llm_stats.prompt_tokens} / {llm_stats.output_tokens} |")
     w(f"| Длительность | {duration_s:.0f} с |")
+    if ctx is not None and (cst := ctx.passport.get("cost")):  # v13: стоимость прогона
+        from .cost import line as cost_line
+
+        w(f"| Стоимость прогона (оценка) | {_cell(cost_line(cst))} |")
+    if ctx is not None and (cp := ctx.passport.get("critical_path")):  # v12/v13: время этапов
+        w(f"| Этапы и критический путь | {cp['seconds']:.0f} с: {' → '.join(cp['stages'])} "
+          f"(сумма этапов {cp['stages_sum_s']:.0f} с, параллельно до {cp['concurrency']} запросов) |")
     if ctx is not None and ctx.passport.get("cascade"):
         cc = ctx.passport["cascade"]
         w(f"| Каскад моделей | быстрая {_cell(cc['fast'])} — все требования; сильная {_cell(cc['strong'])} — "
@@ -305,6 +312,11 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
         from .traceability import report_md
 
         for line in report_md(rv):
+            w(line)
+    if getattr(rv, "compliance", None):  # v13: комплаенс и безопасность — внутри раздела 4
+        from .compliance import report_md as compliance_md
+
+        for line in compliance_md(rv):
             w(line)
 
     # ------------------------------------------------------------------ 5
