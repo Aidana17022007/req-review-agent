@@ -1176,12 +1176,23 @@ html,body{height:100%;overflow:hidden}
           <thead><tr><th></th><th>без RAG</th><th>с RAG</th></tr></thead>
           <tbody>
             <tr><td>Recall</td><td>95%</td><td>—</td></tr>
-            <tr><td>Precision</td><td>99%</td><td>—</td></tr>
-            <tr><td>F1</td><td>97%</td><td>—</td></tr>
+            <tr><td>Precision</td><td>50–99%</td><td>—</td></tr>
+            <tr><td>F1</td><td>66–98%</td><td>—</td></tr>
           </tbody></table>
         <p class="small muted" style="margin-top:10px">Модель: gemini / gemini-3.5-flash-lite. Колонка «с RAG» — после прогона <code class="mono">bench/run.py</code> с базой знаний.</p></div>
     </div>
     <p class="lead small">Только измеренные цифры: <code class="mono">bench/RESULTS.md</code>, модель и дата прогона указаны в файле. Баллы считает код по формулам из «Методики оценки».</p>
+  </section>
+
+  <!-- 7a. Слепые документы: написаны вне команды, ключ дефектов — у автора (bench/blind_eval.py) -->
+  <section class="slide" aria-label="Слепые документы">
+    <div class="caption">Слепая оценка</div>
+    <h2 class="h1" style="margin-top:8px">Документы, которые агент видит впервые</h2>
+    <p class="lead small">Написаны не командой, ключ дефектов хранился отдельно, агент на них не настраивался.</p>
+    <div class="card" style="margin-top:16px;overflow-x:auto"><table class="trust" aria-label="Слепые документы">
+      <thead><tr><th>Показатель</th><th>ReqLens (deep)</th><th>Голая модель (1 запрос)</th><th>Только правила</th></tr></thead>
+      <tbody><tr><td>Найдено дефектов ключа</td><td>29 из 30 (97 %) [90–100 %]</td><td>20 из 30 (67 %) [50–83 %]</td><td>8 из 30 (27 %) [13–43 %]</td></tr><tr><td>Критичных</td><td>7 из 7</td><td>5 из 7</td><td>1 из 7</td></tr><tr><td>Чистых требований с замечаниями</td><td>12 из 15</td><td>0 из 15</td><td>4 из 15</td></tr><tr><td>Ложных замечаний к чистым (существенных)</td><td>16 (10)</td><td>0 (0)</td><td>4 (4)</td></tr><tr><td>Точность по размеченным</td><td>71 % [59–82 %]</td><td>100 % [100–100 %]</td><td>64 % [36–91 %]</td></tr><tr><td>Точность строгая (всё вне ключа — ложное)</td><td>45 % [35–56 %]</td><td>86 % [67–100 %]</td><td>28 % [12–48 %]</td></tr><tr><td>Замечаний всего</td><td>89</td><td>21</td><td>25</td></tr><tr><td>Запросов к модели</td><td>85</td><td>3</td><td>0</td></tr></tbody></table></div>
+    <p class="small muted" style="margin-top:10px">Дата: 2026-11-27 21:27 · модель: gemini / gemini-3.5-flash-lite · агент: v9.0.0, коммит ac5403c (v3.0.3-64-gac5403c) · профиль deep · ключи закоммичены до прогона: ac5403c 2026-11-27 21:15. Источник: <code class="mono">bench/RESULTS.md</code>.</p>
   </section>
 
   <!-- 7b. Устойчивость: без модели, незнакомый документ, исправил → проверил заново -->

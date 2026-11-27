@@ -29,3 +29,8 @@
 ## Доказательства качества
 - bench/RESULTS.md — бенчмарк на документах с заранее известными дефектами (recall / precision, модель и дата), включая незнакомый агенту документ; bench/real_eval.py — ожидаемые дефекты документа организаторов.
 - docs/SCHEMA.md — формат report.json; docs/DEMO.md — сценарий демо; docs/slides.html — слайды.
+- README, таблица «Доказательства» в начале — только измеренные числа со ссылкой на файл; собирает python scripts/evidence.py --write.
+- v14, слепой набор: bench/blind/ (3 финтех-ТЗ, ключи написал отдельный ИИ до прогона), python bench/blind_eval.py --compare --results — ReqLens 29 из 30, голая модель 20 из 30, правила 8 из 30.
+- v14, чужие ответы аналитика: examples/answers/external/, python bench/answers_eval.py — результат как есть (тип ответа верно у 7 из 15).
+- v15, честная точность: bench/score.json (python bench/gold_score.py) — «проверено N из M» и диапазон 50–99 %, пока проверены не все замечания; ручная разметка — bench/label_sheet.html → python bench/gold_score.py --labels labels.json.
+- Деплой: Studio и API — Render (render.yaml: DeepSeek deepseek-chat, резерв Gemini, лимит демо 5 с адреса / 30 в сутки); сайт — Cloudflare Pages (reqlens.pages.dev).

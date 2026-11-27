@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -41,6 +42,17 @@ def bench_metrics(path: Path = ROOT / "bench" / "RESULTS.md") -> dict:
                   "model_note": "Бенчмарк на модели ещё не запускался (есть только mock-прогон словарных правил)."})
         return m
     m["model_note"] = f"Модель: {model.strip()}." if model else ""
+    # v15: пока не все замечания проверены, точность — диапазон (как в README и на сайте), а не одно число
+    sj = path.parent / "score.json"
+    if sj.exists():
+        try:
+            s = json.loads(sj.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            s = {}
+        if s.get("unjudged") and s.get("precision") is not None and s.get("precision_strict") is not None:
+            m["precision"] = f"{round(100 * s['precision_strict'])}–{round(100 * s['precision'])}%"
+            if s.get("f1") is not None and s.get("f1_strict") is not None:
+                m["f1"] = f"{round(100 * s['f1_strict'])}–{round(100 * s['f1'])}%"
     return m
 
 
