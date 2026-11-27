@@ -1030,7 +1030,552 @@
         "CNF-05"
       ],
       "file": "bench/out/cashback_seeded.md"
+    },
+    "refinance": {
+      "defects": [
+        {
+          "doc": "refinance",
+          "type": "vague",
+          "ids": [
+            "RF-06"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "refinance",
+          "type": "vague",
+          "ids": [
+            "RNF-01"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "refinance",
+          "type": "missing_units",
+          "ids": [
+            "RF-10"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous",
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "refinance",
+          "type": "open_list",
+          "ids": [
+            "RF-07"
+          ],
+          "criteria": [
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "refinance",
+          "type": "tbd",
+          "ids": [
+            "RF-11"
+          ],
+          "criteria": [
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "refinance",
+          "type": "and_or",
+          "ids": [
+            "RF-14"
+          ],
+          "criteria": [
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "refinance",
+          "type": "conditional",
+          "ids": [
+            "RF-05"
+          ],
+          "criteria": [
+            "unambiguous",
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "refinance",
+          "type": "design",
+          "ids": [
+            "RF-03"
+          ],
+          "criteria": [
+            "appropriate"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "refinance",
+          "type": "compound",
+          "ids": [
+            "RF-12"
+          ],
+          "criteria": [
+            "singular"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "refinance",
+          "type": "subjective",
+          "ids": [
+            "RNF-06"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "refinance",
+          "type": "absolute",
+          "ids": [
+            "RNF-02"
+          ],
+          "criteria": [
+            "feasible",
+            "verifiable"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "refinance",
+          "type": "vague_goal",
+          "ids": [
+            "RNF-03"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "refinance",
+          "type": "contradiction",
+          "ids": [
+            "RF-08",
+            "RF-15"
+          ],
+          "criteria": [
+            "set_consistent"
+          ],
+          "level": "set"
+        },
+        {
+          "doc": "refinance",
+          "type": "duplicate",
+          "ids": [
+            "RF-04",
+            "RF-16"
+          ],
+          "criteria": [
+            "set_consistent",
+            "necessary"
+          ],
+          "level": "set"
+        }
+      ],
+      "clean_ids": [
+        "RF-01",
+        "RF-02",
+        "RF-09",
+        "RF-13",
+        "RNF-04",
+        "RNF-05"
+      ],
+      "file": "bench/out/refinance_seeded.md"
+    },
+    "qr": {
+      "defects": [
+        {
+          "doc": "qr",
+          "type": "vague",
+          "ids": [
+            "QR-06"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "qr",
+          "type": "vague",
+          "ids": [
+            "QR-01"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "qr",
+          "type": "missing_units",
+          "ids": [
+            "QR-08"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous",
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "qr",
+          "type": "open_list",
+          "ids": [
+            "QR-04"
+          ],
+          "criteria": [
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "qr",
+          "type": "tbd",
+          "ids": [
+            "QR-09"
+          ],
+          "criteria": [
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "qr",
+          "type": "and_or",
+          "ids": [
+            "QR-07"
+          ],
+          "criteria": [
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "qr",
+          "type": "conditional",
+          "ids": [
+            "QR-12"
+          ],
+          "criteria": [
+            "unambiguous",
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "qr",
+          "type": "design",
+          "ids": [
+            "QR-11"
+          ],
+          "criteria": [
+            "appropriate"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "qr",
+          "type": "compound",
+          "ids": [
+            "QR-14"
+          ],
+          "criteria": [
+            "singular"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "qr",
+          "type": "subjective",
+          "ids": [
+            "QNF-06"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "qr",
+          "type": "absolute",
+          "ids": [
+            "QNF-02"
+          ],
+          "criteria": [
+            "feasible",
+            "verifiable"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "qr",
+          "type": "vague_goal",
+          "ids": [
+            "QNF-05"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "qr",
+          "type": "contradiction",
+          "ids": [
+            "QR-05",
+            "QR-15"
+          ],
+          "criteria": [
+            "set_consistent"
+          ],
+          "level": "set"
+        },
+        {
+          "doc": "qr",
+          "type": "duplicate",
+          "ids": [
+            "QR-13",
+            "QR-16"
+          ],
+          "criteria": [
+            "set_consistent",
+            "necessary"
+          ],
+          "level": "set"
+        }
+      ],
+      "clean_ids": [
+        "QR-02",
+        "QR-03",
+        "QR-10",
+        "QNF-01",
+        "QNF-03",
+        "QNF-04"
+      ],
+      "file": "bench/out/qr_seeded.md"
+    },
+    "fx": {
+      "defects": [
+        {
+          "doc": "fx",
+          "type": "vague",
+          "ids": [
+            "FX-06"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "fx",
+          "type": "vague",
+          "ids": [
+            "FNF-01"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "fx",
+          "type": "missing_units",
+          "ids": [
+            "FX-10"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous",
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "fx",
+          "type": "open_list",
+          "ids": [
+            "FX-01"
+          ],
+          "criteria": [
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "fx",
+          "type": "tbd",
+          "ids": [
+            "FX-09"
+          ],
+          "criteria": [
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "fx",
+          "type": "and_or",
+          "ids": [
+            "FX-08"
+          ],
+          "criteria": [
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "fx",
+          "type": "conditional",
+          "ids": [
+            "FX-11"
+          ],
+          "criteria": [
+            "unambiguous",
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "fx",
+          "type": "design",
+          "ids": [
+            "FX-05"
+          ],
+          "criteria": [
+            "appropriate"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "fx",
+          "type": "compound",
+          "ids": [
+            "FX-13"
+          ],
+          "criteria": [
+            "singular"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "fx",
+          "type": "subjective",
+          "ids": [
+            "FNF-06"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "fx",
+          "type": "absolute",
+          "ids": [
+            "FNF-02"
+          ],
+          "criteria": [
+            "feasible",
+            "verifiable"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "fx",
+          "type": "vague_goal",
+          "ids": [
+            "FNF-03"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "fx",
+          "type": "contradiction",
+          "ids": [
+            "FX-03",
+            "FX-15"
+          ],
+          "criteria": [
+            "set_consistent"
+          ],
+          "level": "set"
+        },
+        {
+          "doc": "fx",
+          "type": "contradiction",
+          "ids": [
+            "FX-12",
+            "FX-16"
+          ],
+          "criteria": [
+            "set_consistent"
+          ],
+          "level": "set"
+        },
+        {
+          "doc": "fx",
+          "type": "duplicate",
+          "ids": [
+            "FX-02",
+            "FX-17"
+          ],
+          "criteria": [
+            "set_consistent",
+            "necessary"
+          ],
+          "level": "set"
+        }
+      ],
+      "clean_ids": [
+        "FX-04",
+        "FX-07",
+        "FX-14",
+        "FNF-04",
+        "FNF-05"
+      ],
+      "file": "bench/out/fx_seeded.md"
     }
   },
-  "total_defects": 81
+  "total_defects": 124
 }

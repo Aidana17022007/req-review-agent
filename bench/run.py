@@ -33,7 +33,8 @@ TYPE_RU = {"vague": "Размытые слова", "missing_units": "Нет зн
            "design": "Проектное решение", "compound": "Составное требование", "subjective": "Субъективная оценка",
            "absolute": "Абсолютная формулировка", "vague_goal": "Цель без механизма", "passive": "Пассив без субъекта",
            "contradiction": "Противоречие", "duplicate": "Дубль"}
-DOC_RU = {"payments": "Оплата услуг", "credit": "Онлайн-кредит", "onboarding": "Открытие счёта",
+DOC_RU = {"refinance": "Рефинансирование", "qr": "Оплата по QR", "fx": "Обмен валют",
+          "payments": "Оплата услуг", "credit": "Онлайн-кредит", "onboarding": "Открытие счёта",
           "deposit_kk": "Онлайн-депозит (қазақ тілі)", "cards": "Перевыпуск карты (DOCX, таблицы)"}
 
 
@@ -63,7 +64,28 @@ def evaluate(rv, truth: dict, doc: str) -> dict:
     clean = set(truth["clean_ids"])
     fp = sum(1 for rr in rv.req_results if rr.req.doc_id in clean for f in rr.findings if f.severity != "minor")
     tp_f = sum(1 for rr in rv.req_results if rr.req.doc_id in seeded for f in rr.findings if id(f) in tp_ids)
-    return {"rows": rows, "fp": fp, "tp_findings": tp_f, "clean": len(clean), "doc": doc}
+    # v13: каждое существенное/критичное замечание с исходом — для бутстрепа и ручной разметки несовпавших (score.py)
+    set_hit = set()
+    for d in truth["defects"]:
+        if d["level"] == "set":
+            want = set(d["ids"])
+            set_hit |= {id(f) for f in rv.set_findings
+                        if f.criterion in d["criteria"] and want <= {rid2doc.get(r.req_id) for r in f.refs}}
+    items = []
+    for rr in rv.req_results:
+        for f in rr.findings:
+            if f.severity == "minor":
+                continue
+            out = "tp" if id(f) in tp_ids else "fp" if rr.req.doc_id in clean else "unmatched"
+            items.append({"where": rr.req.doc_id or rr.req.rid, "criterion": f.criterion, "severity": f.severity,
+                          "quote": f.quote, "problem": f.problem, "outcome": out})
+    for f in rv.set_findings:
+        if f.severity == "minor":
+            continue
+        items.append({"where": ", ".join(sorted({rid2doc.get(r.req_id) or r.req_id for r in f.refs})), "criterion": f.criterion,
+                      "severity": f.severity, "quote": " / ".join(r.quote for r in f.refs)[:200], "problem": f.problem,
+                      "outcome": "tp" if id(f) in set_hit else "unmatched"})
+    return {"rows": rows, "fp": fp, "tp_findings": tp_f, "clean": len(clean), "doc": doc, "items": items}
 
 
 def summarize(parts: list[dict]) -> dict:
@@ -84,7 +106,7 @@ def summarize(parts: list[dict]) -> dict:
         by_doc[r["doc"]][1] += 1
     return {"rows": rows, "tp": tp, "total": len(rows), "recall": recall, "precision": precision, "f1": f1,
             "fp_on_clean": fp, "clean": sum(p["clean"] for p in parts), "by_type": dict(by_type), "by_doc": dict(by_doc),
-            "cases": cases, "docs": len(parts)}
+            "cases": cases, "docs": len(parts), "parts": parts}
 
 
 def write_results(res: dict, label: str, version: str, base: dict | None = None) -> None:
@@ -92,7 +114,7 @@ def write_results(res: dict, label: str, version: str, base: dict | None = None)
     lines = [
         "# Бенчмарк точности ReqLens", "",
         f"*Модель:* {label} · *агент:* {version} · *дата:* {datetime.now():%Y-%m-%d %H:%M}", "",
-        f"{res['docs']} вымышленных документов (`bench/docs/`: 3 на русском, 1 на казахском, 1 DOCX с таблицами) "
+        f"{res['docs']} вымышленных документов (`bench/docs/`: на русском, 1 на казахском, 1 DOCX с таблицами) "
         f"с **{res['total']} заранее известными дефектами** (`bench/inject.py`). "
         "Recall — доля внедрённых дефектов, найденных агентом по нужному критерию. Precision — доля верных замечаний среди",
         "существенных и критичных замечаний к дефектным и заведомо чистым требованиям (замечания к чистым требованиям считаются ложными).", "",
@@ -214,6 +236,10 @@ def main(argv: list[str] | None = None):
     summary = {"label": label, "version": agent_version(), "date": f"{datetime.now():%Y-%m-%d %H:%M}",
                **{k: res[k] for k in ("recall", "precision", "f1", "tp", "total", "fp_on_clean", "clean", "cases")}}
     (HERE / "results.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1), encoding="utf-8")
+    # v13: построчные исходы (каждый дефект и каждое замечание) — вход для bench/score.py (интервалы, разметка)
+    detail = {"label": label, "version": agent_version(), "rows": res["rows"],
+              "items": [{**i, "doc": p["doc"]} for p in res["parts"] for i in p["items"]]}
+    (HERE / "results_detail.json").write_text(json.dumps(detail, ensure_ascii=False, indent=1), encoding="utf-8")
     if a.save:
         Path(a.save).write_text(json.dumps(summary, ensure_ascii=False, indent=1), encoding="utf-8")
     if a.rag == "both":

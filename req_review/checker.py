@@ -259,7 +259,10 @@ def _norm_crit(c: str, allowed: dict, default: str) -> str:
 
 def check_requirements(reqs: list[Requirement], doc: Document, llm: BaseLLM, batch_size: int,
                        dropped: list[dict], log=print) -> list[ReqResult]:
-    hints_by_req = {r.rid: check_requirement(r) for r in reqs}
+    import os as _os
+
+    # v13: REQLENS_HINTS=0 — абляция «без правил»: модель не получает подсказки правил, правила не добавляют замечаний
+    hints_by_req = {r.rid: (check_requirement(r) if _os.getenv("REQLENS_HINTS", "1") != "0" else []) for r in reqs}
     results = {r.rid: ReqResult(req=r) for r in reqs}
     llm_out: dict[str, dict] = {}
     from .rag.context import context_for, mode_for, record

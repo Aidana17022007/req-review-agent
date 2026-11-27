@@ -34,6 +34,7 @@ class LLMStats:
     prompt_tokens: int = 0
     output_tokens: int = 0
     errors: list[str] = field(default_factory=list)
+    cache_misses: int = 0  # v13: LLM_CACHE=only — запросов, которых не оказалось в кэше
 
 
 class BaseLLM:
@@ -66,6 +67,10 @@ class BaseLLM:
                 return data
             except (ValueError, OSError):
                 pass
+        if cache and os.getenv("LLM_CACHE", "1").strip().lower() == "only":  # v13: абляция — только из кэша, без квоты
+            with self._lock:
+                self.stats.cache_misses += 1
+            raise LLMError("ответа нет в кэше (LLM_CACHE=only)")
         last_err: Exception | None = None
         for attempt in range(self.max_retries + 1):
             try:
