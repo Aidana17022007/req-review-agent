@@ -173,6 +173,19 @@ python review.py docs/requirements.pdf reports/report.md --open      # откр�
 | `openai` (любой OpenAI-совместимый API) | `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_BASE_URL` | `gpt-4o-mini` |
 | `rules` | — | без модели: только детерминированные правила |
 
+**DeepSeek** — через `openai`:
+
+```
+LLM_PROVIDER=openai
+OPENAI_BASE_URL=https://api.deepseek.com
+OPENAI_API_KEY=ключ_с_platform.deepseek.com
+OPENAI_MODEL=deepseek-flash
+```
+
+На тех же документах DeepSeek-V4.1-Flash нашёл 26 из 26 и 7 из 7, на бенчмарке recall 99 %. Но он заметно «шумнее»
+Gemini: precision 80 % против 98 %, особенно на казахском документе. Подробно — `bench/RESULTS.md`, раздел «DeepSeek
+против Gemini». Отчёт для сдачи сделан на Gemini.
+
 Файл `.env` указан в `.gitignore` и в репозиторий не попадает. В репозитории лежит только `.env.example` без ключа.
 Платный ключ не нужен: профиль `fast` (по умолчанию) укладывается в лимиты бесплатного тарифа — проверка требований
 идёт пакетами по 20, тест-проба и тип EARS запрашиваются в том же запросе, а повторные прогоны берутся из кэша.

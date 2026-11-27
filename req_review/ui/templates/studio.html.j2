@@ -328,10 +328,19 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
   // ---------------- API v1 (docs/API.md): ошибки приходят как {"error": {"code", "message"}} — текст показываем как есть
   async function api(path,opt={}){
     let r;try{r=await fetch("/api/v1"+path,opt);}catch(x){throw Object.assign(new Error("Сервер ReqLens недоступен."),{code:"network"});}
-    const j=await r.json().catch(()=>({}));
-    if(!r.ok){const e=j.error||{},ra=+(e.retry_after||r.headers.get("Retry-After")||0);
-      throw Object.assign(new Error(e.message||j.detail||r.statusText||"Ошибка"),{code:e.code||"error",status:r.status,extra:{...e,retry_after:ra||null}});}
-    return j;}
+    const j=await r.json().catch(()=>null);
+    if(!r.ok){const e=(j&&j.error)||{},ra=+(e.retry_after||r.headers.get("Retry-After")||0);
+      throw Object.assign(new Error(e.message||(j&&j.detail)||hostErr(r.status)),{code:e.code||"error",status:r.status,extra:{...e,retry_after:ra||null}});}
+    return j||{};}
+  // ответ не от ReqLens (HTML вместо JSON): запрос остановил хостинг — защита от атак, сон или перезапуск сервера
+  function hostErr(st){return st===403?"Запрос остановила защита хостинга (HTTP 403). Повторите загрузку; если ошибка повторяется — проверьте файл локально: python review.py <файл> <отчёт>.md"
+    :st>=500?`Сервер временно недоступен (HTTP ${st}): бесплатный сервер просыпается или перезапускается. Подождите минуту и повторите.`
+    :`Сервер ответил ошибкой HTTP ${st}.`;}
+  // файл уходит в base64: фильтр хостинга блокирует запросы с текстом вроде «curl … Authorization: Bearer» — обычным в ТЗ на API
+  async function b64part(f){const b=new Uint8Array(await f.arrayBuffer());let s="";
+    for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));
+    return new Blob([btoa(s)],{type:"text/plain"});}
+  async function fileForm(f){const fd=new FormData();fd.append("file_b64",await b64part(f),"document.b64");fd.append("filename",f.name);return fd;}
   const jpost=(p,b)=>api(p,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})});
   const jdel=p=>api(p,{method:"DELETE"});
 
@@ -602,7 +611,7 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
       if(!pid){const nm=projName(f.name),same=state.projects.find(p=>p.name===nm);pid=same?same.id:(await jpost("/projects",{name:nm})).id;}
       const mode=o.mode||state.mode;
       state.src={file:f,pid,mode,cmp:!!o.cmp};
-      const fd=new FormData();fd.append("file",f);fd.append("profile",state.profile);fd.append("domain",state.domain);fd.append("mode",mode);if(o.force)fd.append("force","true");
+      const fd=await fileForm(f);fd.append("profile",state.profile);fd.append("domain",state.domain);fd.append("mode",mode);if(o.force)fd.append("force","true");
       const res=await api(`/projects/${pid}/runs`,{method:"POST",body:fd});
       loadProjects();
       // тот же файл уже проверен в проекте: новый прогон не запускается, квота не тратится
@@ -720,7 +729,7 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
       canFixed:!!s.has_fixed&&!noAfter,fixedTitle:noAfter?"В режиме «Демо» нужен --demo-after":s.has_fixed?"":"Агент не предложил исправлений",
       hello:`Отчёт готов: ${s.reqs} требований, критичных дефектов — ${s.critical}. Спросите о любом требовании или нажмите подсказку.`});
     show("s-result");}
-  async function legacyCompare(f){const fd=new FormData();if(f)fd.append("file",f);else fd.append("use_fixed","true");
+  async function legacyCompare(f){const fd=f?await fileForm(f):new FormData();if(!f)fd.append("use_fixed","true");
     let r;try{r=await fetch(`/api/jobs/${state.res.id}/compare`,{method:"POST",body:fd});}catch(x){return showErr("error","Сервер Studio недоступен.");}
     if(!r.ok){const j=await r.json().catch(()=>({}));return showErr("error",String(j.detail||"не удалось начать проверку"));}
     const {job}=await r.json();state.job=job;resetProgress(f?f.name:"Исправленная версия документа","Проверка новой версии",false);
@@ -965,7 +974,7 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
     "Проверьте документ без модели — только правилами: это не тратит квоту.":"Құжатты модельсіз — тек ережелермен тексеріңіз: бұл квотаны жұмсамайды.",
     "Запустите ReqLens локально: python -m req_review.web — без лимитов.":"ReqLens-ті жергілікті іске қосыңыз: python -m req_review.web — лимитсіз.",
     "Файл не читается":"Файл оқылмайды","Требований не найдено":"Талаптар табылмады","Что сделать":"Не істеу керек","Загрузить другой файл":"Басқа файлды жүктеу",
-    "Ответы не приняты":"Жауаптар қабылданбады","Вернуться к ответам":"Жауаптарға оралу","Попробовать снова":"Қайта көру","Проверка не удалась":"Тексеру сәтсіз аяқталды",
+    "Ответы не приняты":"Жауаптар қабылданбады","Вернуться к ответам":"Жауаптарға оралу","Попробовать снова":"Қайта көру","Проверка не удалась":"Тексеру сәтсіз аяқталды","пока без проверок":"әлі тексерілмеген","загрузите первую версию":"алғашқы нұсқаны жүктеңіз","Новая версия · сравнение с прошлой":"Жаңа нұсқа · алдыңғымен салыстыру",
     "Готового примера на сервере нет":"Серверде дайын мысал жоқ","Файл не принят":"Файл қабылданбады","Лимит API исчерпан":"API лимиті таусылды","Нет ключа API":"API кілті жоқ",
     "Нет интернета":"Интернет жоқ","Прогон отменён":"Прогон болдырылмады",
     "Сохраните документ как PDF с текстовым слоем или .docx и загрузите снова.":"Құжатты мәтін қабаты бар PDF немесе .docx ретінде сақтап, қайта жүктеңіз.",
@@ -980,7 +989,7 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
     "Проектов пока нет":"Әзірге жоба жоқ","Загрузить документ":"Құжатты жүктеу","Создать":"Құру","Название проекта":"Жоба атауы","Введите название":"Атауын енгізіңіз",
   };
   const KK_RE=[
-    [/^шаг (\d+) из (\d+)$/,"$2 қадамның $1-і"],[/^проверено (\d+) из (\d+)$/,"$2 ішінен $1 тексерілді"],[/^версий: (\d+)$/,"нұсқалар: $1"],
+    [/^шаг (\d+) из (\d+)$/,"$2 қадамның $1-і"],[/^проверено (\d+) из (\d+)$/,"$2 ішінен $1 тексерілді"],[/^версий: (\d+)$/,"нұсқалар: $1"],[/^версий: (\d+) · (.+)$/,"нұсқалар: $1 · $2"],[/^критичных: (\d+)$/,"критикалық: $1"],
     [/^черновик сохранён · (\d\d:\d\d)$/,"черновик сақталды · $1"],
     [/^Можно снова через (?:(\d+) ч )?(\d+) мин — около (.+)\.$/,(m,h,mi,at)=>`Қайта ${h?h+" сағ ":""}${mi} мин кейін — шамамен ${at}.`],
     [/^(.+) — балл (\d+)\/100, готовность (\d+)%$/,"$1 — балл $2/100, дайындық $3%"],
