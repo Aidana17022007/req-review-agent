@@ -1,6 +1,6 @@
 # Render Blueprint: ReqLens Studio + API v1 (бэкенд). Render → New → Blueprint → этот репозиторий.
 # После этого каждый push в main передеплоит сервис сам (autoDeploy). Ключ модели задаётся в панели Render
-# (Environment → GEMINI_API_KEY) и в репозиторий не попадает. Без ключа Studio работает в режиме «только правила».
+# (Environment → OPENAI_API_KEY для DeepSeek) и в репозиторий не попадает. Без ключа Studio работает в режиме «только правила».
 services:
   - type: web
     name: reqlens-studio
@@ -17,14 +17,17 @@ services:
         value: "3.12.7"
       - key: STUDIO_HOST
         value: 0.0.0.0
-      - key: GEMINI_API_KEY
+      # модель — DeepSeek через OpenAI-совместимый API (без суточной квоты Gemini)
+      - key: LLM_PROVIDER
+        value: openai
+      - key: OPENAI_BASE_URL
+        value: https://api.deepseek.com/v1
+      - key: OPENAI_MODEL
+        value: deepseek-chat
+      - key: OPENAI_API_KEY
         sync: false            # вводится в панели Render, в git не хранится
-      - key: GEMINI_MODEL
-        value: gemini-3.8-flash
-      - key: GEMINI_FALLBACK_MODELS
-        value: gemini-3.7-flash,gemini-3.6-flash,gemini-3.5-flash,gemini-3.5-flash-lite
-      - key: LLM_FALLBACK_AFTER
-        value: "3"
+      - key: LLM_TIMEOUT
+        value: "60"
       - key: REQLENS_PROFILE
         value: fast            # быстрый профиль для посетителей; deep — для отчёта, который сдаётся
       - key: MAX_JOBS
@@ -32,9 +35,9 @@ services:
       - key: REQLENS_DATA
         value: /tmp/reqlens    # история прогонов (на бесплатном тарифе диск не сохраняется между деплоями)
       - key: DEMO_UPLOADS_PER_IP
-        value: "5"             # v9: проверок с моделью с одного адреса в сутки (UTC); 0 — без лимита
+        value: "2"             # v9: проверок с моделью с одного адреса в сутки (UTC); 0 — без лимита
       - key: DEMO_UPLOADS_TOTAL
-        value: "20"            # v9: проверок с моделью всего в сутки; готовый пример и «только правила» не считаются
+        value: "5"             # v9: проверок с моделью всего в сутки; готовый пример и «только правила» не считаются
       - key: DEMO_UPLOADS_PER_IP_HOUR
         value: "3"             # v13: проверок с моделью с одного адреса за час
       - key: DEMO_LIMIT_FALLBACK

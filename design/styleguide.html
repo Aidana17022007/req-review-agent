@@ -977,6 +977,40 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
 @keyframes ans-pop{from{opacity:0;transform:translateY(6px) scale(.96)}to{opacity:1;transform:none}}
 @keyframes ans-strike{from{text-decoration-color:transparent}to{text-decoration-color:currentColor}}
 @media print{.ans-ba-item,.dec{background:#fff}}
+/* доска «Что исправить в первую очередь», качество по критериям, паспорт прогона — на поверхностях v3 */
+.board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start}
+@media (max-width:900px){.board{grid-template-columns:1fr}}
+.lane-h{display:flex;align-items:center;gap:7px;font-weight:700;margin-bottom:10px}
+.lane-h i{width:8px;height:8px;border-radius:50%}
+.lane-h span{color:var(--text-3);font-weight:600}
+.dcard{display:block;width:100%;text-align:left;font:inherit;color:inherit;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:14px;margin-bottom:10px;transition:border-color var(--motion-base),transform var(--motion-base) var(--motion-ease),box-shadow var(--motion-base);cursor:pointer}
+.dcard:hover{border-color:color-mix(in srgb,var(--accent) 55%,transparent);transform:translateY(-2px);box-shadow:var(--shadow-lg);text-decoration:none}
+.dcard .tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.tagp{font:700 11px/16px var(--font-sans);padding:2px 8px;border-radius:var(--r-full);white-space:nowrap}
+.tagp.t-critical{background:var(--critical-soft);color:var(--critical)}
+.tagp.t-major{background:var(--major-soft);color:var(--major)}
+.tagp.t-minor{background:var(--minor-soft);color:var(--minor)}
+.tagp.t-ok{background:var(--ok-soft);color:var(--ok)}
+.tagp.t-info{background:var(--brand-soft);color:var(--brand)}
+.dcard h4{font:700 13px/18px var(--font-sans)}
+.dcard p{color:var(--text-2);font-size:12px;line-height:17px;margin-top:5px}
+.dcard .fx{font-size:12px;line-height:17px;margin-top:6px;color:var(--text)}
+.dcard .ft{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);color:var(--text-2);font:700 11px/14px var(--font-sans)}
+.box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:var(--s-5)}
+.box>h3{font:700 14px/20px var(--font-sans);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.box .kv{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px dashed var(--border);font-size:13px}
+.box .kv:last-child{border:0}
+.box .kv span:first-child{color:var(--text-3);flex:none}
+.box .kv span:last-child{font-weight:600;text-align:right;word-break:break-word}
+.cr{display:flex;align-items:center;gap:10px;padding:5px 0;font-size:13px}
+.cr span:first-child{width:130px;color:var(--text-2);flex:none}
+.cr .bar{flex:1;height:7px;border-radius:4px;background:var(--neutral-bar);overflow:hidden}
+.cr .bar i{display:block;height:100%;border-radius:4px}
+.cr b{width:34px;text-align:right}
+.ov-seg{display:flex;background:var(--surface-2);border-radius:var(--r-md);padding:3px;margin-bottom:10px}
+.ov-seg button{flex:1;border:0;background:none;padding:5px;border-radius:7px;color:var(--text-2);font:600 12px/16px var(--font-sans);cursor:pointer}
+.ov-seg button[aria-pressed=true]{background:var(--surface);color:var(--text);box-shadow:var(--shadow-sm)}
+@media print{.dcard,.box{break-inside:avoid}}
 
 body{background:var(--grad-glow),var(--bg)}
 .sg-section{padding:48px 0;border-bottom:1px solid var(--border)}
