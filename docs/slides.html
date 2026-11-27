@@ -1178,13 +1178,13 @@ html,body{height:100%;overflow:hidden}
       <div class="card"><div class="caption">2 · Основание в норме</div>
         <p class="small" style="margin-top:10px">RAG находит пункт стандарта, закон РК или шаблон и прикладывает фрагмент базы знаний с источником — «по памяти» модель не цитирует.</p>
         <div class="quote small" style="margin-top:12px">ISO/IEC/IEEE 29148 · п. 5.2.5 d) Complete — пересказ своими словами; законы РК — со ссылкой на adilet.zan.kz</div></div>
-      <div class="card hero"><div class="caption" style="color:rgba(255,255,255,.85)">3 · Бенчмарк: найдено 67 из 67 внедрённых дефектов</div>
+      <div class="card hero"><div class="caption" style="color:rgba(255,255,255,.85)">3 · Бенчмарк: найдено 118 из 124 внедрённых дефектов</div>
         <table class="trust" aria-label="Бенчмарк без RAG и с RAG">
           <thead><tr><th></th><th>без RAG</th><th>с RAG</th></tr></thead>
           <tbody>
-            <tr><td>Recall</td><td>100%</td><td>—</td></tr>
-            <tr><td>Precision</td><td>98%</td><td>—</td></tr>
-            <tr><td>F1</td><td>99%</td><td>—</td></tr>
+            <tr><td>Recall</td><td>95%</td><td>—</td></tr>
+            <tr><td>Precision</td><td>99%</td><td>—</td></tr>
+            <tr><td>F1</td><td>97%</td><td>—</td></tr>
           </tbody></table>
         <p class="small muted" style="margin-top:10px">Модель: gemini / gemini-3.5-flash-lite. Колонка «с RAG» — после прогона <code class="mono">bench/run.py</code> с базой знаний.</p></div>
     </div>
