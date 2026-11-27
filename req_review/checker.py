@@ -46,6 +46,7 @@ class ReqResult:
     test_scenarios: list = field(default_factory=list)  # [{"title", "gherkin"}] — 1–3 сценария
     rewrite_pattern: dict | None = None  # шаблон хорошего требования из kb/patterns, на который опирается правка
     category: str = ""  # функциональное / нефункциональное / интерфейс / интеграция / данные / регуляторное
+    answered: list = field(default_factory=list)  # v9: Q-xx — формулировка уточнена ответом аналитика (--answers)
 
 
 @dataclass

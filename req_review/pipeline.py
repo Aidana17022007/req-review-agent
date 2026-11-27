@@ -45,6 +45,9 @@ class Options:
     pdf: bool | None = None  # PDF-версия отчёта; None — по профилю (deep — да)
     ensemble: str = ""  # v7: «модель1,модель2» — два прогона и объединение подтверждённых замечаний
     fix_loop: bool = False  # v7: «исправил → проверил заново» — блок «До / После» и файл <отчёт>_before_after.md
+    cascade: str = ""  # v9: «быстрая,сильная» — быстрая проверяет всё, сильная — подозрительные требования и набор
+    decisions_llm: bool = False  # v9: модель перефразирует повестку решений на бизнес-язык (иначе — формулировки кода)
+    answers: str = ""  # v9: файл ответов аналитика (шаблон <отчёт>_answers_template.md) — перепроверка с учётом ответов
 
 
 @dataclass
@@ -63,6 +66,8 @@ class Context:
     model_label: str = ""
     trace: list = field(default_factory=list)  # [{"i": шаг, "t": секунды от начала}] — таймлайн «Трассировка агента»
     report_md: str = ""
+    answers: dict | None = None  # v9: --answers — {"source","items","before","after"} (SCHEMA 2.4)
+    decisions: list = field(default_factory=list)  # v9: повестка решений для владельца продукта
 
 
 def agent_version() -> str:
@@ -124,7 +129,12 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
         split.requirements = llm_split(doc, llm)
         split.method = "llm"
     if not split.requirements:
-        raise ValueError("В документе не найдено ни одного требования.")
+        from .errors import DocumentError
+
+        raise DocumentError("В документе не найдено ни одного требования.",
+                            "проверьте, что это документ требований: агент ищет пункты с ID (FR-01, Ф-2), нумерованные "
+                            "пункты и формулировки «должен / должна»; в режиме «только правила» модель не помогает с "
+                            "нарезкой — запустите с ключом модели.", kind="noreqs")
     log(f"выделено требований: {len(split.requirements)} (способ: {split.method})")
     from .depth import recover_uncovered  # v5: «дорезка» строк, не вошедших в нарезку
 
@@ -322,10 +332,58 @@ def build_context(rv, llm, opts: Options, started: datetime, t0: float, input_pa
     return ctx
 
 
+def _apply_answers(rv, llm, path: str, log) -> dict:
+    """Учесть ответы аналитика в результате проверки; вопросы и срез «до» — по прогону без ответов."""
+    from .answers import apply_answers, parse_answers, summary_state
+    from .ensemble import refresh_depth
+    from .questions import build_questions
+    from .scoring import compute
+
+    p = Path(path)
+    if not p.exists():
+        raise FileNotFoundError(f"Файл ответов не найден: {path}")
+    parsed = parse_answers(p.read_text(encoding="utf-8"))
+    if not parsed:
+        raise ValueError(f"В файле ответов {p.name} нет ни одного ответа под заголовком «### Q-xx». "
+                         "Возьмите шаблон <отчёт>_answers_template.md и впишите ответы под вопросами.")
+    questions = build_questions(rv)
+    before = summary_state(rv, compute(rv))
+    result = apply_answers(rv, questions, parsed, llm=llm, log=log)
+    refresh_depth(rv)
+    return {"questions": questions, "before": before, "result": result}
+
+
 def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda i, label="": None, llm_wrap=None,
         make_llm=None) -> Context:
     """llm_wrap — необязательная обёртка над моделью (Studio наблюдает за пакетами для живой таблицы); логику не меняет.
-    make_llm — своя фабрика модели вместо .env (ReqLens App: режим «только правила» для одного прогона)."""
+    make_llm — своя фабрика модели вместо .env (ReqLens App: режим «только правила» для одного прогона).
+    v9: рядом с отчётом пишется журнал прогона <отчёт>.log (и при ошибке — до места, где она случилась)."""
+    from .runlog import RunLog
+
+    rl = RunLog()
+
+    def log_(m):
+        rl.add(m)
+        log(m)
+
+    def step_(i, label=""):
+        rl.stage(STEPS[i] if 0 <= i < len(STEPS) else (label or f"этап {i}"))
+        step(i, label)
+
+    log_path = Path(output_path).with_suffix(".log")
+    try:
+        ctx = _run(input_path, output_path, opts, log_, step_, llm_wrap, make_llm, log_path)
+    except Exception as e:
+        try:
+            rl.write(log_path, error=str(e))
+        except OSError:
+            pass
+        raise
+    rl.write(log_path, ctx)
+    return ctx
+
+
+def _run(input_path, output_path, opts: Options, log, step, llm_wrap, make_llm, log_path: Path) -> Context:
     from .exports import compare, summarize_for_compare, to_json, write_jira_csv, write_json, write_xlsx
     from .llm import build_llm_from_env
     from .report import build_report
@@ -344,9 +402,15 @@ def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda
     from .ensemble import model_env, parse
 
     models = [] if make_llm else parse(opts.ensemble)
+    cascade = None
     if models:
         with model_env(models[0]):
             llm = build_llm_from_env()
+    elif opts.cascade and not make_llm:
+        from .cascade import build_cascade
+
+        llm = cascade = build_cascade(opts.cascade)
+        log(f"каскад моделей: быстрая {cascade.fast.label}, сильная {cascade.strong.label}")
     else:
         llm = make_llm() if make_llm else build_llm_from_env()
     if llm_wrap:
@@ -371,8 +435,32 @@ def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda
     if rv.dropped:  # лог трассировки: замечания модели с цитатами, которых нет в документе
         log(f"отброшено замечаний с неподтверждёнными цитатами: {len(rv.dropped)} "
             + "; ".join(f"{d['where']}: «{str(d['quote'])[:40]}»" for d in rv.dropped[:3]))
+    ans_state = None
+    if opts.answers:  # v9: ответы аналитика — до построения отчёта, чтобы закрытые замечания не попали в разделы 3–6
+        ans_state = _apply_answers(rv, llm, opts.answers, log)
     ctx = build_context(rv, llm, opts, started, t0, input_path, started_code, started_version)
     ctx.trace = timeline
+    if cascade is not None:
+        ctx.passport["cascade"] = cascade.passport()
+        log(f"каскад: на сильную модель ушло {ctx.passport['cascade']['strong_reqs']} из "
+            f"{ctx.passport['cascade']['checked_reqs']} требований; обращения: быстрая {ctx.passport['cascade']['calls']['fast']}, "
+            f"сильная {ctx.passport['cascade']['calls']['strong']}")
+    ctx.passport["log"] = log_path.name  # v9: журнал прогона рядом с отчётом
+    ctx.artifacts["Журнал прогона"] = log_path
+    if ans_state:
+        from .answers import answers_json, summary_state
+
+        ctx.questions = ans_state["questions"]  # исходные вопросы: Q-xx и closes — по нумерации до ответов
+        ctx.answers = answers_json(Path(opts.answers).name, ans_state["result"], ans_state["before"],
+                                   summary_state(rv, ctx.scores))
+        ctx.passport["answers"] = {"file": Path(opts.answers).name, "items": len(ctx.answers["items"]),
+                                   "closed": ans_state["result"]["closed"]}
+    from .decisions import build_decisions, rephrase
+    from .exports import to_json as _to_json
+
+    ctx.decisions = build_decisions(_to_json(ctx))  # v9: повестка решений — код из подтверждённых замечаний
+    if opts.decisions_llm:
+        ctx.decisions = rephrase(ctx.decisions, llm, log)
     if ens_info:
         ctx.passport["ensemble"] = ens_info
         ctx.passport["model"] = " + ".join(ens_info["models"]) + " (ансамбль)"
@@ -441,6 +529,18 @@ def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda
         p = out.parent / f"{stem.name}_fixed.diff"
         p.write_text(document_diff(rv, ctx.fixed_text), encoding="utf-8")
         ctx.artifacts["Исправления (unified diff)"] = p
+    if ctx.decisions:  # v9: повестка решений для владельца продукта
+        from .decisions import decisions_file
+
+        p = out.parent / f"{stem.name}_decisions.md"
+        p.write_text(decisions_file(ctx.decisions, rv.doc.title), encoding="utf-8")
+        ctx.artifacts["Решения для владельца продукта"] = p
+    if ctx.questions:  # v9: шаблон ответов аналитика — вписать ответы и запустить --answers
+        from .answers import template_md
+
+        p = out.parent / f"{stem.name}_answers_template.md"
+        p.write_text(template_md(ctx.questions, rv.doc.title), encoding="utf-8")
+        ctx.artifacts["Шаблон ответов аналитика"] = p
     if opts.tests and any(rr.test_possible for rr in rv.req_results):
         from .exports import feature_text
 

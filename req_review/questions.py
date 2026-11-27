@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .checker import ReviewResult
 from .criteria import criterion_name
@@ -28,6 +28,9 @@ class Question:
     severity: str
     rid: str = ""  # привязка к требованию (R-xxx) или замечанию набора (S-xx)
     criterion: str = ""
+    qid: str = ""  # v9: Q-01, Q-02 … — заголовок «### Q-01» в шаблоне ответов
+    closes: list = field(default_factory=list)  # v9: ID замечаний (R-xxx.N / S-xx), которые закроет конкретный ответ
+    refs: list = field(default_factory=list)  # v9: требования замечания набора (R-xxx) — опознать вопрос в новом прогоне
 
 
 def _short(q: str, n: int = 70) -> str:
@@ -53,7 +56,8 @@ def build_questions(rv: ReviewResult) -> list[Question]:
             text = tpl.format(q=_short(f.quote))
             if f.fix:
                 text += f" Предложение агента: {_short(re.sub(r'[.。]$', '', f.fix), 160)}."
-            out.append(Question(r.section or "Без раздела", label, text, f.severity, r.rid, f.criterion))
+            closes = [f"{r.rid}.{n}" for n, x in enumerate(rr.findings, 1) if x.criterion == f.criterion]
+            out.append(Question(r.section or "Без раздела", label, text, f.severity, r.rid, f.criterion, closes=closes))
             per_req += 1
     for i, f in enumerate(rv.set_findings, 1):
         if f.severity == "minor":
@@ -61,11 +65,14 @@ def build_questions(rv: ReviewResult) -> list[Question]:
         ids = ", ".join(ref.req_id for ref in f.refs if ref.req_id != "DOC") or "документ"
         out.append(Question("Набор требований", f"S-{i:02d}",
                             f"{criterion_name(f.criterion)} ({ids}): {_short(f.problem, 220)} Как исправить: {_short(f.fix, 200)}",
-                            f.severity, f"S-{i:02d}", f.criterion))
+                            f.severity, f"S-{i:02d}", f.criterion, closes=[f"S-{i:02d}"],
+                            refs=sorted({ref.req_id for ref in f.refs if ref.req_id != "DOC"})))
     if rv.domain:
         for a in rv.domain.areas:
             if a.status == "missing":
                 out.append(Question("Доменная полнота (финтех)", a.id, f"{a.title}: {a.question}", "major"))
     order = {"critical": 0, "major": 1, "minor": 2}
     out.sort(key=lambda q: order[q.severity])
+    for i, q in enumerate(out, 1):
+        q.qid = f"Q-{i:02d}"
     return out

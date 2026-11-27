@@ -29,13 +29,20 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--no-rescore", dest="rescore", action="store_false",
                     help="не перепроверять исправленный документ (экономит запросы к модели)")
     ap.add_argument("--no-cache", action="store_true",
-                    help="не брать ответы модели из кэша: свежий прогон (для отчёта, который сдаётся)")
+                    help="не брать ответы модели из кэша: свежий прогон (для отчёта, который сдаётся); "
+                         "ответы при этом записываются в кэш — повторный прогон того же документа квоту не тратит")
     ap.add_argument("--no-tests", action="store_true", help="не включать тест-пробу (Gherkin) в отчёт")
     ap.add_argument("--pdf", dest="pdf", action="store_true", default=None,
                     help="записать PDF-версию отчёта рядом с .md (в профиле deep — по умолчанию)")
     ap.add_argument("--no-pdf", dest="pdf", action="store_false", help="не создавать PDF-версию отчёта")
     ap.add_argument("--ensemble", default=None, metavar="M1,M2",
                     help="ансамбль двух моделей: два прогона и объединение подтверждённых замечаний (или LLM_ENSEMBLE)")
+    ap.add_argument("--answers", default=None, metavar="ОТВЕТЫ.md",
+                    help="ответы аналитика (шаблон <отчёт>_answers_template.md): перепроверка, конкретные ответы закрывают замечания")
+    ap.add_argument("--cascade", default=None, metavar="FAST,STRONG",
+                    help="каскад моделей: быстрая проверяет всё, сильная — подозрительные требования и набор (или LLM_CASCADE)")
+    ap.add_argument("--decisions-llm", action="store_true",
+                    help="модель перефразирует «Решения для владельца продукта» на бизнес-язык (иначе — формулировки кода)")
     ap.add_argument("--fix-loop", action="store_true",
                     help="исправить формулировки, проверить исправленный документ заново и записать «До / После»")
     for name, what in (("html", "интерактивный HTML-отчёт"), ("fixed", "исправленный документ"), ("xlsx", "Excel-трассировку"),
@@ -61,9 +68,10 @@ def main(argv: list[str] | None = None) -> int:
 
     load_dotenv(args.env or ROOT / ".env")
     if args.no_cache:
-        os.environ["LLM_CACHE"] = "0"
+        os.environ["LLM_CACHE"] = "refresh"  # не читать кэш (свежий прогон), но записать ответы для повторов
 
     from .console import Console
+    from .errors import DocumentError
     from .llm import LLMError
     from .pipeline import apply_profile_env, run
 
@@ -72,8 +80,9 @@ def main(argv: list[str] | None = None) -> int:
         profile=profile,
         html=not args.no_html, fixed=not args.no_fixed, xlsx=not args.no_xlsx, jira=not args.no_jira,
         json=not args.no_json, tests=not args.no_tests, critic=args.critic,
-        rescore=True if args.fix_loop else args.rescore, fix_loop=args.fix_loop,
+        rescore=True if args.fix_loop else args.rescore, fix_loop=args.fix_loop, answers=args.answers or "", decisions_llm=args.decisions_llm,
         ensemble=args.ensemble or os.getenv("LLM_ENSEMBLE", ""),
+        cascade=args.cascade or os.getenv("LLM_CASCADE", ""),
         domain=args.domain or os.getenv("REQLENS_DOMAIN", "fintech"), compare=args.compare,
         batch_size=int(os.getenv("LLM_BATCH_SIZE", "20")), pdf=args.pdf,
     )
@@ -89,6 +98,9 @@ def main(argv: list[str] | None = None) -> int:
     con.banner(args.input, label, profile)
     try:
         ctx = run(args.input, args.output, opts, log=con.log, step=con.step)
+    except DocumentError as e:  # v9: «сломанный» входной файл — что случилось и что сделать, без трейсбека
+        con.error(f"Ошибка: {e.message}\nЧто сделать: {e.hint[:1].upper()}{e.hint[1:]}")
+        return e.code
     except (FileNotFoundError, ValueError) as e:
         con.error(f"Ошибка: {e}")
         return 2 if isinstance(e, FileNotFoundError) or "не поддерживается" in str(e) or "Домен" in str(e) else 3

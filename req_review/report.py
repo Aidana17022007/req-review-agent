@@ -101,6 +101,13 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     if llm_stats.prompt_tokens:
         w(f"| Токены (вход / выход) | {llm_stats.prompt_tokens} / {llm_stats.output_tokens} |")
     w(f"| Длительность | {duration_s:.0f} с |")
+    if ctx is not None and ctx.passport.get("cascade"):
+        cc = ctx.passport["cascade"]
+        w(f"| Каскад моделей | быстрая {_cell(cc['fast'])} — все требования; сильная {_cell(cc['strong'])} — "
+          f"{cc['strong_reqs']} из {cc['checked_reqs']} подозрительных и проходы по набору · обращения: "
+          + f"быстрая — {cc['calls']['fast']}, сильная — {cc['calls']['strong']} |")
+    if ctx is not None and ctx.passport.get("log"):
+        w(f"| Журнал прогона | `{ctx.passport['log']}` — этапы, обращения к модели, кэш, повторы, отброшенные цитаты |")
     method = {"ids": "по идентификаторам документа", "modal": "по модальным формулировкам (номера присвоены агентом)",
               "llm": "моделью (номера присвоены агентом)"}[split.method]
     w(f"| Способ нарезки | {method} |")
@@ -390,6 +397,16 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
         w("")
         w(f"*Правило:* {vd['rule']}")
         w("")
+    if ctx is not None and getattr(ctx, "decisions", None):  # v9: повестка решений для владельца продукта
+        from .decisions import decisions_md
+
+        for line in decisions_md(ctx.decisions):
+            w(line)
+    if ctx is not None and getattr(ctx, "answers", None):  # v9: --answers — ответы аналитика и «было → стало»
+        from .answers import answers_md
+
+        for line in answers_md(ctx.answers):
+            w(line)
     if ready and n_crit:
         w(f"Без критичных и существенных замечаний (можно брать в работу уже сейчас): {', '.join(ready)}.")
         w("")
@@ -635,7 +652,7 @@ def _extras_tail(w, ctx) -> None:
         w(f"### Вопросы заказчику ({len(ctx.questions)})")
         w("")
         for i, q in enumerate(ctx.questions[:30], 1):
-            w(f"{i}. {ICON.get(q.severity, '')} **{_cell(q.ref)}** — {_cell(q.text)}")
+            w(f"{i}. {ICON.get(q.severity, '')} **{q.qid or i}. {_cell(q.ref)}** — {_cell(q.text)}")
         w("")
     if ctx.changes:
         w("### Исправленный документ")

@@ -257,3 +257,96 @@ def test_studio_screens_use_api_v1(client):
         assert marker in html, marker
     # старые эндпоинты Studio остаются только для режима «Демо»
     assert "fetch(\"/api/review\"" not in html
+
+
+def test_answers_endpoint_new_run_with_answers_and_compare(client):
+    """v9: POST /runs/{rid}/answers — ответы аналитика (файлом или JSON) → новый прогон с полем answers и сравнением."""
+    c = client
+    pid = c.post("/api/v1/projects", json={"name": "Ответы"}).json()["id"]
+    r1 = _upload(c, pid).json()
+    _wait(r1["job"])
+    run1 = c.get(f"/api/v1/runs/{r1['job']}").json()
+    tpl_name = next(v for v in run1["artifacts"].values() if v.endswith("_answers_template.md"))
+    tpl = c.get(f"/api/v1/runs/{r1['job']}/files/{tpl_name}").text
+    assert "### Q-01." in tpl
+    # ошибки: нет заголовков, пустые ответы, неизвестный прогон
+    assert c.post(f"/api/v1/runs/{r1['job']}/answers", json={"text": "просто текст"}).json()["error"]["code"] == "bad_request"
+    assert c.post(f"/api/v1/runs/{r1['job']}/answers", json={"text": tpl}).json()["error"]["code"] == "empty"
+    assert c.post("/api/v1/runs/nope/answers", json={"text": tpl}).status_code == 404
+    text = tpl.replace("Ответ: ", "Ответ: Не дольше 2 секунд для 95 % запросов при 200 запросах в секунду.", 1) + \
+        "\n### Q-99. лишний\nОтвет: 5\n"
+    r = c.post(f"/api/v1/runs/{r1['job']}/answers", files={"file": ("answers.md", text.encode("utf-8"), "text/markdown")})
+    assert r.status_code == 202, r.text
+    body = r.json()
+    assert body["answers_of"] == r1["job"] and body["matched"] == 1 and body["unknown_qids"] == ["Q-99"]
+    _wait(body["job"])
+    run2 = c.get(f"/api/v1/runs/{body['job']}").json()
+    assert run2["status"] == "done" and run2["compare"] is not None
+    data = json.loads(c.get(f"/api/v1/runs/{body['job']}/files/report.json").text)
+    it = data["answers"]["items"][0]
+    assert it["qid"] == "Q-01" and it["type"] == "concrete" and it["closes"] and it["quote"] in it["answer"]
+
+
+def test_demo_upload_limits_429_with_example_link(client, monkeypatch):
+    """v9: DEMO_UPLOADS_PER_IP / DEMO_UPLOADS_TOTAL → 429 limit, Retry-After и ссылка на пример; «Только правила» не считается."""
+    from req_review.web import limits
+
+    limits.reset()
+    monkeypatch.setenv("DEMO_UPLOADS_PER_IP", "2")
+    monkeypatch.setenv("DEMO_UPLOADS_TOTAL", "3")
+    c = client
+    pid = c.post("/api/v1/projects", json={"name": "Лимиты"}).json()["id"]
+    jobs = []
+    for i in range(2):
+        r = _upload(c, pid, FIX.read_bytes() + f"\n<!-- v{i} -->\n".encode(), name=f"v{i}.md")
+        assert r.status_code == 200, r.text
+        jobs.append(r.json()["job"])
+    r = _upload(c, pid, FIX.read_bytes() + b"\n<!-- v3 -->\n", name="v3.md")
+    assert r.status_code == 429 and r.headers["Retry-After"].isdigit()
+    e = r.json()["error"]
+    assert e["code"] == "limit" and e["scope"] == "ip" and e["example"] == "/?example=1" and "лимит" in e["message"]
+    # «Только правила» модель не тратит — не ограничивается
+    r = _upload(c, pid, FIX.read_bytes() + b"\n<!-- rules -->\n", name="rules.md", mode="rules")
+    assert r.status_code == 200
+    # другой адрес: общий лимит на сервер (3) исчерпывается третьей загрузкой
+    other = {"X-Forwarded-For": "203.0.113.7"}
+    r = c.post(f"/api/v1/projects/{pid}/runs", headers=other,
+               files={"file": ("o1.md", FIX.read_bytes() + b"\n<!-- o1 -->\n", "text/markdown")})
+    assert r.status_code == 200
+    r = c.post(f"/api/v1/projects/{pid}/runs", headers=other,
+               files={"file": ("o2.md", FIX.read_bytes() + b"\n<!-- o2 -->\n", "text/markdown")})
+    assert r.status_code == 429 and r.json()["error"]["scope"] == "total"
+    # старый эндпоинт Studio — тот же лимит, старый формат ошибки
+    r = c.post("/api/review", headers=other, files={"file": ("x.md", FIX.read_bytes(), "text/markdown")})
+    assert r.status_code == 429 and "лимит" in r.json()["detail"] and "Retry-After" in r.headers
+    for j in jobs:
+        _wait(j)
+    limits.reset()
+
+
+def test_limits_default_only_on_public_server(monkeypatch):
+    from req_review.web import limits
+
+    for k in ("DEMO_UPLOADS_PER_IP", "DEMO_UPLOADS_TOTAL", "PORT"):
+        monkeypatch.delenv(k, raising=False)
+    assert limits.limits() == (0, 0)  # локальный запуск — без лимитов
+    monkeypatch.setenv("PORT", "10000")
+    assert limits.limits() == (5, 20)  # Render задаёт PORT — лимиты по умолчанию
+    monkeypatch.setenv("DEMO_UPLOADS_PER_IP", "0")
+    assert limits.limits() == (0, 20)
+
+
+def test_example_endpoint_serves_organizers_report_without_run(client):
+    """v9: GET /api/v1/example — готовый отчёт по документу организаторов, без прогона и без квоты."""
+    c = client
+    jobs_before = len(webapp.JOBS)
+    r = c.get("/api/v1/example")
+    assert r.status_code == 200
+    d = r.json()
+    assert d["document"] and d["report"]["passport"]["document"] == d["document"] and d["summary"]["reqs"] > 0
+    assert set(d["files"]) == {"Данные (JSON)", "Отчёт (Markdown)", "Интерактивный отчёт (HTML)"}
+    html = c.get("/api/v1/example/files/report.html")
+    assert html.status_code == 200 and html.headers["content-type"].startswith("text/html") and "<html" in html.text[:500]
+    assert c.get("/api/v1/example/files/secret.txt").status_code == 404
+    assert c.get("/?example=1").status_code == 200
+    assert len(webapp.JOBS) == jobs_before  # ни одного прогона

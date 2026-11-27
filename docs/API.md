@@ -130,7 +130,7 @@ severity, problem, quote}`; `rows` — статус каждого требов�
 | `batch_start` / `batch_done` / `batch_fail` | `reqs[]` / `results[]` / `rids[]` | живая таблица требований |
 | `log` | `msg` | строка журнала |
 | `done` | `summary`, `artifacts`, `pct: 100` | итог; запись истории уже обновлена |
-| `error` | `msg`, `code` (`key` \| `quota` \| `noreqs` \| `error`); при `quota` — `fallback: "rules"`, `hint` | при `quota` — кнопка «Проверить без модели (только правила)» → тот же файл с `mode=rules` |
+| `error` | `msg`, `code` (`key` \| `quota` \| `noreqs` \| `document` \| `error`); при `quota` — `fallback: "rules"`, `hint`; v9: при `document` / `noreqs` — `hint` «что сделать» | при `quota` — кнопка «Проверить без модели (только правила)» → тот же файл с `mode=rules`; при `document` — экран «Файл не читается»: `msg` + `hint` (OCR, сохранить как PDF / DOCX) |
 | `cancelled` | `msg` | «Прогон отменён» |
 
 `POST /api/v1/jobs/{jid}/cancel` → `{"job", "cancelling": true}`. В очереди отменяется сразу; во время работы —
@@ -206,9 +206,12 @@ severity, problem, quote}`; `rows` — статус каждого требов�
 
 | Переменная | По умолчанию | |
 |---|---|---|
-| `DEMO_UPLOADS_PER_IP` | `5` | загрузок с одного IP в сутки (UTC) |
+| `DEMO_UPLOADS_PER_IP` | `5` | загрузок с одного IP в сутки (UTC); IP — из `X-Forwarded-For` за прокси Render |
 | `DEMO_UPLOADS_TOTAL` | `20` | загрузок всего в сутки |
-| | `0` | лимит выключен (локальный запуск) |
+| | `0` | лимит выключен |
+
+Значения по умолчанию действуют на публичном сервере (задана переменная `PORT`, как на Render). Локальный запуск
+(`python -m req_review.web`) — без лимитов, пока переменные не заданы явно. Счётчики живут в памяти процесса.
 
 ```json
 // 429, заголовок Retry-After: <секунд до 00:00 UTC>

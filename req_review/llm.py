@@ -50,7 +50,9 @@ class BaseLLM:
     # --- публичный метод ---
     def generate_json(self, system: str, prompt: str, *, task: str = "", context: dict | None = None) -> dict:
         cache = self._cache_path(system, prompt)
-        if cache and cache.exists():
+        # LLM_CACHE=refresh (--no-cache): свежие ответы модели, кэш только пополняется — следующий прогон
+        # (например, --answers по тому же документу) не тратит квоту повторно
+        if cache and cache.exists() and os.getenv("LLM_CACHE", "1").strip().lower() != "refresh":
             try:
                 data = parse_json(cache.read_text(encoding="utf-8"))
                 self.stats.cached += 1
@@ -110,7 +112,7 @@ class BaseLLM:
 
     def _cache_path(self, system: str, prompt: str) -> Path | None:
         """Кэш ответов по хэшу (провайдер + модель + температура + промпт): повторный прогон не тратит квоту."""
-        if self.provider == "mock" or os.getenv("LLM_CACHE", "1").strip() in ("0", "false", "no", ""):
+        if self.provider in ("mock", "rules") or os.getenv("LLM_CACHE", "1").strip() in ("0", "false", "no", ""):
             return None
         h = hashlib.sha256(f"{self.provider}|{self.model}|{getattr(self, 'temperature', '')}|{system}|{prompt}".encode()).hexdigest()
         base = Path(os.getenv("LLM_CACHE_DIR", Path(__file__).resolve().parent.parent / ".cache" / "llm"))

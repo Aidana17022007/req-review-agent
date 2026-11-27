@@ -159,30 +159,77 @@ def _read_docx(path: Path) -> list[tuple[str, int | None]]:
     return out
 
 
+OLE_MAGIC = bytes.fromhex("D0CF11E0A1B11AE1")  # старые форматы Office (.doc, .xls) — составной документ OLE
+
+
+def _check_content(path: Path, ext: str) -> None:
+    """v9: проверка содержимого до разбора — понятная ошибка вместо трейсбека или «требований не найдено»."""
+    from .errors import SAVE_AS, DocumentError
+
+    head = path.read_bytes()[:4096]
+    if not head.strip():
+        raise DocumentError(f"Файл {path.name} пустой.", "проверьте, что выбран нужный файл, и сохраните документ "
+                            "с текстом требований ещё раз.")
+    if head.startswith(OLE_MAGIC):
+        raise DocumentError(f"{path.name} — документ старого формата Word (.doc), а не .docx.",
+                            SAVE_AS + ".", code=2 if ext == ".doc" else 3)
+    if ext == ".pdf" and not head.lstrip().startswith(b"%PDF"):
+        raise DocumentError(f"{path.name} не является PDF-файлом (нет заголовка %PDF).",
+                            "сохраните документ как PDF ещё раз или загрузите исходник (DOCX, MD).")
+    if ext == ".docx" and not head.startswith(b"PK"):
+        raise DocumentError(f"{path.name} не является документом Word: внутри не .docx, а "
+                            + ("текст" if b"\0" not in head else "другие данные") + ".", SAVE_AS + "; если это текст — "
+                            "переименуйте файл в .md или .txt.")
+    if ext in (".md", ".markdown", ".txt"):
+        ctrl = sum(1 for b in head if b < 32 and b not in (9, 10, 13))
+        if b"\0" in head or ctrl > len(head) * 0.05:
+            raise DocumentError(f"{path.name} не похож на текст: внутри двоичные данные.",
+                                "проверьте, что выбран правильный файл; текст сохраните в .md или .txt (UTF-8) "
+                                "либо загрузите PDF или DOCX.")
+
+
 def read_document(path: str | Path) -> Document:
+    from .errors import SAVE_AS, DocumentError
+
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"Файл не найден: {path}")
     ext = path.suffix.lower()
+    if ext == ".doc":
+        raise DocumentError(f"Формат .doc (старый Word) не поддерживается: {path.name}.", SAVE_AS + ".", code=2)
     if ext not in SUPPORTED:
         raise ValueError(
             f"Формат {ext or '(без расширения)'} не поддерживается. Поддерживаются: "
             + ", ".join(sorted(SUPPORTED))
         )
+    _check_content(path, ext)
     pages = None
-    if ext == ".pdf":
-        raw, pages = _read_pdf(path)
-    elif ext == ".docx":
-        raw = _read_docx(path)
-    else:
-        raw = _read_text(path)
+    try:
+        if ext == ".pdf":
+            raw, pages = _read_pdf(path)
+        elif ext == ".docx":
+            raw = _read_docx(path)
+        else:
+            raw = _read_text(path)
+    except DocumentError:
+        raise
+    except Exception as e:  # noqa: BLE001 — разбор чужого файла: любая ошибка библиотеки → понятное сообщение
+        text = f"{type(e).__name__} {e}".lower()
+        if ext == ".pdf" and any(k in text for k in ("password", "encrypt", "decrypt", "pdfminerexception")):
+            raise DocumentError(f"PDF {path.name} защищён паролем — текст прочитать нельзя.",
+                                "снимите пароль (откройте PDF и сохраните копию через «Печать → Сохранить как PDF») "
+                                "или загрузите исходник — DOCX или MD.") from None
+        raise DocumentError(f"Не удалось прочитать {path.name}: файл повреждён или сохранён нестандартно.",
+                            "откройте его в исходной программе и сохраните заново (PDF с текстом, DOCX или MD).") from None
 
     lines = [Line(text=t.rstrip(), lineno=i, page=p) for i, (t, p) in enumerate(raw, start=1)]
     doc = Document(path=path, fmt=ext.lstrip("."), lines=lines, sha256=_sha256(path), pages=pages)
     if not any(l.text.strip() for l in lines):
-        doc.warnings.append(
-            "Из документа не извлечён текст (возможно, PDF состоит из сканов). Нужен текстовый PDF или OCR."
-        )
+        if ext == ".pdf":
+            raise DocumentError(f"Из PDF {path.name} не извлечён текст — похоже, это скан без текстового слоя.",
+                                "распознайте текст (OCR: «Распознать текст» в Adobe Acrobat, ABBYY FineReader, ocrmypdf) "
+                                "или сохраните исходный документ как PDF с текстом.")
+        raise DocumentError(f"В файле {path.name} нет текста.", "проверьте, что выбран нужный файл.")
     doc.title = _guess_title(doc)
     return doc
 

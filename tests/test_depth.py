@@ -127,7 +127,7 @@ def test_report_json_23_fields_and_markdown(tmp_path, monkeypatch):
     out = tmp_path / "r.md"
     assert main([str(src), str(out), "--env", str(tmp_path / "x.env"), "--quiet", "--no-xlsx", "--no-jira"]) == 0
     d = json.loads((tmp_path / "r.json").read_text(encoding="utf-8"))
-    assert d["schema_version"] == "2.3"
+    assert d["schema_version"] == "2.4"
     assert d["line_coverage"]["percent"] == 100
     assert d["criteria_matrix"]["criteria"] and len(d["criteria_matrix"]["rows"]) == len(d["requirements"])
     assert d["acceptance_coverage"]["percent"] is not None
