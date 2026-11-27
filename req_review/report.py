@@ -101,6 +101,11 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     if llm_stats.prompt_tokens:
         w(f"| Токены (вход / выход) | {llm_stats.prompt_tokens} / {llm_stats.output_tokens} |")
     w(f"| Длительность | {duration_s:.0f} с |")
+    if ctx is not None and ctx.passport.get("cascade"):
+        cc = ctx.passport["cascade"]
+        w(f"| Каскад моделей | быстрая {_cell(cc['fast'])} — все требования; сильная {_cell(cc['strong'])} — "
+          f"{cc['strong_reqs']} из {cc['checked_reqs']} подозрительных и проходы по набору · обращения: "
+          + f"быстрая — {cc['calls']['fast']}, сильная — {cc['calls']['strong']} |")
     if ctx is not None and ctx.passport.get("log"):
         w(f"| Журнал прогона | `{ctx.passport['log']}` — этапы, обращения к модели, кэш, повторы, отброшенные цитаты |")
     method = {"ids": "по идентификаторам документа", "modal": "по модальным формулировкам (номера присвоены агентом)",

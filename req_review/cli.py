@@ -39,6 +39,8 @@ def build_parser() -> argparse.ArgumentParser:
                     help="ансамбль двух моделей: два прогона и объединение подтверждённых замечаний (или LLM_ENSEMBLE)")
     ap.add_argument("--answers", default=None, metavar="ОТВЕТЫ.md",
                     help="ответы аналитика (шаблон <отчёт>_answers_template.md): перепроверка, конкретные ответы закрывают замечания")
+    ap.add_argument("--cascade", default=None, metavar="FAST,STRONG",
+                    help="каскад моделей: быстрая проверяет всё, сильная — подозрительные требования и набор (или LLM_CASCADE)")
     ap.add_argument("--decisions-llm", action="store_true",
                     help="модель перефразирует «Решения для владельца продукта» на бизнес-язык (иначе — формулировки кода)")
     ap.add_argument("--fix-loop", action="store_true",
@@ -80,6 +82,7 @@ def main(argv: list[str] | None = None) -> int:
         json=not args.no_json, tests=not args.no_tests, critic=args.critic,
         rescore=True if args.fix_loop else args.rescore, fix_loop=args.fix_loop, answers=args.answers or "", decisions_llm=args.decisions_llm,
         ensemble=args.ensemble or os.getenv("LLM_ENSEMBLE", ""),
+        cascade=args.cascade or os.getenv("LLM_CASCADE", ""),
         domain=args.domain or os.getenv("REQLENS_DOMAIN", "fintech"), compare=args.compare,
         batch_size=int(os.getenv("LLM_BATCH_SIZE", "20")), pdf=args.pdf,
     )

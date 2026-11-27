@@ -45,6 +45,7 @@ class Options:
     pdf: bool | None = None  # PDF-версия отчёта; None — по профилю (deep — да)
     ensemble: str = ""  # v7: «модель1,модель2» — два прогона и объединение подтверждённых замечаний
     fix_loop: bool = False  # v7: «исправил → проверил заново» — блок «До / После» и файл <отчёт>_before_after.md
+    cascade: str = ""  # v9: «быстрая,сильная» — быстрая проверяет всё, сильная — подозрительные требования и набор
     decisions_llm: bool = False  # v9: модель перефразирует повестку решений на бизнес-язык (иначе — формулировки кода)
     answers: str = ""  # v9: файл ответов аналитика (шаблон <отчёт>_answers_template.md) — перепроверка с учётом ответов
 
@@ -401,9 +402,15 @@ def _run(input_path, output_path, opts: Options, log, step, llm_wrap, make_llm, 
     from .ensemble import model_env, parse
 
     models = [] if make_llm else parse(opts.ensemble)
+    cascade = None
     if models:
         with model_env(models[0]):
             llm = build_llm_from_env()
+    elif opts.cascade and not make_llm:
+        from .cascade import build_cascade
+
+        llm = cascade = build_cascade(opts.cascade)
+        log(f"каскад моделей: быстрая {cascade.fast.label}, сильная {cascade.strong.label}")
     else:
         llm = make_llm() if make_llm else build_llm_from_env()
     if llm_wrap:
@@ -433,6 +440,11 @@ def _run(input_path, output_path, opts: Options, log, step, llm_wrap, make_llm, 
         ans_state = _apply_answers(rv, llm, opts.answers, log)
     ctx = build_context(rv, llm, opts, started, t0, input_path, started_code, started_version)
     ctx.trace = timeline
+    if cascade is not None:
+        ctx.passport["cascade"] = cascade.passport()
+        log(f"каскад: на сильную модель ушло {ctx.passport['cascade']['strong_reqs']} из "
+            f"{ctx.passport['cascade']['checked_reqs']} требований; обращения: быстрая {ctx.passport['cascade']['calls']['fast']}, "
+            f"сильная {ctx.passport['cascade']['calls']['strong']}")
     ctx.passport["log"] = log_path.name  # v9: журнал прогона рядом с отчётом
     ctx.artifacts["Журнал прогона"] = log_path
     if ans_state:
