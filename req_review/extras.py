@@ -67,7 +67,7 @@ def load_domain(name: str) -> dict | None:
         return None
     p = DOMAINS_DIR / f"{name}.yaml"
     if not p.exists():
-        raise ValueError(f"Домен «{name}» не найден. Доступны: " + ", ".join(x.stem for x in DOMAINS_DIR.glob("*.yaml")))
+        raise ValueError(f"Домен «{name}» не найден. Доступны: " + ", ".join(x.stem for x in DOMAINS_DIR.glob("*.yaml") if not x.stem.endswith(".rules")))
     import yaml
 
     return yaml.safe_load(p.read_text(encoding="utf-8"))

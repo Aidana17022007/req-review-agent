@@ -47,6 +47,7 @@ class Options:
     fix_loop: bool = False  # v7: «исправил → проверил заново» — блок «До / После» и файл <отчёт>_before_after.md
     cascade: str = ""  # v9: «быстрая,сильная» — быстрая проверяет всё, сильная — подозрительные требования и набор
     decisions_llm: bool = False  # v9: модель перефразирует повестку решений на бизнес-язык (иначе — формулировки кода)
+    rules: str = ""  # v10: чек-лист банка в YAML (--rules fintech | путь к .rules.yaml | REQLENS_RULES)
     answers: str = ""  # v9: файл ответов аналитика (шаблон <отчёт>_answers_template.md) — перепроверка с учётом ответов
 
 
@@ -210,6 +211,12 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
     if any(rv.calibration.values()):
         log(f"  калибровка серьёзности: тест-проб снято {rv.calibration['test_probe_dropped']}, понижено "
             f"{rv.calibration['capped']}, дублей S-xx свёрнуто {rv.calibration['folded']}")
+    from .bank_rules import rules_spec
+
+    if spec := rules_spec(opts.rules):  # v10: чек-лист банка — после критика и калибровки, чтобы правила не снимались
+        from .bank_rules import apply_rules, load_rules
+
+        rv.bank_rules = apply_rules(rv, load_rules(spec), log=log)
     default_confidence(rv)
     rv.depth = depth_summary(rv, acc)
     rv.depth["review_stats"]["calibration"] = rv.calibration  # v8: калибровка серьёзности
