@@ -108,6 +108,23 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     if llm_stats.prompt_tokens:
         w(f"| Токены (вход / выход) | {llm_stats.prompt_tokens} / {llm_stats.output_tokens} |")
     w(f"| Длительность | {duration_s:.0f} с |")
+    if ctx is not None and (vf := ctx.passport.get("verify")):  # v13+: самопроверка (как `review.py verify`)
+        w(f"| Проверка отчёта (verify) | {'✅' if vf['ok'] else '❌'} цитат {vf['quotes_ok']} из {vf['quotes_total']} "
+          f"найдены в исходнике · SHA-256 {'совпадает' if vf['sha_ok'] else 'не совпадает'} · повторно: "
+          "`python review.py verify <отчёт>.json <документ>` |")
+    if ctx is not None and (sg := ctx.passport.get("strong")):  # v13: сильная модель
+        w(f"| Сильная модель | {_cell(sg['model'])} — {sg['note']} |")
+    if ctx is not None and (rn := ctx.passport.get("runs")):  # v13: стабильность по N прогонам
+        w(f"| Стабильность ({rn['n']} прогона, температуры {', '.join(map(str, rn['temperatures']))}) | устойчивых "
+          f"замечаний {rn['stable']}, найдено только в одном прогоне {rn['unstable']}; замечаний по прогонам: "
+          f"{' / '.join(map(str, rn['findings_per_run']))} |")
+    if ctx is not None and (cst := ctx.passport.get("cost")):  # v13: стоимость прогона
+        from .cost import line as cost_line
+
+        w(f"| Стоимость прогона (оценка) | {_cell(cost_line(cst))} |")
+    if ctx is not None and (cp := ctx.passport.get("critical_path")):  # v12/v13: время этапов
+        w(f"| Этапы и критический путь | {cp['seconds']:.0f} с: {' → '.join(cp['stages'])} "
+          f"(сумма этапов {cp['stages_sum_s']:.0f} с, параллельно до {cp['concurrency']} запросов) |")
     if ctx is not None and ctx.passport.get("cascade"):
         cc = ctx.passport["cascade"]
         w(f"| Каскад моделей | быстрая {_cell(cc['fast'])} — все требования; сильная {_cell(cc['strong'])} — "
@@ -306,6 +323,11 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
 
         for line in report_md(rv):
             w(line)
+    if getattr(rv, "compliance", None):  # v13: комплаенс и безопасность — внутри раздела 4
+        from .compliance import report_md as compliance_md
+
+        for line in compliance_md(rv):
+            w(line)
 
     # ------------------------------------------------------------------ 5
     w("## 5. Сводка")
@@ -446,6 +468,11 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
         for it in plan:
             w(f"| {_cell(', '.join(it['ids'][:4]))}: {_cell(it['title'][:90])} | {_cell(it['example'][:300])} | {it['example_source']} |")
         w("")
+    if getattr(rv, "bank_checklist", None):  # v13+: заполненный чек-лист «Ревью требований» из шаблона документа
+        from .bank_checklist import report_md as checklist_md
+
+        for line in checklist_md(rv.bank_checklist):
+            w(line)
     if ctx is not None:
         _extras_tail(w, ctx)
     lc = (getattr(rv, "depth", None) or {}).get("line_coverage")

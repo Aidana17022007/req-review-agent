@@ -27,19 +27,27 @@ def parse(spec: str | None) -> list[str]:
 
 @contextmanager
 def model_env(model: str):
-    """Временно подставить модель в переменную окружения текущего провайдера (CLI работает в одном потоке)."""
+    """Временно подставить модель в переменную окружения провайдера (CLI работает в одном потоке).
+    v13: «провайдер:модель» (например «openai:deepseek-chat») — ансамбль моделей РАЗНЫХ провайдеров: на время прогона
+    меняется и LLM_PROVIDER (ключи и адреса берутся из .env этого провайдера)."""
     from .llm import default_provider
 
-    key = MODEL_ENV.get(default_provider(), "GEMINI_MODEL")
-    old = os.environ.get(key)
+    provider = None
+    if ":" in model and model.split(":", 1)[0] in MODEL_ENV:
+        provider, model = model.split(":", 1)
+    key = MODEL_ENV.get(provider or default_provider(), "GEMINI_MODEL")
+    saved = {k: os.environ.get(k) for k in (key, "LLM_PROVIDER")}
     os.environ[key] = model
+    if provider:
+        os.environ["LLM_PROVIDER"] = provider
     try:
         yield
     finally:
-        if old is None:
-            os.environ.pop(key, None)
-        else:
-            os.environ[key] = old
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
 
 
 def _words(s: str) -> set[str]:

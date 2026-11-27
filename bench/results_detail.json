@@ -1,0 +1,3878 @@
+{
+ "label": "gemini / gemini-3.5-flash-lite · RAG=on · профиль fast",
+ "version": "v9.0.0, коммит 6f2458d (v3.0.3-41-g6f2458d-dirty)",
+ "rows": [
+  {
+   "doc": "payments",
+   "type": "vague",
+   "ids": [
+    "PAY-01"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "payments",
+   "type": "vague",
+   "ids": [
+    "NFR-01"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "payments",
+   "type": "missing_units",
+   "ids": [
+    "PAY-07"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous",
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "payments",
+   "type": "open_list",
+   "ids": [
+    "PAY-08"
+   ],
+   "criteria": [
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "payments",
+   "type": "tbd",
+   "ids": [
+    "NFR-05"
+   ],
+   "criteria": [
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "payments",
+   "type": "and_or",
+   "ids": [
+    "PAY-09"
+   ],
+   "criteria": [
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "payments",
+   "type": "conditional",
+   "ids": [
+    "PAY-03"
+   ],
+   "criteria": [
+    "unambiguous",
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "payments",
+   "type": "design",
+   "ids": [
+    "PAY-13"
+   ],
+   "criteria": [
+    "appropriate"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "payments",
+   "type": "compound",
+   "ids": [
+    "PAY-12"
+   ],
+   "criteria": [
+    "singular"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "payments",
+   "type": "subjective",
+   "ids": [
+    "NFR-06"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "payments",
+   "type": "absolute",
+   "ids": [
+    "NFR-02"
+   ],
+   "criteria": [
+    "feasible",
+    "verifiable"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "payments",
+   "type": "contradiction",
+   "ids": [
+    "PAY-05",
+    "SEC-01"
+   ],
+   "criteria": [
+    "set_consistent"
+   ],
+   "level": "set",
+   "found": true
+  },
+  {
+   "doc": "payments",
+   "type": "duplicate",
+   "ids": [
+    "PAY-02",
+    "PAY-15"
+   ],
+   "criteria": [
+    "set_consistent",
+    "necessary"
+   ],
+   "level": "set",
+   "found": true
+  },
+  {
+   "doc": "credit",
+   "type": "vague",
+   "ids": [
+    "CR-03"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "credit",
+   "type": "missing_units",
+   "ids": [
+    "CR-11"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous",
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "credit",
+   "type": "open_list",
+   "ids": [
+    "CR-04"
+   ],
+   "criteria": [
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "credit",
+   "type": "tbd",
+   "ids": [
+    "CR-10"
+   ],
+   "criteria": [
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "credit",
+   "type": "and_or",
+   "ids": [
+    "CR-13"
+   ],
+   "criteria": [
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "credit",
+   "type": "conditional",
+   "ids": [
+    "CR-05"
+   ],
+   "criteria": [
+    "unambiguous",
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "credit",
+   "type": "design",
+   "ids": [
+    "CR-07"
+   ],
+   "criteria": [
+    "appropriate"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "credit",
+   "type": "compound",
+   "ids": [
+    "CR-12"
+   ],
+   "criteria": [
+    "singular"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "credit",
+   "type": "subjective",
+   "ids": [
+    "CNF-01"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "credit",
+   "type": "absolute",
+   "ids": [
+    "CNF-02"
+   ],
+   "criteria": [
+    "feasible",
+    "verifiable"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "credit",
+   "type": "vague_goal",
+   "ids": [
+    "CNF-03"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "credit",
+   "type": "vague",
+   "ids": [
+    "CR-06"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "credit",
+   "type": "contradiction",
+   "ids": [
+    "CR-01",
+    "CR-15"
+   ],
+   "criteria": [
+    "set_consistent"
+   ],
+   "level": "set",
+   "found": true
+  },
+  {
+   "doc": "credit",
+   "type": "duplicate",
+   "ids": [
+    "CR-02",
+    "CR-16"
+   ],
+   "criteria": [
+    "set_consistent",
+    "necessary"
+   ],
+   "level": "set",
+   "found": true
+  },
+  {
+   "doc": "onboarding",
+   "type": "vague",
+   "ids": [
+    "ON-04"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "onboarding",
+   "type": "open_list",
+   "ids": [
+    "ON-03"
+   ],
+   "criteria": [
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "onboarding",
+   "type": "tbd",
+   "ids": [
+    "ON-10"
+   ],
+   "criteria": [
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "onboarding",
+   "type": "and_or",
+   "ids": [
+    "ON-12"
+   ],
+   "criteria": [
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "onboarding",
+   "type": "conditional",
+   "ids": [
+    "ON-13"
+   ],
+   "criteria": [
+    "unambiguous",
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "onboarding",
+   "type": "design",
+   "ids": [
+    "ON-14"
+   ],
+   "criteria": [
+    "appropriate"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "onboarding",
+   "type": "compound",
+   "ids": [
+    "ON-08"
+   ],
+   "criteria": [
+    "singular"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "onboarding",
+   "type": "subjective",
+   "ids": [
+    "ONF-03"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "onboarding",
+   "type": "absolute",
+   "ids": [
+    "ON-05"
+   ],
+   "criteria": [
+    "feasible",
+    "verifiable"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "onboarding",
+   "type": "vague_goal",
+   "ids": [
+    "ONF-02"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "onboarding",
+   "type": "missing_units",
+   "ids": [
+    "ONF-01"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "onboarding",
+   "type": "passive",
+   "ids": [
+    "ON-11"
+   ],
+   "criteria": [
+    "complete",
+    "conforming"
+   ],
+   "level": "requirement",
+   "found": false
+  },
+  {
+   "doc": "onboarding",
+   "type": "contradiction",
+   "ids": [
+    "ON-09",
+    "ON-15"
+   ],
+   "criteria": [
+    "set_consistent"
+   ],
+   "level": "set",
+   "found": true
+  },
+  {
+   "doc": "onboarding",
+   "type": "duplicate",
+   "ids": [
+    "ON-07",
+    "ON-16"
+   ],
+   "criteria": [
+    "set_consistent",
+    "necessary"
+   ],
+   "level": "set",
+   "found": true
+  },
+  {
+   "doc": "deposit_kk",
+   "type": "vague",
+   "ids": [
+    "DEP-01"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "deposit_kk",
+   "type": "vague",
+   "ids": [
+    "DNF-01"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "deposit_kk",
+   "type": "missing_units",
+   "ids": [
+    "DEP-08"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous",
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "deposit_kk",
+   "type": "open_list",
+   "ids": [
+    "DEP-11"
+   ],
+   "criteria": [
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "deposit_kk",
+   "type": "tbd",
+   "ids": [
+    "DNF-05"
+   ],
+   "criteria": [
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "deposit_kk",
+   "type": "and_or",
+   "ids": [
+    "DEP-09"
+   ],
+   "criteria": [
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "deposit_kk",
+   "type": "conditional",
+   "ids": [
+    "DEP-04"
+   ],
+   "criteria": [
+    "unambiguous",
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "deposit_kk",
+   "type": "design",
+   "ids": [
+    "DEP-13"
+   ],
+   "criteria": [
+    "appropriate"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "deposit_kk",
+   "type": "compound",
+   "ids": [
+    "DEP-14"
+   ],
+   "criteria": [
+    "singular"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "deposit_kk",
+   "type": "subjective",
+   "ids": [
+    "DNF-06"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "deposit_kk",
+   "type": "absolute",
+   "ids": [
+    "DNF-02"
+   ],
+   "criteria": [
+    "feasible",
+    "verifiable"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "deposit_kk",
+   "type": "contradiction",
+   "ids": [
+    "DEP-06",
+    "DEP-15"
+   ],
+   "criteria": [
+    "set_consistent"
+   ],
+   "level": "set",
+   "found": true
+  },
+  {
+   "doc": "deposit_kk",
+   "type": "duplicate",
+   "ids": [
+    "DEP-02",
+    "DEP-16"
+   ],
+   "criteria": [
+    "set_consistent",
+    "necessary"
+   ],
+   "level": "set",
+   "found": true
+  },
+  {
+   "doc": "cards",
+   "type": "vague",
+   "ids": [
+    "CRD-01"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "cards",
+   "type": "vague",
+   "ids": [
+    "KNF-01"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "cards",
+   "type": "missing_units",
+   "ids": [
+    "CRD-07"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous",
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "cards",
+   "type": "open_list",
+   "ids": [
+    "CRD-08"
+   ],
+   "criteria": [
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "cards",
+   "type": "tbd",
+   "ids": [
+    "KNF-05"
+   ],
+   "criteria": [
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "cards",
+   "type": "and_or",
+   "ids": [
+    "CRD-09"
+   ],
+   "criteria": [
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "cards",
+   "type": "conditional",
+   "ids": [
+    "CRD-03"
+   ],
+   "criteria": [
+    "unambiguous",
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "cards",
+   "type": "design",
+   "ids": [
+    "CRD-13"
+   ],
+   "criteria": [
+    "appropriate"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "cards",
+   "type": "compound",
+   "ids": [
+    "CRD-12"
+   ],
+   "criteria": [
+    "singular"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "cards",
+   "type": "subjective",
+   "ids": [
+    "KNF-06"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "cards",
+   "type": "absolute",
+   "ids": [
+    "KNF-02"
+   ],
+   "criteria": [
+    "feasible",
+    "verifiable"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "cards",
+   "type": "contradiction",
+   "ids": [
+    "CRD-05",
+    "CRD-15"
+   ],
+   "criteria": [
+    "set_consistent"
+   ],
+   "level": "set",
+   "found": true
+  },
+  {
+   "doc": "cards",
+   "type": "duplicate",
+   "ids": [
+    "CRD-02",
+    "CRD-16"
+   ],
+   "criteria": [
+    "set_consistent",
+    "necessary"
+   ],
+   "level": "set",
+   "found": true
+  },
+  {
+   "doc": "cashback",
+   "type": "vague",
+   "ids": [
+    "CB-04"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "cashback",
+   "type": "vague",
+   "ids": [
+    "CB-09"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "cashback",
+   "type": "missing_units",
+   "ids": [
+    "CB-10"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous",
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "cashback",
+   "type": "open_list",
+   "ids": [
+    "CB-06"
+   ],
+   "criteria": [
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "cashback",
+   "type": "tbd",
+   "ids": [
+    "CB-03"
+   ],
+   "criteria": [
+    "complete"
+   ],
+   "level": "requirement",
+   "found": false
+  },
+  {
+   "doc": "cashback",
+   "type": "and_or",
+   "ids": [
+    "CB-11"
+   ],
+   "criteria": [
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "cashback",
+   "type": "conditional",
+   "ids": [
+    "CB-12"
+   ],
+   "criteria": [
+    "unambiguous",
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "cashback",
+   "type": "design",
+   "ids": [
+    "CB-05"
+   ],
+   "criteria": [
+    "appropriate"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "cashback",
+   "type": "compound",
+   "ids": [
+    "CB-13"
+   ],
+   "criteria": [
+    "singular"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "cashback",
+   "type": "subjective",
+   "ids": [
+    "CNF-06"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "cashback",
+   "type": "absolute",
+   "ids": [
+    "CNF-02"
+   ],
+   "criteria": [
+    "feasible",
+    "verifiable"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "cashback",
+   "type": "vague_goal",
+   "ids": [
+    "CNF-03"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "cashback",
+   "type": "contradiction",
+   "ids": [
+    "CB-03",
+    "CB-15"
+   ],
+   "criteria": [
+    "set_consistent"
+   ],
+   "level": "set",
+   "found": true
+  },
+  {
+   "doc": "cashback",
+   "type": "duplicate",
+   "ids": [
+    "CB-08",
+    "CB-16"
+   ],
+   "criteria": [
+    "set_consistent",
+    "necessary"
+   ],
+   "level": "set",
+   "found": true
+  },
+  {
+   "doc": "refinance",
+   "type": "vague",
+   "ids": [
+    "RF-06"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "refinance",
+   "type": "vague",
+   "ids": [
+    "RNF-01"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "refinance",
+   "type": "missing_units",
+   "ids": [
+    "RF-10"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous",
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "refinance",
+   "type": "open_list",
+   "ids": [
+    "RF-07"
+   ],
+   "criteria": [
+    "complete"
+   ],
+   "level": "requirement",
+   "found": false
+  },
+  {
+   "doc": "refinance",
+   "type": "tbd",
+   "ids": [
+    "RF-11"
+   ],
+   "criteria": [
+    "complete"
+   ],
+   "level": "requirement",
+   "found": false
+  },
+  {
+   "doc": "refinance",
+   "type": "and_or",
+   "ids": [
+    "RF-14"
+   ],
+   "criteria": [
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "refinance",
+   "type": "conditional",
+   "ids": [
+    "RF-05"
+   ],
+   "criteria": [
+    "unambiguous",
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "refinance",
+   "type": "design",
+   "ids": [
+    "RF-03"
+   ],
+   "criteria": [
+    "appropriate"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "refinance",
+   "type": "compound",
+   "ids": [
+    "RF-12"
+   ],
+   "criteria": [
+    "singular"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "refinance",
+   "type": "subjective",
+   "ids": [
+    "RNF-06"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "refinance",
+   "type": "absolute",
+   "ids": [
+    "RNF-02"
+   ],
+   "criteria": [
+    "feasible",
+    "verifiable"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "refinance",
+   "type": "vague_goal",
+   "ids": [
+    "RNF-03"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "refinance",
+   "type": "contradiction",
+   "ids": [
+    "RF-08",
+    "RF-15"
+   ],
+   "criteria": [
+    "set_consistent"
+   ],
+   "level": "set",
+   "found": true
+  },
+  {
+   "doc": "refinance",
+   "type": "duplicate",
+   "ids": [
+    "RF-04",
+    "RF-16"
+   ],
+   "criteria": [
+    "set_consistent",
+    "necessary"
+   ],
+   "level": "set",
+   "found": true
+  },
+  {
+   "doc": "qr",
+   "type": "vague",
+   "ids": [
+    "QR-06"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "qr",
+   "type": "vague",
+   "ids": [
+    "QR-01"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "qr",
+   "type": "missing_units",
+   "ids": [
+    "QR-08"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous",
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "qr",
+   "type": "open_list",
+   "ids": [
+    "QR-04"
+   ],
+   "criteria": [
+    "complete"
+   ],
+   "level": "requirement",
+   "found": false
+  },
+  {
+   "doc": "qr",
+   "type": "tbd",
+   "ids": [
+    "QR-09"
+   ],
+   "criteria": [
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "qr",
+   "type": "and_or",
+   "ids": [
+    "QR-07"
+   ],
+   "criteria": [
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "qr",
+   "type": "conditional",
+   "ids": [
+    "QR-12"
+   ],
+   "criteria": [
+    "unambiguous",
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "qr",
+   "type": "design",
+   "ids": [
+    "QR-11"
+   ],
+   "criteria": [
+    "appropriate"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "qr",
+   "type": "compound",
+   "ids": [
+    "QR-14"
+   ],
+   "criteria": [
+    "singular"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "qr",
+   "type": "subjective",
+   "ids": [
+    "QNF-06"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "qr",
+   "type": "absolute",
+   "ids": [
+    "QNF-02"
+   ],
+   "criteria": [
+    "feasible",
+    "verifiable"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "qr",
+   "type": "vague_goal",
+   "ids": [
+    "QNF-05"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "qr",
+   "type": "contradiction",
+   "ids": [
+    "QR-05",
+    "QR-15"
+   ],
+   "criteria": [
+    "set_consistent"
+   ],
+   "level": "set",
+   "found": true
+  },
+  {
+   "doc": "qr",
+   "type": "duplicate",
+   "ids": [
+    "QR-13",
+    "QR-16"
+   ],
+   "criteria": [
+    "set_consistent",
+    "necessary"
+   ],
+   "level": "set",
+   "found": true
+  },
+  {
+   "doc": "fx",
+   "type": "vague",
+   "ids": [
+    "FX-06"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "fx",
+   "type": "vague",
+   "ids": [
+    "FNF-01"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "fx",
+   "type": "missing_units",
+   "ids": [
+    "FX-10"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous",
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "fx",
+   "type": "open_list",
+   "ids": [
+    "FX-01"
+   ],
+   "criteria": [
+    "complete"
+   ],
+   "level": "requirement",
+   "found": false
+  },
+  {
+   "doc": "fx",
+   "type": "tbd",
+   "ids": [
+    "FX-09"
+   ],
+   "criteria": [
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "fx",
+   "type": "and_or",
+   "ids": [
+    "FX-08"
+   ],
+   "criteria": [
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "fx",
+   "type": "conditional",
+   "ids": [
+    "FX-11"
+   ],
+   "criteria": [
+    "unambiguous",
+    "complete"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "fx",
+   "type": "design",
+   "ids": [
+    "FX-05"
+   ],
+   "criteria": [
+    "appropriate"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "fx",
+   "type": "compound",
+   "ids": [
+    "FX-13"
+   ],
+   "criteria": [
+    "singular"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "fx",
+   "type": "subjective",
+   "ids": [
+    "FNF-06"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "fx",
+   "type": "absolute",
+   "ids": [
+    "FNF-02"
+   ],
+   "criteria": [
+    "feasible",
+    "verifiable"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "fx",
+   "type": "vague_goal",
+   "ids": [
+    "FNF-03"
+   ],
+   "criteria": [
+    "verifiable",
+    "unambiguous"
+   ],
+   "level": "requirement",
+   "found": true
+  },
+  {
+   "doc": "fx",
+   "type": "contradiction",
+   "ids": [
+    "FX-03",
+    "FX-15"
+   ],
+   "criteria": [
+    "set_consistent"
+   ],
+   "level": "set",
+   "found": true
+  },
+  {
+   "doc": "fx",
+   "type": "contradiction",
+   "ids": [
+    "FX-12",
+    "FX-16"
+   ],
+   "criteria": [
+    "set_consistent"
+   ],
+   "level": "set",
+   "found": true
+  },
+  {
+   "doc": "fx",
+   "type": "duplicate",
+   "ids": [
+    "FX-02",
+    "FX-17"
+   ],
+   "criteria": [
+    "set_consistent",
+    "necessary"
+   ],
+   "level": "set",
+   "found": true
+  }
+ ],
+ "items": [
+  {
+   "where": "PAY-01",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "быстрым и удобным поиском.",
+   "problem": "Субъективные и неизмеримые понятия «быстрый» и «удобный» делают проверку требования невозможной без конкретных метрик времени отклика и критериев UX. Подтверждено тест-пробой: тест составить невозможно — Невозможно объективно проверить критерии «быстрым и удобным поиском» из-за отсутствия измеримых порогов времени и конкретного перечня полей для поиска.",
+   "outcome": "tp",
+   "doc": "payments"
+  },
+  {
+   "where": "PAY-03",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "при необходимости.",
+   "problem": "Тест составить невозможно: Отсутствует четкое условие («при необходимости»), определяющее сценарий проверки нулевой комиссии.",
+   "outcome": "unmatched",
+   "doc": "payments"
+  },
+  {
+   "where": "PAY-03",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "при необходимости.",
+   "problem": "Формулировка «при необходимости» является расплывчатой и не определяет точное бизнес-условие или триггер, при котором списывается комиссия 0 тенге.",
+   "outcome": "tp",
+   "doc": "payments"
+  },
+  {
+   "where": "PAY-07",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "в течение длительного срока.",
+   "problem": "Тест составить невозможно: Невозможно проверить выполнение требования «в течение длительного срока» из-за отсутствия точного временного интервала.",
+   "outcome": "tp",
+   "doc": "payments"
+  },
+  {
+   "where": "PAY-07",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "в течение длительного срока.",
+   "problem": "Срок «длительный» субъективен, не имеет четкой измеримости и не позволяет проверить соответствие требованиям архивации или законодательства.",
+   "outcome": "tp",
+   "doc": "payments"
+  },
+  {
+   "where": "PAY-08",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "и т.д..",
+   "problem": "Тест составить невозможно: Открытый список «и т.д.» делает набор полей фильтрации незавершенным и не позволяет составить полный тестовый набор.",
+   "outcome": "unmatched",
+   "doc": "payments"
+  },
+  {
+   "where": "PAY-08",
+   "criterion": "complete",
+   "severity": "major",
+   "quote": "и т.д..",
+   "problem": "Использование открытого списка «и т.д.» нарушает требование полноты, оставляя перечень полей фильтрации неопределенным.",
+   "outcome": "tp",
+   "doc": "payments"
+  },
+  {
+   "where": "PAY-09",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "push-уведомление и/или SMS",
+   "problem": "Использование конструкции «и/или» создает двусмысленность: неясно, отправляется ли всегда push, всегда ли SMS или допускается любой из вариантов на усмотрение реализации.",
+   "outcome": "tp",
+   "doc": "payments"
+  },
+  {
+   "where": "PAY-13",
+   "criterion": "appropriate",
+   "severity": "major",
+   "quote": "в таблице PostgreSQL через выпадающий список",
+   "problem": "Требование содержит избыточные проектные решения и технические детали реализации (название СУБД PostgreSQL и элемент UI «выпадающий список»), что нарушает принцип независимости от реализации.",
+   "outcome": "tp",
+   "doc": "payments"
+  },
+  {
+   "where": "NFR-01",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "должно быть минимальным.",
+   "problem": "Формулировка «минимальным» неизмерима и не позволяет составить объективный приёмочный тест. Подтверждено тест-пробой: тест составить невозможно — Невозможно составить проверяемый тест, так как критерий «минимальным» не задаёт точного числового порога времени ответа.",
+   "outcome": "tp",
+   "doc": "payments"
+  },
+  {
+   "where": "NFR-02",
+   "criterion": "feasible",
+   "severity": "critical",
+   "quote": "100 % всегда.",
+   "problem": "Достижение 100% доступности (абсолютного отсутствия простоев) технически невозможно в реальных распределённых системах.",
+   "outcome": "tp",
+   "doc": "payments"
+  },
+  {
+   "where": "NFR-05",
+   "criterion": "complete",
+   "severity": "critical",
+   "quote": "с периодичностью TBD.",
+   "problem": "Наличие маркера неопределенности TBD делает требование неполным и нереализуемым без уточнения периодичности.",
+   "outcome": "tp",
+   "doc": "payments"
+  },
+  {
+   "where": "NFR-05",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "с периодичностью TBD",
+   "problem": "Тест составить невозможно: Наличие маркера TBD исключает возможность создания точного теста из-за отсутствия расписания или периода создания резервной копии.",
+   "outcome": "unmatched",
+   "doc": "payments"
+  },
+  {
+   "where": "NFR-06",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "интуитивно понятным и современным.",
+   "problem": "Субъективные качественные характеристики «интуитивно понятным и современным» невозможно объективно протестировать. Подтверждено тест-пробой: тест составить невозможно — Термины «интуитивно понятным» и «современным» не имеют метрик для автоматической или объективной ручной проверки.",
+   "outcome": "tp",
+   "doc": "payments"
+  },
+  {
+   "where": "PAY-05, SEC-01",
+   "criterion": "set_consistent",
+   "severity": "critical",
+   "quote": "Система должна блокировать подтверждение платежа на 30 минут после 3 неверных вводов кода подряд. / Система должна блокировать подтверждение платежа на 15 минут после 5 неверных вводов кода подряд.",
+   "problem": "Прямое противоречие в правилах блокировки при неверном вводе кода: R-005 требует блокировку на 30 минут после 3 попыток, а R-015 — на 15 минут после 5 попыток.",
+   "outcome": "tp",
+   "doc": "payments"
+  },
+  {
+   "where": "NFR-02",
+   "criterion": "set_feasible",
+   "severity": "major",
+   "quote": "Доступность сервиса должна составлять 100 % всегда.",
+   "problem": "Требование 100% доступности «всегда» технически невыполнимо (не учитывает плановое обслуживание, отказы оборудования и сетей связи). Также: Значение доступности 100% технически недостижимо и не содержит периода измерения и допустимого окна обслуживания (maintenance window).",
+   "outcome": "unmatched",
+   "doc": "payments"
+  },
+  {
+   "where": "PAY-13",
+   "criterion": "set_feasible",
+   "severity": "major",
+   "quote": "Система должна позволять клиенту сохранить шаблон платежа в таблице PostgreSQL через выпадающий список.",
+   "problem": "Требование возлагает на мобильного клиента (конечного пользователя) прямое взаимодействие с таблицей базы данных PostgreSQL через UI, что архитектурно неверно и нереализуемо для мобильного банка.",
+   "outcome": "unmatched",
+   "doc": "payments"
+  },
+  {
+   "where": "DOC",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "2. Функциональные требования",
+   "problem": "Отсутствуют требования к аутентификации и авторизации пользователя в мобильном приложении перед выполнением платежа.",
+   "outcome": "unmatched",
+   "doc": "payments"
+  },
+  {
+   "where": "NFR-05",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Резервная копия базы платежей должна создаваться с периодичностью TBD.",
+   "problem": "Использование заглушки TBD в нефункциональном требовании о резервном копировании блокирует проектирование инфраструктуры и плана восстановления. Также: В требованиях присутствует незаполненный маркер «TBD» (NFR-05), что нарушает требование полноты набора.",
+   "outcome": "unmatched",
+   "doc": "payments"
+  },
+  {
+   "where": "PAY-05, SEC-01",
+   "criterion": "set_consistent",
+   "severity": "major",
+   "quote": "Система должна блокировать подтверждение платежа на 30 минут после 3 неверных вводов кода подряд. / Система должна блокировать подтверждение платежа на 15 минут после 5 неверных вводов кода подряд.",
+   "problem": "Формулировки совпадают на 97% — вероятный дубль; при изменении одного второе останется прежним.",
+   "outcome": "tp",
+   "doc": "payments"
+  },
+  {
+   "where": "PAY-01",
+   "criterion": "set_ranked",
+   "severity": "major",
+   "quote": "Система должна отображать клиенту список поставщиков, подключённых к сервису, с ",
+   "problem": "Ни у одного требования нет приоритета или признака стабильности (IEEE 830 §4.3.5) — невозможно спланировать порядок реализации и объём MVP.",
+   "outcome": "unmatched",
+   "doc": "payments"
+  },
+  {
+   "where": "PAY-08",
+   "criterion": "set_comprehensible",
+   "severity": "major",
+   "quote": "Система должна позволять клиенту фильтровать историю платежей по периоду, поставщику и т.д..",
+   "problem": "Использование расплывчатой формулировки «и т.д.» делает требование нечётким и не поддающимся однозначной реализации и тестированию.",
+   "outcome": "unmatched",
+   "doc": "payments"
+  },
+  {
+   "where": "NFR-01",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Время ответа на запрос списка поставщиков должно быть минимальным.",
+   "problem": "Формулировка «минимальным» является субъективной и неизмеримой, что делает невозможным валидацию выполнения требования.",
+   "outcome": "unmatched",
+   "doc": "payments"
+  },
+  {
+   "where": "PAY-07",
+   "criterion": "set_traceable",
+   "severity": "major",
+   "quote": "Система должна хранить историю платежей клиента в течение длительного срока.",
+   "problem": "Понятие «длительный срок» является неопределенным и не позволяет определить конкретные требования к хранению и архивации данных.",
+   "outcome": "unmatched",
+   "doc": "payments"
+  },
+  {
+   "where": "PAY-10",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "один из статусов: «Создан», «В обработке», «Исполнен», «Отклонён»",
+   "problem": "Не определены критерии и триггеры перехода между статусами платежа («Создан», «В обработке», «Исполнен», «Отклонён»), что делает невозможным тестирование жизненного цикла платежа.",
+   "outcome": "unmatched",
+   "doc": "payments"
+  },
+  {
+   "where": "PAY-01, PAY-02, PAY-03, PAY-04",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Система должна отображать клиенту список поставщиков / Система должна принимать платёж на сумму от 100 до 500 000 / Система должна списывать комиссию 0 тенге при необходимости. / Система должна запраш",
+   "problem": "Критерии приёмки покрывают 0 % правил (0 из 22). Без примеров остаются: PAY-01, PAY-02, PAY-03, PAY-04, PAY-05, PAY-06, PAY-07, PAY-08. Приёмку нельзя провести по документу — каждый тестировщик придумает свои ожидаемые результаты.",
+   "outcome": "unmatched",
+   "doc": "payments"
+  },
+  {
+   "where": "CR-03",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "быстро и точно",
+   "problem": "Субъективные наречия 'быстро и точно' не содержат измеримых критериев производительности и погрешности расчёта. Подтверждено тест-пробой: тест составить невозможно — Невозможно объективно проверить критерии 'быстро и точно' без числовых порогов времени и погрешности.",
+   "outcome": "tp",
+   "doc": "credit"
+  },
+  {
+   "where": "CR-04",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "и т.д..",
+   "problem": "Тест составить невозможно: Открытый список 'и т.д.' делает невозможным проверку полноты введённых данных.",
+   "outcome": "unmatched",
+   "doc": "credit"
+  },
+  {
+   "where": "CR-04",
+   "criterion": "complete",
+   "severity": "major",
+   "quote": "и т.д..",
+   "problem": "Использование 'и т.д.' создаёт неполноту требований, оставляя открытым список запрашиваемых данных.",
+   "outcome": "tp",
+   "doc": "credit"
+  },
+  {
+   "where": "CR-05",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "при необходимости",
+   "problem": "Тест составить невозможно: Условие 'при необходимости' субъективно и не задаёт чётких сценариев тестирования.",
+   "outcome": "unmatched",
+   "doc": "credit"
+  },
+  {
+   "where": "CR-05",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "при необходимости",
+   "problem": "Формулировка 'при необходимости' не определяет чётких бизнес-условий, когда именно должна запускаться проверка ИИН.",
+   "outcome": "tp",
+   "doc": "credit"
+  },
+  {
+   "where": "CR-06",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "своевременно",
+   "problem": "Термин 'своевременно' является размытым и не позволяет написать проверяемый тест времени отклика. Подтверждено тест-пробой: тест составить невозможно — Отсутствует числовое значение времени отклика для проверки.",
+   "outcome": "tp",
+   "doc": "credit"
+  },
+  {
+   "where": "CR-10",
+   "criterion": "complete",
+   "severity": "critical",
+   "quote": "в срок TBD после подписания договора",
+   "problem": "Использование заглушки TBD делает требование неполным и нереализуемым без конкретного значения времени.",
+   "outcome": "tp",
+   "doc": "credit"
+  },
+  {
+   "where": "CR-10",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "в срок TBD",
+   "problem": "Наличие заглушки TBD исключает возможность написания проверяемого теста. Подтверждено тест-пробой: тест составить невозможно — В требовании используется заглушка TBD вместо конкретного срока зачисления.",
+   "outcome": "unmatched",
+   "doc": "credit"
+  },
+  {
+   "where": "CR-11",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "длительный срок",
+   "problem": "Невозможно объективно проверить соблюдение требования из-за отсутствия конкретного числового значения периода хранения. Подтверждено тест-пробой: тест составить невозможно — Отсутствует точный срок хранения данных, вместо него указано субъективное 'длительный срок'.",
+   "outcome": "tp",
+   "doc": "credit"
+  },
+  {
+   "where": "CR-11",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "хранить заявку и решение скоринга длительный срок",
+   "problem": "Формулировка 'длительный срок' субъективна и допускает различные трактовки (например, 1 год, 3 года, 5 лет).",
+   "outcome": "tp",
+   "doc": "credit"
+  },
+  {
+   "where": "CR-12",
+   "criterion": "singular",
+   "severity": "major",
+   "quote": "отменить неподписанную заявку в любой момент до подписания договора, а также формировать выписку по всем кредитам и отправлять её в налоговую службу",
+   "problem": "Требование объединяет две несвязанные функциональные возможности: отмену заявки заявителем и отправку выписки в налоговую службу.",
+   "outcome": "tp",
+   "doc": "credit"
+  },
+  {
+   "where": "CR-13",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "push-уведомление и/или e-mail",
+   "problem": "Конструкция 'и/или' создаёт двусмысленность: неясно, должно ли отправляться ровно одно из уведомлений или оба одновременно.",
+   "outcome": "tp",
+   "doc": "credit"
+  },
+  {
+   "where": "CNF-01",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "удобным и интуитивно понятным",
+   "problem": "Использование субъективных качественных характеристик без измеримых метрик делает требование непроверяемым. Подтверждено тест-пробой: тест составить невозможно — Невозможно объективно проверить понятия «удобным и интуитивно понятным» без конкретных метрик.",
+   "outcome": "tp",
+   "doc": "credit"
+  },
+  {
+   "where": "CNF-02",
+   "criterion": "feasible",
+   "severity": "critical",
+   "quote": "100 % всегда",
+   "problem": "100% доступность технически нереализуема в реальных распределенных системах из-за планового обслуживания и форс-мажоров.",
+   "outcome": "tp",
+   "doc": "credit"
+  },
+  {
+   "where": "CNF-03",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "надёжно защищены",
+   "problem": "Формулировка «надёжно защищены» является размытой и не содержит конкретных стандартов или алгоритмов шифрования. Подтверждено тест-пробой: тест составить невозможно — Отсутствуют конкретные технические стандарты защиты, позволяющие составить однозначный тест.",
+   "outcome": "tp",
+   "doc": "credit"
+  },
+  {
+   "where": "CR-01, CR-15",
+   "criterion": "set_consistent",
+   "severity": "critical",
+   "quote": "от 50 000 до 5 000 000 тенге / от 100 000 до 3 000 000 тенге",
+   "problem": "Требования CR-01 и CR-15 противоречат друг другу, задавая разные диапазоны допустимых сумм кредита.",
+   "outcome": "tp",
+   "doc": "credit"
+  },
+  {
+   "where": "CR-02, CR-16",
+   "criterion": "set_consistent",
+   "severity": "critical",
+   "quote": "должна предлагать срок кредита от 6 до 60 месяцев с шагом 6 месяцев. / кредита от 6 до 60 месяцев с шагом 6 месяцев.",
+   "problem": "Числовое противоречие: R-002 (CR-02) — «60 месяцев», R-016 (CR-16) — «6 месяцев» (формулировки совпадают на 100%, отличаются только значения). Реализовать и протестировать оба требования одновременно невозможно.",
+   "outcome": "tp",
+   "doc": "credit"
+  },
+  {
+   "where": "CR-10",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "в срок TBD после подписания договора",
+   "problem": "Использование метки 'TBD' в требовании CR-10 означает неполноту спецификации (срок зачисления средств не определён).",
+   "outcome": "unmatched",
+   "doc": "credit"
+  },
+  {
+   "where": "DOC",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "2. Функциональные требования",
+   "problem": "В наборе требований полностью отсутствуют сценарии обработки ошибок (например, таймаут соединения с госбазой данных, отказ платежного шлюза, неверный формат ввода).",
+   "outcome": "unmatched",
+   "doc": "credit"
+  },
+  {
+   "where": "CR-06",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна возвращать решение скоринга своевременно после отправки заявки.",
+   "problem": "Не определено поведение системы и интерфейса при таймауте или сбое соединения со скоринговой системой.",
+   "outcome": "unmatched",
+   "doc": "credit"
+  },
+  {
+   "where": "CR-01, CR-15",
+   "criterion": "set_consistent",
+   "severity": "major",
+   "quote": "Система должна принимать заявку на кредит на сумму от 50 000 до 5 000 000 тенге. / Система должна принимать заявку на кредит на сумму от 100 000 до 3 000 000 тенге.",
+   "problem": "Формулировки совпадают на 97% — вероятный дубль; при изменении одного второе останется прежним.",
+   "outcome": "tp",
+   "doc": "credit"
+  },
+  {
+   "where": "CR-01",
+   "criterion": "set_ranked",
+   "severity": "major",
+   "quote": "Система должна принимать заявку на кредит на сумму от 50 000 до 5 000 000 тенге.",
+   "problem": "Ни у одного требования нет приоритета или признака стабильности (IEEE 830 §4.3.5) — невозможно спланировать порядок реализации и объём MVP. Также: У требований в документе отсутствуют приоритеты (признаки важности или стабильности), что затрудняет планирование релизов (требование IEEE 830 §4.3.5).",
+   "outcome": "unmatched",
+   "doc": "credit"
+  },
+  {
+   "where": "CR-04",
+   "criterion": "set_comprehensible",
+   "severity": "major",
+   "quote": "и т.д..",
+   "problem": "Использование неопределенной конструкции 'и т.д.' в требовании CR-04 делает список запрашиваемых данных неполным и субъективным для реализации.",
+   "outcome": "unmatched",
+   "doc": "credit"
+  },
+  {
+   "where": "CNF-02",
+   "criterion": "set_feasible",
+   "severity": "major",
+   "quote": "Доступность сервиса заявок должна составлять 100 % всегда.",
+   "problem": "Требование 100% доступности ('always 100% availability') технически недостижимо в реальных распределенных системах из-за планового обслуживания и возможных сбоев оборудования.",
+   "outcome": "unmatched",
+   "doc": "credit"
+  },
+  {
+   "where": "CR-03, CR-06, CR-11",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "быстро и точно до отправки заявки / своевременно после отправки заявки / длительный срок",
+   "problem": "Использование нечетких метрик 'быстро', 'точно', 'своевременно' и 'длительный срок' делает невозможным однозначное тестирование и валидацию требований.",
+   "outcome": "unmatched",
+   "doc": "credit"
+  },
+  {
+   "where": "CR-04",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна запрашивать у заявителя ИИН, место работы, доход и т.д..",
+   "problem": "Используется расплывчатый квалификатор 'и т.д.', перечень запрашиваемых у заявителя полей не определён до конца.",
+   "outcome": "unmatched",
+   "doc": "credit"
+  },
+  {
+   "where": "CR-09",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна требовать подписание договора одноразовым кодом из SMS, действующим 180 секунд.",
+   "problem": "Не описан сценарий при истечении 180 секунд и поведение системы при вводе неверного кода (блокировка, повторная отправка).",
+   "outcome": "unmatched",
+   "doc": "credit"
+  },
+  {
+   "where": "CR-08",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна отклонять заявку, если ежемесячный платёж превышает 50 % подтверждённого дохода.",
+   "problem": "Отсутствует текст сообщения, которое отображается пользователю при отклонении заявки из-за превышения долговой нагрузки.",
+   "outcome": "unmatched",
+   "doc": "credit"
+  },
+  {
+   "where": "CNF-01",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Расчёт ежемесячного платежа должен быть удобным и интуитивно понятным.",
+   "problem": "Нефункциональное требование не содержит измеримых метрик (перцентиль, время отклика, результаты UX-тестирования).",
+   "outcome": "unmatched",
+   "doc": "credit"
+  },
+  {
+   "where": "CR-11",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна хранить заявку и решение скоринга длительный срок.",
+   "problem": "Срок 'длительный срок' является неопределенным, отсутствуют точные требования к сроку хранения и требованиям регулятора.",
+   "outcome": "unmatched",
+   "doc": "credit"
+  },
+  {
+   "where": "CR-14",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна ограничивать число заявок от одного ИИН до 3 в течение 30 дней.",
+   "problem": "Отсутствуют критерии приёмки с полным начальным состоянием (например, история предыдущих заявок) и негативными примерами для лимита.",
+   "outcome": "unmatched",
+   "doc": "credit"
+  },
+  {
+   "where": "CR-01, CR-02, CR-03, CR-04",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Система должна принимать заявку на кредит на сумму от 50 000 / Система должна предлагать срок кредита от 6 до 60 месяцев с / Система должна рассчитывать ежемесячный платёж по / Система должна запрашив",
+   "problem": "Критерии приёмки покрывают 0 % правил (0 из 20). Без примеров остаются: CR-01, CR-02, CR-03, CR-04, CR-05, CR-06, CR-07, CR-08. Приёмку нельзя провести по документу — каждый тестировщик придумает свои ожидаемые результаты.",
+   "outcome": "unmatched",
+   "doc": "credit"
+  },
+  {
+   "where": "CR-04",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна запрашивать у заявителя ИИН, место работы, доход и т.д..",
+   "problem": "Собираются персональные данные или запрос во внешний источник (доход), но согласие клиента нигде не описано. Норма: Закон РК «О персональных данных и их защите» — согласие.",
+   "outcome": "unmatched",
+   "doc": "credit"
+  },
+  {
+   "where": "ON-03",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "и т.п.",
+   "problem": "Тест составить невозможно: Невозможно определить полный набор поддерживаемых форматов из-за использования конструкции «и т.п.».",
+   "outcome": "unmatched",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ON-03",
+   "criterion": "complete",
+   "severity": "critical",
+   "quote": "удостоверения личности в форматах JPEG, PNG и т.п..",
+   "problem": "Открытое перечисление: набор элементов не определён, реализацию и тест нельзя завершить. (маркер: «и т.п.»)",
+   "outcome": "tp",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ON-03",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "и т.п..",
+   "problem": "Использование открытого списка «и т.п.» делает требование двусмысленным и неполным, так как разработчик и тестировщик не знают точный перечень поддерживаемых форматов.",
+   "outcome": "unmatched",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ON-04",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "быстро распознавать",
+   "problem": "Термин «быстро» является субъективным и неудачным, так как не имеет измеримого критерия приёмки (порогового значения в секундах). Подтверждено тест-пробой: тест составить невозможно — Отсутствует конкретный числовой лимит для времени распознавания, из-за чего критерий «быстро» нельзя проверить объективно.",
+   "outcome": "tp",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ON-05",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "100 % точность без ошибок",
+   "problem": "Тест составить невозможно: Требование обеспечить 100% точность без ошибок принципиально невыполнимо на реальных данных и не может быть протестировано.",
+   "outcome": "tp",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ON-10",
+   "criterion": "complete",
+   "severity": "critical",
+   "quote": "в течение срока, который будет определён позднее.",
+   "problem": "Требование неполное (TBD): отсутствует конкретный срок хранения незавершённой заявки, реализация и проверка невозможны.",
+   "outcome": "tp",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ON-10",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "в течение срока, который будет определён позднее.",
+   "problem": "Отсутствует измеримый критерий приёмки и срок хранения, что делает проверку невозможной. Подтверждено тест-пробой: тест составить невозможно — Невозможно написать тест из-за неопределённого срока хранения заявки.",
+   "outcome": "unmatched",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ON-12",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "SMS и/или push-уведомление",
+   "problem": "Использование конструкции «и/или» допускает несколько трактовок отправки (только SMS, только push или оба канала одновременно), что нарушает однозначность.",
+   "outcome": "tp",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ON-13",
+   "criterion": "unambiguous",
+   "severity": "critical",
+   "quote": "по возможности",
+   "problem": "Формулировка «по возможности» размыта, не задаёт обязательного требования к проверке и не имеет критериев выполнения.",
+   "outcome": "tp",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ON-13",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "по возможности",
+   "problem": "Требование с формулировкой «по возможности» невозможно объективно протестировать. Подтверждено тест-пробой: тест составить невозможно — Формулировка «по возможности» делает выполнение опциональным и непроверяемым.",
+   "outcome": "unmatched",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ON-14",
+   "criterion": "appropriate",
+   "severity": "major",
+   "quote": "на Kotlin",
+   "problem": "Требование содержит избыточное проектное решение/технологию (Kotlin), описывая язык программирования интерфейса на стороне клиента, что нарушает уровень абстракции.",
+   "outcome": "tp",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ONF-01",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "быть минимальным",
+   "problem": "Формулировка «минимальным» неизмерима и не позволяет составить однозначный приёмочный тест. Подтверждено тест-пробой: тест составить невозможно — Отсутствует конкретное числовое значение для времени распознавания.",
+   "outcome": "tp",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ONF-02",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "защитой от утечек",
+   "problem": "Требование не содержит конкретных стандартов шифрования или механизмов защиты, что делает его непроверяемым. Подтверждено тест-пробой: тест составить невозможно — Нет измеримого критерия защиты от утечек.",
+   "outcome": "tp",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ONF-03",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "удобной и современной",
+   "problem": "Субъективные и неконкретные характеристики «удобная и современная» невозможно объективно протестировать. Подтверждено тест-пробой: тест составить невозможно — Субъективные термины не имеют метрик для проверки.",
+   "outcome": "tp",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ON-09, ON-15",
+   "criterion": "set_consistent",
+   "severity": "critical",
+   "quote": "блокировать онбординг на 24 часа после 3 неудачных попыток / блокировать онбординг на 12 часов после 5 неудачных попыток",
+   "problem": "Правила блокировки онбординга противоречат друг другу: ON-09 требует блокировку на 24 часа после 3 попыток, а ON-15 — на 12 часов после 5 попыток. Непонятно, какое правило применять при достижении 3 и 5 неудачных попыток. Также: Противоречие в требованиях: в ON-09 указана блокировка на 24 часа после 3 попыток, а в ON-15 — на 12 часов после 5 попыток.",
+   "outcome": "tp",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ON-10",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна сохранять незавершённую заявку на открытие счёта в течение срока, который будет определён позднее.",
+   "problem": "Использование неопределенного срока ('будет определен позднее' / TBD) в требовании ON-10 делает набор неполным и нереализуемым до уточнения.",
+   "outcome": "unmatched",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ON-05",
+   "criterion": "set_feasible",
+   "severity": "major",
+   "quote": "гарантировать 100 % точность без ошибок.",
+   "problem": "Требование гарантировать 100% точность биометрического распознавания без ошибок технически невыполнимо в реальных условиях из-за качества фото, освещения и погрешностей алгоритмов.",
+   "outcome": "unmatched",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ON-13",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна проверять клиента по спискам санкций по возможности.",
+   "problem": "Формулировка «по возможности» делает требование необязательным для исполнения и тестирования, что недопустимо для процессов комплаенса и AML.",
+   "outcome": "unmatched",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ON-10",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна сохранять незавершённую заявку на открытие счёта в течение срока, который",
+   "problem": "Срок хранения незавершённой заявки не определён («будет определён позднее»), что блокирует реализацию механизма автоочистки данных и тестирования.",
+   "outcome": "unmatched",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ON-09, ON-15",
+   "criterion": "set_consistent",
+   "severity": "major",
+   "quote": "Система должна блокировать онбординг на 24 часа после 3 неудачных попыток верификации подряд. / Система должна блокировать онбординг на 12 часов после 5 неудачных попыток верификации подряд.",
+   "problem": "Формулировки совпадают на 96% — вероятный дубль; при изменении одного второе останется прежним.",
+   "outcome": "tp",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ON-01",
+   "criterion": "set_ranked",
+   "severity": "major",
+   "quote": "Система должна позволять клиенту начать открытие счёта по номеру мобильного теле",
+   "problem": "Ни у одного требования нет приоритета или признака стабильности (IEEE 830 §4.3.5) — невозможно спланировать порядок реализации и объём MVP.",
+   "outcome": "unmatched",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ON-14",
+   "criterion": "set_comprehensible",
+   "severity": "major",
+   "quote": "выбрать язык интерфейса в выпадающем списке на Kotlin.",
+   "problem": "Формулировка 'на Kotlin' в требованиях к пользовательскому интерфейсу некорректна и непонятна (Kotlin — язык программирования, а не свойство интерфейса или списка).",
+   "outcome": "unmatched",
+   "doc": "onboarding"
+  },
+  {
+   "where": "DOC",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Требования к дистанционному открытию счёта (онбординг)",
+   "problem": "В наборе полностью отсутствуют требования к обработке ошибок сети, таймаутам, сценариям восстановления сессии при обрыве связи и требованиям к информационной безопасности (кроме абстрактного ONF-02).",
+   "outcome": "unmatched",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ONF-01, ONF-03",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Время распознавания данных удостоверения должно быть минимальным. / Система должна быть удобной и современной.",
+   "problem": "Использование субъективных и неизмеримых качественных оценок («минимальным», «удобной и современной») делает невозможным валидацию выполнения этих требований.",
+   "outcome": "unmatched",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ON-02",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна подтверждать номер телефона одноразовым кодом из SMS, действующим 120 секунд.",
+   "problem": "Не определено поведение системы при истечении срока действия кода (120 секунд) и при запросе повторной отправки SMS (кулдаун, лимит попыток отправки).",
+   "outcome": "unmatched",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ON-08",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна показывать клиенту номер счёта и реквизиты после открытия счёта, а",
+   "problem": "Не указан сценарий на случай сбоя отправки электронной почты с данными виртуальной карты: повторяется ли отправка автоматически и видит ли клиент реквизиты в интерфейсе приложения.",
+   "outcome": "unmatched",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ON-04",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна быстро распознавать ИИН, ФИО и дату рождения с фотографии удостоверения",
+   "problem": "Не определено, что происходит, если OCR-модуль не смог распознать данные с фотографии (низкое качество, блики) или распознал их с ошибкой.",
+   "outcome": "unmatched",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ONF-02",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Фотографии документов должны быть обеспечены защитой от утечек.",
+   "problem": "Требование сформулировано общо без указания стандартов шифрования (в покое и при передаче) и требований к маскированию персональных данных.",
+   "outcome": "unmatched",
+   "doc": "onboarding"
+  },
+  {
+   "where": "ON-01, ON-02, ON-03, ON-04",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Система должна позволять клиенту начать открытие счёта по / Система должна подтверждать номер телефона одноразовым кодом / Система должна принимать фотографию удостоверения личности в / Система должна",
+   "problem": "Критерии приёмки покрывают 0 % правил (0 из 20). Без примеров остаются: ON-01, ON-02, ON-03, ON-04, ON-05, ON-06, ON-07, ON-08. Приёмку нельзя провести по документу — каждый тестировщик придумает свои ожидаемые результаты.",
+   "outcome": "unmatched",
+   "doc": "onboarding"
+  },
+  {
+   "where": "DEP-01",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "жылдам және ыңғайлы",
+   "problem": "Использование качественных наречий делает требование субъективным и непроверяемым, так как отсутствуют конкретные метрики времени отклика. Подтверждено тест-пробой: тест составить невозможно — Отсутствуют измеримые критерии для понятий 'жылдам' (быстро) и 'ыңғайлы' (удобно).",
+   "outcome": "tp",
+   "doc": "deposit_kk"
+  },
+  {
+   "where": "DEP-04",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "қажет болған жағдайда",
+   "problem": "Тест составить невозможно: Не определено условие 'қажет болған жағдайда', что делает невозможным составление однозначного тестового сценария.",
+   "outcome": "unmatched",
+   "doc": "deposit_kk"
+  },
+  {
+   "where": "DEP-04",
+   "criterion": "complete",
+   "severity": "major",
+   "quote": "қажет болған жағдайда",
+   "problem": "Формулировка 'қажет болған жағдайда' не определяет триггер или условие, при котором система должна выполнять проверку баланса.",
+   "outcome": "tp",
+   "doc": "deposit_kk"
+  },
+  {
+   "where": "DEP-08",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "ұзақ мерзім бойы",
+   "problem": "Тест составить невозможно: Невозможно проверить выполнение требования 'ұзақ мерзім бойы' из-за отсутствия точного временного интервала.",
+   "outcome": "tp",
+   "doc": "deposit_kk"
+  },
+  {
+   "where": "DEP-08",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "ұзақ мерзім бойы",
+   "problem": "Термин 'ұзақ мерзім бойы' является неопределенным и не содержит точного срока или количества лет хранения данных.",
+   "outcome": "tp",
+   "doc": "deposit_kk"
+  },
+  {
+   "where": "DEP-09",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "депозиттің ашылғаны туралы push-хабарламаны және/немесе SMS 60 секунд ішінде жіберуі тиіс.",
+   "problem": "Конструкция «и/или» допускает несколько толкований. (маркер: «және/немесе»)",
+   "outcome": "tp",
+   "doc": "deposit_kk"
+  },
+  {
+   "where": "DEP-11",
+   "criterion": "complete",
+   "severity": "major",
+   "quote": "Жүйе депозиттер тарихын кезең, депозит түрі және т.б. бойынша сүзуге мүмкіндік беруі тиіс.",
+   "problem": "Неопределённое условие или открытое перечисление (каз./англ.). (маркер: «және т.б.»)",
+   "outcome": "tp",
+   "doc": "deposit_kk"
+  },
+  {
+   "where": "DNF-01",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "Депозит түрлерінің тізімін жүктеу уақыты барынша аз болуы тиіс.",
+   "problem": "Неколичественная оценка (каз.) без числа и единиц — каждый участник поймёт её по-своему. (маркер: «барынша аз»)",
+   "outcome": "tp",
+   "doc": "deposit_kk"
+  },
+  {
+   "where": "DNF-05",
+   "criterion": "complete",
+   "severity": "critical",
+   "quote": "Депозиттер базасының резервтік көшірмесі TBD кезеңділікпен жасалуы тиіс.",
+   "problem": "Требование содержит незаполненное место (TBD/«уточнить»). (маркер: «TBD»)",
+   "outcome": "tp",
+   "doc": "deposit_kk"
+  },
+  {
+   "where": "DNF-06",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "Қосымша интерфейсі интуитивті түсінікті және заманауи болуы тиіс.",
+   "problem": "Размытая качественная характеристика (каз./англ.) без измеримого критерия — требование нельзя проверить. (маркер: «интуитивті», «түсінікті», «заманауи»)",
+   "outcome": "tp",
+   "doc": "deposit_kk"
+  },
+  {
+   "where": "DEP-06, DEP-15",
+   "criterion": "set_consistent",
+   "severity": "critical",
+   "quote": "Жүйе қате кодты қатарынан 3 рет енгізгеннен кейін қол қоюды 30 минутқа бұғаттауы тиіс. / Жүйе қате кодты қатарынан 5 рет енгізгеннен кейін қол қоюды 15 минутқа бұғаттауы тиіс.",
+   "problem": "Противоречащие друг другу правила блокировки при вводе неверного SMS-кода: одно правило требует блокировать на 30 минут после 3 х ошибок, а другое — на 15 минут после 5 ошибок.",
+   "outcome": "tp",
+   "doc": "deposit_kk"
+  },
+  {
+   "where": "DNF-02",
+   "criterion": "set_feasible",
+   "severity": "major",
+   "quote": "Сервистің қолжетімділігі әрқашан 100 % болуы тиіс.",
+   "problem": "Требование 100% доступности (DNF-02) технически нереализуемо из-за необходимости проведения плановых технических работ.",
+   "outcome": "unmatched",
+   "doc": "deposit_kk"
+  },
+  {
+   "where": "DEP-06, DEP-15",
+   "criterion": "set_consistent",
+   "severity": "major",
+   "quote": "Жүйе қате кодты қатарынан 3 рет енгізгеннен кейін қол қоюды 30 минутқа бұғаттауы тиіс. / Жүйе қате кодты қатарынан 5 рет енгізгеннен кейін қол қоюды 15 минутқа бұғаттауы тиіс.",
+   "problem": "Формулировки совпадают на 97% — вероятный дубль; при изменении одного второе останется прежним.",
+   "outcome": "tp",
+   "doc": "deposit_kk"
+  },
+  {
+   "where": "DEP-01",
+   "criterion": "set_ranked",
+   "severity": "major",
+   "quote": "Жүйе клиентке депозит түрлерінің тізімін жылдам және ыңғайлы түрде ұсынуы тиіс.",
+   "problem": "Ни у одного требования нет приоритета или признака стабильности (IEEE 830 §4.3.5) — невозможно спланировать порядок реализации и объём MVP.",
+   "outcome": "unmatched",
+   "doc": "deposit_kk"
+  },
+  {
+   "where": "DNF-05",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Депозиттер базасының резервтік көшірмесі TBD кезеңділікпен жасалуы тиіс.",
+   "problem": "Наличие незаполненного маркера 'TBD' в требовании DNF-05 нарушает полноту набора требований.",
+   "outcome": "unmatched",
+   "doc": "deposit_kk"
+  },
+  {
+   "where": "DEP-13",
+   "criterion": "set_comprehensible",
+   "severity": "major",
+   "quote": "Жүйе клиентке депозитке PostgreSQL кестесіндегі ашылмалы тізім арқылы атау беруге мүмкіндік беруі тиіс.",
+   "problem": "Использование технической детали реализации (PostgreSQL кестесіндегі) в функциональном требовании для мобильного приложения делает требование непонятным для пользователей и тестировщиков.",
+   "outcome": "unmatched",
+   "doc": "deposit_kk"
+  },
+  {
+   "where": "DNF-01",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Депозит түрлерінің тізімін жүктеу уақыты барынша аз болуы тиіс.",
+   "problem": "Формулировка 'барынша аз' является субъективной и неизмеримой, что делает невозможным валидацию соответствия этому требованию.",
+   "outcome": "unmatched",
+   "doc": "deposit_kk"
+  },
+  {
+   "where": "DEP-04",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Жүйе қажет болған жағдайда клиенттің ағымдағы шотындағы қолжетімді қалдықты тексеруі тиіс.",
+   "problem": "Термин «қолжетімді қалдық» нақты анықталмаған (бронь, холдер немесе овердрафт есепке алына ма?), бұл шотта ақша жеткілікті ме дегенді тексеру логикасын қате іске асыруға әкеледі.",
+   "outcome": "unmatched",
+   "doc": "deposit_kk"
+  },
+  {
+   "where": "DEP-05",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Жүйе шартқа SMS-кодпен қол қоюды сұрауы тиіс, код 120 секунд жарамды.",
+   "problem": "SMS-кодтың қолданылу мерзімі (120 секунд) аяқталғаннан кейін немесе код келмей қалған жағдайда қайта жіберу (Resend) сценарийі қарастырылмаған.",
+   "outcome": "unmatched",
+   "doc": "deposit_kk"
+  },
+  {
+   "where": "DEP-07",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Жүйе депозит шартын қол қойылғаннан кейін 10 секунд ішінде PDF форматында қалыптастыруы",
+   "problem": "PDF файлын қалыптастыру немесе жүктеу кезінде сервер қатесі (мысалы, 500 немесе таймаут) орын алса, қол қойылған депозиттің күйі мен пайдаланушының әрекеті анықталмаған.",
+   "outcome": "unmatched",
+   "doc": "deposit_kk"
+  },
+  {
+   "where": "DEP-06",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Жүйе қате кодты қатарынан 3 рет енгізгеннен кейін қол қоюды 30 минутқа",
+   "problem": "Қол қою бұғатталған кезде экранда пайдаланушыға көрсетілетін хабарлама мәтіні мен оның орналасқан жері көрсетілмеген.",
+   "outcome": "unmatched",
+   "doc": "deposit_kk"
+  },
+  {
+   "where": "DNF-02",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Сервистің қолжетімділігі әрқашан 100 % болуы тиіс.",
+   "problem": "100% қолжетімділік талабы техникалық тұрғыдан орындалмайды және оны өлшеу шарттары (техникалық қызмет көрсету терезелері, SLA пайызы) көрсетілмеген.",
+   "outcome": "unmatched",
+   "doc": "deposit_kk"
+  },
+  {
+   "where": "DEP-02",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Жүйе депозитті 10 000-нан 50 000 000 теңгеге дейінгі сомаға (қоса алғанда)",
+   "problem": "Шекаралық мәндерден тыс сомаларға (мысалы, 9 999 теңге немесе 50 001 000 теңге) қатысты негативті критерийлер мен қателердің көрсетілуі сипатталмаған.",
+   "outcome": "unmatched",
+   "doc": "deposit_kk"
+  },
+  {
+   "where": "DEP-01, DEP-02, DEP-03, DEP-04",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Жүйе клиентке депозит түрлерінің тізімін жылдам және ыңғайлы / Жүйе депозитті 10 000-нан 50 000 000 теңгеге дейінгі сомаға / Жүйе депозит мерзімін 3, 6, 12 немесе 24 ай етіп таңдауға / Жүйе қажет болғ",
+   "problem": "Критерии приёмки покрывают 0 % правил (0 из 22). Без примеров остаются: DEP-01, DEP-02, DEP-03, DEP-04, DEP-05, DEP-06, DEP-07, DEP-08. Приёмку нельзя провести по документу — каждый тестировщик придумает свои ожидаемые результаты.",
+   "outcome": "unmatched",
+   "doc": "deposit_kk"
+  },
+  {
+   "where": "CRD-01",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "в быстром и удобном виде",
+   "problem": "Использование субъективных и неизмеримых качественных характеристик («быстром и удобном») делает проверку требования невозможной. Подтверждено тест-пробой: тест составить невозможно — Невозможно объективно проверить критерий «быстром и удобном виде» без точных метрик времени ответа и интерфейсных спецификаций.",
+   "outcome": "tp",
+   "doc": "cards"
+  },
+  {
+   "where": "CRD-03",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "при необходимости.",
+   "problem": "Тест составить невозможно: Условие «при необходимости» является субъективным и не позволяет однозначно определить тестовый сценарий.",
+   "outcome": "unmatched",
+   "doc": "cards"
+  },
+  {
+   "where": "CRD-03",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "при необходимости",
+   "problem": "Формулировка «при необходимости» не определяет точные бизнес-условия, при которых комиссия списывается или равна 0.",
+   "outcome": "tp",
+   "doc": "cards"
+  },
+  {
+   "where": "CRD-07",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "в течение длительного срока",
+   "problem": "Формулировка «длительного срока» является субъективной и не содержит точного срока хранения в месяцах или годах. Подтверждено тест-пробой: тест составить невозможно — Отсутствует конкретный временной интервал для проверки требования.",
+   "outcome": "tp",
+   "doc": "cards"
+  },
+  {
+   "where": "CRD-08",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "и т.д..",
+   "problem": "Тест составить невозможно: Открытый список способов получения делает невозможным проверку всех вариантов реализации.",
+   "outcome": "unmatched",
+   "doc": "cards"
+  },
+  {
+   "where": "CRD-08",
+   "criterion": "complete",
+   "severity": "major",
+   "quote": "и т.д..",
+   "problem": "Использование открытого списка «и т.д.» делает требование неполным, так как перечень способов получения не зафиксирован.",
+   "outcome": "tp",
+   "doc": "cards"
+  },
+  {
+   "where": "CRD-09",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "отправлять держателю push-уведомление и/или SMS о готовности карты в течение 60 секунд",
+   "problem": "Конструкция «и/или» допускает несколько толкований. (маркер: «и/или»)",
+   "outcome": "tp",
+   "doc": "cards"
+  },
+  {
+   "where": "KNF-01",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "быть минимальным.",
+   "problem": "Требование невозможно объективно проверить тестированием из-за отсутствия численного порога. Подтверждено тест-пробой: тест составить невозможно — Невозможно составить проверяемый тест, так как отсутствует конкретное числовое значение для времени ответа.",
+   "outcome": "tp",
+   "doc": "cards"
+  },
+  {
+   "where": "KNF-01",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "должно быть минимальным.",
+   "problem": "Слово «минимальным» субъективно и не содержит точных измеримых метрик времени ответа (например, в миллисекундах).",
+   "outcome": "tp",
+   "doc": "cards"
+  },
+  {
+   "where": "KNF-02",
+   "criterion": "feasible",
+   "severity": "critical",
+   "quote": "составлять 100 % всегда.",
+   "problem": "Показатель доступности 100% («девять девяток») технически недостижим в реальных распределенных системах с учетом планового обслуживания и возможных сбоев оборудования.",
+   "outcome": "tp",
+   "doc": "cards"
+  },
+  {
+   "where": "KNF-02",
+   "criterion": "correct",
+   "severity": "critical",
+   "quote": "100 % всегда.",
+   "problem": "Фактически некорректное требование, противоречащее законам проектирования высоконагруженных систем.",
+   "outcome": "unmatched",
+   "doc": "cards"
+  },
+  {
+   "where": "KNF-05",
+   "criterion": "complete",
+   "severity": "critical",
+   "quote": "с периодичностью TBD.",
+   "problem": "Использование метки TBD делает требование незавершенным, отсутствует конкретная частота создания резервных копий.",
+   "outcome": "tp",
+   "doc": "cards"
+  },
+  {
+   "where": "KNF-05",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "периодичностью TBD.",
+   "problem": "Требование нельзя проверить из-за неопределенности интервала резервного копирования. Подтверждено тест-пробой: тест составить невозможно — Невозможно составить тест из-за неопределенности параметра периодичности (TBD).",
+   "outcome": "unmatched",
+   "doc": "cards"
+  },
+  {
+   "where": "KNF-06",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "интуитивно понятным и современным.",
+   "problem": "Субъективные качественные характеристики («интуитивно понятным», «современным») невозможно измерить объективными тестами. Подтверждено тест-пробой: тест составить невозможно — Тест невозможен, так как критерии «интуитивно понятный» и «современный» субъективны и не имеют измеримой основы.",
+   "outcome": "tp",
+   "doc": "cards"
+  },
+  {
+   "where": "KNF-06",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "интуитивно понятным и современным.",
+   "problem": "Формулировка допускает различные трактовки проверяющими.",
+   "outcome": "tp",
+   "doc": "cards"
+  },
+  {
+   "where": "CRD-05, CRD-15",
+   "criterion": "set_consistent",
+   "severity": "critical",
+   "quote": "блокировать подтверждение заказа на 30 минут после 3 неверных вводов кода подряд / блокировать подтверждение заказа на 15 минут после 5 неверных вводов кода подряд",
+   "problem": "Противоречащие друг другу правила блокировки при неверном вводе кода (30 минут/3 попытки против 15 минут/5 попыток). Также: Правила блокировки противоречат друг другу (30 минут после 3 попыток в R-005 и 15 минут после 5 попыток в R-015), что исключает однозначную реализацию.",
+   "outcome": "tp",
+   "doc": "cards"
+  },
+  {
+   "where": "KNF-05",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Резервная копия базы заказов должна создаваться с периодичностью TBD.",
+   "problem": "Использование заглушки TBD в нефункциональном требовании к резервному копированию делает невозможным проектирование инфраструктуры.",
+   "outcome": "unmatched",
+   "doc": "cards"
+  },
+  {
+   "where": "CRD-05, CRD-15",
+   "criterion": "set_consistent",
+   "severity": "major",
+   "quote": "Система должна блокировать подтверждение заказа на 30 минут после 3 неверных вводов кода подряд. / Система должна блокировать подтверждение заказа на 15 минут после 5 неверных вводов кода подряд.",
+   "problem": "Формулировки совпадают на 97% — вероятный дубль; при изменении одного второе останется прежним.",
+   "outcome": "tp",
+   "doc": "cards"
+  },
+  {
+   "where": "DOC",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "## 3. Нефункциональные требования",
+   "problem": "Обнаружено незаполненное требование (TBD) в пункте KNF-05 («Резервная копия базы заказов должна создаваться с периодичностью TBD.»).",
+   "outcome": "unmatched",
+   "doc": "cards"
+  },
+  {
+   "where": "KNF-02",
+   "criterion": "set_feasible",
+   "severity": "major",
+   "quote": "Доступность сервиса перевыпуска должна составлять 100 % всегда.",
+   "problem": "Требование 100% доступности («всегда») технически недостижимо из-за планового обслуживания и возможных сбоев инфраструктуры.",
+   "outcome": "unmatched",
+   "doc": "cards"
+  },
+  {
+   "where": "CRD-07, KNF-01",
+   "criterion": "set_comprehensible",
+   "severity": "major",
+   "quote": "Время ответа на запрос списка карт должно быть минимальным. / Система должна хранить историю заказов на перевыпуск в течение длительного срока.",
+   "problem": "Использование неметризуемых субъективных понятий («минимальным», «в течение длительного срока») вместо конкретных SLA и сроков хранения.",
+   "outcome": "unmatched",
+   "doc": "cards"
+  },
+  {
+   "where": "DOC",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "## 2. Функциональные требования",
+   "problem": "В требованиях смешаны бизнес-логика перевыпуска карт и детали реализации интерфейса/отчётов (отправка e-mail в отделение, генерация отчётов), при этом отсутствуют требования к ролям и правам доступа (какие роли могут выгружать отчёты или обрабатывать заказы курьером).",
+   "outcome": "unmatched",
+   "doc": "cards"
+  },
+  {
+   "where": "CRD-03",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна списывать комиссию 0 тенге при необходимости.",
+   "problem": "Термин «при необходимости» не определен, что делает невозможным тестирование правила и понимание условий списания комиссии.",
+   "outcome": "unmatched",
+   "doc": "cards"
+  },
+  {
+   "where": "KNF-02",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Доступность сервиса перевыпуска должна составлять 100 % всегда.",
+   "problem": "Требование доступности 100% технически недостижимо и не содержит методики измерения (окно расчета, исключение плановых работ).",
+   "outcome": "unmatched",
+   "doc": "cards"
+  },
+  {
+   "where": "CRD-07",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна хранить историю заказов на перевыпуск в течение длительного срока.",
+   "problem": "Срок хранения «в течение длительного срока» является субъективным и не определяет конкретный период архивации или удаления данных.",
+   "outcome": "unmatched",
+   "doc": "cards"
+  },
+  {
+   "where": "CRD-01, CRD-02, CRD-03, CRD-04",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Система должна отображать держателю список его карт в / Система должна позволять заказать перевыпуск карты не ранее / Система должна списывать комиссию 0 тенге при необходимости. / Система должна запр",
+   "problem": "Критерии приёмки покрывают 0 % правил (0 из 22). Без примеров остаются: CRD-01, CRD-02, CRD-03, CRD-04, CRD-05, CRD-06, CRD-07, CRD-08. Приёмку нельзя провести по документу — каждый тестировщик придумает свои ожидаемые результаты.",
+   "outcome": "unmatched",
+   "doc": "cards"
+  },
+  {
+   "where": "CB-03",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "суммой, которая уточняется за расчётный месяц",
+   "problem": "Формулировка содержит неопределенность («уточняется»), отсутствуют конкретные лимиты или ссылки на документ, задающий сумму. Подтверждено тест-пробой: тест составить невозможно — Невозможно написать тест, так как в требовании не указана конкретная сумма лимита кэшбэка («уточняется»).",
+   "outcome": "unmatched",
+   "doc": "cashback"
+  },
+  {
+   "where": "CB-04",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "в разумные сроки после окончания месяца",
+   "problem": "Субъективное определение сроков («в разумные сроки») делает требование непроверяемым. Подтверждено тест-пробой: тест составить невозможно — Отсутствует измеримый срок зачисления, фраза «в разумные сроки» не имеет объективного критерия приёмки.",
+   "outcome": "tp",
+   "doc": "cashback"
+  },
+  {
+   "where": "CB-04",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "в разумные сроки",
+   "problem": "Использование оценочного суждения допускает разные трактовки со стороны бизнеса и разработки.",
+   "outcome": "tp",
+   "doc": "cashback"
+  },
+  {
+   "where": "CB-06",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "и прочие подобные операции",
+   "problem": "Тест составить невозможно: Невозможно составить исчерпывающий тест из-за неопределенности формулировки «и прочие подобные операции».",
+   "outcome": "unmatched",
+   "doc": "cashback"
+  },
+  {
+   "where": "CB-06",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "и прочие подобные операции",
+   "problem": "Открытый список («и прочие подобные») приводит к неоднозначности при реализации и тестировании.",
+   "outcome": "unmatched",
+   "doc": "cashback"
+  },
+  {
+   "where": "CB-09",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "push-уведомление о зачислении кэшбэка без лишних задержек после зачисления.",
+   "problem": "Размытая характеристика скорости без числового порога — требование нельзя проверить. (маркер: «без лишних задержек»)",
+   "outcome": "tp",
+   "doc": "cashback"
+  },
+  {
+   "where": "CB-10",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "историю начислений кэшбэка в течение продолжительного периода.",
+   "problem": "Неколичественная оценка — каждый участник поймёт её по-своему. (маркер: «продолжительного»)",
+   "outcome": "tp",
+   "doc": "cashback"
+  },
+  {
+   "where": "CB-11",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "начислений за выбранный месяц в формате PDF и/или Excel.",
+   "problem": "Конструкция «и/или» допускает несколько толкований. (маркер: «и/или»)",
+   "outcome": "tp",
+   "doc": "cashback"
+  },
+  {
+   "where": "CB-12",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "держателю категории прошлого месяца, в отдельных случаях.",
+   "problem": "Условие исполнения не определено — непонятно, когда требование обязательно. (маркер: «в отдельных случаях»)",
+   "outcome": "tp",
+   "doc": "cashback"
+  },
+  {
+   "where": "CNF-02",
+   "criterion": "feasible",
+   "severity": "critical",
+   "quote": "без единого сбоя",
+   "problem": "Требование абсолютной безотказности («без единого сбоя») физически и технически невыполнимо в реальных условиях.",
+   "outcome": "tp",
+   "doc": "cashback"
+  },
+  {
+   "where": "CNF-02",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "без единого сбоя круглосуточно",
+   "problem": "Формулировка не содержит измеримого числового показателя доступности (SLI/SLO) с учетом возможных плановых работ. Подтверждено тест-пробой: тест составить невозможно — Требование содержит абсолютную формулировку «без единого сбоя», которую невозможно объективно проверить на ограниченном интервале тестирования.",
+   "outcome": "tp",
+   "doc": "cashback"
+  },
+  {
+   "where": "CNF-03",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "защищены от утечек",
+   "problem": "Формулировка является качественной и неизмеримой, отсутствуют конкретные стандарты шифрования или требования к мерам защиты. Подтверждено тест-пробой: тест составить невозможно — Отсутствуют измеримые критерии проверки «защиты от утечек», нет ссылки на стандарты или алгоритмы шифрования.",
+   "outcome": "tp",
+   "doc": "cashback"
+  },
+  {
+   "where": "CNF-06",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "приятным и простым",
+   "problem": "Субъективные оценочные суждения («приятным», «простым») невозможно измерить объективными методами тестирования. Подтверждено тест-пробой: тест составить невозможно — Использование субъективных терминов «приятным и простым» и абсолютного «любого держателя» делает требование непроверяемым.",
+   "outcome": "tp",
+   "doc": "cashback"
+  },
+  {
+   "where": "CNF-06",
+   "criterion": "feasible",
+   "severity": "major",
+   "quote": "для любого держателя",
+   "problem": "Абсолютное требование охвата «любого» пользователя (включая людей с ограниченными возможностями без спецсредств или пользователей с устаревшими устройствами) технически нереализуемо.",
+   "outcome": "unmatched",
+   "doc": "cashback"
+  },
+  {
+   "where": "CNF-02",
+   "criterion": "set_feasible",
+   "severity": "major",
+   "quote": "Доступность сервиса кэшбэка должна составлять без единого сбоя круглосуточно.",
+   "problem": "Требование 100% доступности ('без единого сбоя') технически невыполнимо из-за планового обслуживания и возможных аварий инфраструктуры.",
+   "outcome": "unmatched",
+   "doc": "cashback"
+  },
+  {
+   "where": "CB-12",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна назначать держателю категории прошлого месяца, в отдельных случаях.",
+   "problem": "Значение по умолчанию и критерии «отдельных случаев», при которых назначаются категории прошлого месяца (например, если пользователь ничего не выбрал сам), не определены.",
+   "outcome": "unmatched",
+   "doc": "cashback"
+  },
+  {
+   "where": "CB-03, CB-15",
+   "criterion": "set_consistent",
+   "severity": "major",
+   "quote": "Система должна ограничивать начисленный кэшбэк суммой, которая уточняется за расчётный месяц на одно / Система должна ограничивать начисленный кэшбэк суммой 50 000 тенге за расчётный месяц на одного д",
+   "problem": "Формулировки совпадают на 89% — вероятный дубль; при изменении одного второе останется прежним.",
+   "outcome": "tp",
+   "doc": "cashback"
+  },
+  {
+   "where": "CB-01",
+   "criterion": "set_ranked",
+   "severity": "major",
+   "quote": "Система должна позволять держателю выбрать до 3 категорий кэшбэка на следующий р",
+   "problem": "Ни у одного требования нет приоритета или признака стабильности (IEEE 830 §4.3.5) — невозможно спланировать порядок реализации и объём MVP.",
+   "outcome": "unmatched",
+   "doc": "cashback"
+  },
+  {
+   "where": "CB-03, CB-15",
+   "criterion": "set_consistent",
+   "severity": "major",
+   "quote": "Система должна ограничивать начисленный кэшбэк суммой, которая уточняется за расчётный месяц на одного держателя. / Система должна ограничивать начисленный кэшбэк суммой 50 000 тенге за расчётный меся",
+   "problem": "Противоречие: в CB-03 указано, что сумма лимита 'уточняется', а в CB-15 зафиксирован конкретный лимит в 50 000 тенге.",
+   "outcome": "tp",
+   "doc": "cashback"
+  },
+  {
+   "where": "CB-04",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Система должна зачислять кэшбэк за расчётный месяц на карту держателя в разумные сроки после окончания месяца.",
+   "problem": "Использование расплывчатой формулировки 'в разумные сроки' делает требование невалидируемым и нечётким.",
+   "outcome": "unmatched",
+   "doc": "cashback"
+  },
+  {
+   "where": "CB-09",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Система должна отправлять держателю push-уведомление о зачислении кэшбэка без лишних задержек после зачисления.",
+   "problem": "Формулировка 'без лишних задержек' субъективна и не позволяет составить проверяемый критерий приемки.",
+   "outcome": "unmatched",
+   "doc": "cashback"
+  },
+  {
+   "where": "CB-10",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Система должна хранить историю начислений кэшбэка в течение продолжительного периода.",
+   "problem": "Срок хранения 'продолжительный период' юридически и технически не определен.",
+   "outcome": "unmatched",
+   "doc": "cashback"
+  },
+  {
+   "where": "CB-12",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Система должна назначать держателю категории прошлого месяца, в отдельных случаях.",
+   "problem": "Условие 'в отдельных случаях' слишком абстрактно и не описывает бизнес-логику автоназначения.",
+   "outcome": "unmatched",
+   "doc": "cashback"
+  },
+  {
+   "where": "CB-07",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна уменьшать кэшбэк расчётного месяца на сумму кэшбэка по возвращённой покупке.",
+   "problem": "Событие «возвращённая покупка» не определено (это полная отмена транзакции, частичный возврат, операция прошла в том же месяце или в следующем?). Это приведёт к расхождениям при расчете уменьшения кэшбэка.",
+   "outcome": "unmatched",
+   "doc": "cashback"
+  },
+  {
+   "where": "CB-01",
+   "criterion": "set_comprehensible",
+   "severity": "major",
+   "quote": "Система должна позволять держателю выбрать до 3 категорий кэшбэка на следующий расчётный месяц до 23:59 последнего дня текущего месяца.",
+   "problem": "Не описан сценарий изменения или повторного выбора категорий до наступления дедлайна (можно ли менять выбранные 3 категории несколько раз до 23:59?).",
+   "outcome": "unmatched",
+   "doc": "cashback"
+  },
+  {
+   "where": "CNF-02",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Доступность сервиса кэшбэка должна составлять без единого сбоя круглосуточно.",
+   "problem": "Формулировка «без единого сбоя» не содержит метрики доступности (например, 99.9% или 99.99%) и допустимого окна плановых технических работ, что делает требование невыполнимым для проверки.",
+   "outcome": "unmatched",
+   "doc": "cashback"
+  },
+  {
+   "where": "CB-10",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна хранить историю начислений кэшбэка в течение продолжительного периода.",
+   "problem": "Срок хранения истории начислений («продолжительный период») не имеет точного значения, что нарушает требования к модели данных и архивации.",
+   "outcome": "unmatched",
+   "doc": "cashback"
+  },
+  {
+   "where": "CB-04",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна зачислять кэшбэк за расчётный месяц на карту держателя в разумные сроки после окончания месяца.",
+   "problem": "Критерий приёмки содержит расплывчатое понятие «в разумные сроки» вместо конкретного дедлайна выплаты (например, «не позднее 5-го рабочего дня месяца»).",
+   "outcome": "unmatched",
+   "doc": "cashback"
+  },
+  {
+   "where": "CB-01, CB-02, CB-03, CB-04",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Система должна позволять держателю выбрать до 3 категорий / Система должна начислять кэшбэк 5 % от суммы покупки в / Система должна ограничивать начисленный кэшбэк суммой / Система должна зачислять кэ",
+   "problem": "Критерии приёмки покрывают 0 % правил (0 из 22). Без примеров остаются: CB-01, CB-02, CB-03, CB-04, CB-05, CB-06, CB-07, CB-08. Приёмку нельзя провести по документу — каждый тестировщик придумает свои ожидаемые результаты.",
+   "outcome": "unmatched",
+   "doc": "cashback"
+  },
+  {
+   "where": "RF-03",
+   "criterion": "appropriate",
+   "severity": "major",
+   "quote": "хранимой процедурой Oracle",
+   "problem": "Содержит избыточное проектное решение (конкретную технологию СУБД Oracle), хотя требование должно описывать функциональность расчёта без навязывания реализации.",
+   "outcome": "tp",
+   "doc": "refinance"
+  },
+  {
+   "where": "RF-05",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "кредитная история заёмщика неудовлетворительна",
+   "problem": "Тест составить невозможно: Невозможно однозначно протестировать требование из-за отсутствия конкретных критериев «неудовлетворительности» кредитной истории в тексте.",
+   "outcome": "unmatched",
+   "doc": "refinance"
+  },
+  {
+   "where": "RF-05",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "кредитная история заёмщика неудовлетворительна",
+   "problem": "Термин «неудовлетворительна» является размытым и не содержит конкретных критериев или порогов оценки кредитной истории.",
+   "outcome": "tp",
+   "doc": "refinance"
+  },
+  {
+   "where": "RF-06",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "оперативно",
+   "problem": "Использование качественного наречия «оперативно» делает требование непроверяемым, так как отсутствует числовой показатель времени. Подтверждено тест-пробой: тест составить невозможно — Слово «оперативно» не имеет четкого измеримого критерия для автоматического или ручного тестирования.",
+   "outcome": "tp",
+   "doc": "refinance"
+  },
+  {
+   "where": "RF-07",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "и других источников",
+   "problem": "Конструкция «и других источников» размыта и создает неопределенность в перечне источников реквизитов.",
+   "outcome": "unmatched",
+   "doc": "refinance"
+  },
+  {
+   "where": "RF-09",
+   "criterion": "complete",
+   "severity": "major",
+   "quote": "в течение 3 рабочих дней",
+   "problem": "Не указано, с какого момента отсчитывается срок (с момента погашения кредита, с закрытия кредита в стороннем банке или с даты поступления средств).",
+   "outcome": "fp",
+   "doc": "refinance"
+  },
+  {
+   "where": "RF-10",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "в течение установленного периода",
+   "problem": "Срок хранения не определен («установленного периода»), что делает требование непроверяемым. Подтверждено тест-пробой: тест составить невозможно — Невозможно проверить выполнение требования из-за неопределенности срока хранения («установленного периода»).",
+   "outcome": "tp",
+   "doc": "refinance"
+  },
+  {
+   "where": "RF-11",
+   "criterion": "feasible",
+   "severity": "critical",
+   "quote": "ограничивать сумму рефинансирования суммой, которую определит риск-менеджмент позже",
+   "problem": "Требование зависит от неопределенного будущего события («позже»), содержит незавершенную логику и не может быть реализовано в текущей итерации.",
+   "outcome": "unmatched",
+   "doc": "refinance"
+  },
+  {
+   "where": "RF-11",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "суммой, которую определит риск-менеджмент позже",
+   "problem": "Тест составить невозможно: Отсутствует конкретное значение лимита суммы («определит риск-менеджмент позже»), тест составить невозможно.",
+   "outcome": "unmatched",
+   "doc": "refinance"
+  },
+  {
+   "where": "RF-14",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "push-сообщением и/или e-mail",
+   "problem": "Использование конструкции «и/или» делает сценарий отправки уведомлений неоднозначным: неясно, отправлять ли оба канала одновременно или только один при наличии обоих.",
+   "outcome": "tp",
+   "doc": "refinance"
+  },
+  {
+   "where": "RNF-01",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "приемлемым для пользователя",
+   "problem": "Отсутствуют измеримые критерии приемки и пороговые значения для проверки времени ответа. Подтверждено тест-пробой: тест составить невозможно — Невозможно составить однозначный приемочный тест, так как отсутствует конкретное числовое значение времени ответа.",
+   "outcome": "tp",
+   "doc": "refinance"
+  },
+  {
+   "where": "RNF-01",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "быть приемлемым для пользователя",
+   "problem": "Термин 'приемлемым' субъективен и не имеет четкого числового значения, что делает требование не проверяемым.",
+   "outcome": "tp",
+   "doc": "refinance"
+  },
+  {
+   "where": "RNF-02",
+   "criterion": "correct",
+   "severity": "critical",
+   "quote": "составлять непрерывной, без каких-либо простоев",
+   "problem": "Грамматическая и логическая ошибка в формулировке («составлять непрерывной»), а абсолютное требование отсутствия простоев (100% доступность) технически нереализуемо в реальных системах из-за планового обслуживания.",
+   "outcome": "unmatched",
+   "doc": "refinance"
+  },
+  {
+   "where": "RNF-02",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "без каких-либо простоев",
+   "problem": "Тест составить невозможно: Требование абсолютного отсутствия простоев делает невозможным проведение стандартных тестов доступности с учетом плановых обслуживаний.",
+   "outcome": "tp",
+   "doc": "refinance"
+  },
+  {
+   "where": "RNF-02",
+   "criterion": "feasible",
+   "severity": "major",
+   "quote": "без каких-либо простоев",
+   "problem": "Нулевые простои (100% SLA) экономически и технически нереализуемы из-за необходимости проведения технических работ.",
+   "outcome": "tp",
+   "doc": "refinance"
+  },
+  {
+   "where": "RNF-03",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "надёжно защищены",
+   "problem": "Невозможно объективно проверить выполнение требования без четких критериев защиты (алгоритмы шифрования, права доступа). Подтверждено тест-пробой: тест составить невозможно — Отсутствуют конкретные критерии защиты (алгоритм, метод хранения), что делает невозможным верификацию теста безопасности.",
+   "outcome": "tp",
+   "doc": "refinance"
+  },
+  {
+   "where": "RNF-03",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "надёжно защищены",
+   "problem": "Формулировка 'надёжно защищены' размыта и не определяет конкретных стандартов или методов защиты (например, шифрование).",
+   "outcome": "tp",
+   "doc": "refinance"
+  },
+  {
+   "where": "RNF-06",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "вызывающим доверие",
+   "problem": "Невозможно измерить уровень 'доверия' пользователя программным путем или стандартным приемочным тестом. Подтверждено тест-пробой: тест составить невозможно — Субъективные критерии наглядности и доверия не могут быть проверены автоматизированным или формальным тестовым сценарием.",
+   "outcome": "tp",
+   "doc": "refinance"
+  },
+  {
+   "where": "RF-08, RF-15",
+   "criterion": "set_consistent",
+   "severity": "critical",
+   "quote": "действующим 120 секунд / в течение 300 секунд после отправки SMS",
+   "problem": "Противоречие во времени жизни одноразового кода для подтверждения договора: в RF-08 указано 120 секунд, а в RF-15 — 300 секунд.",
+   "outcome": "tp",
+   "doc": "refinance"
+  },
+  {
+   "where": "RF-11",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "суммой, которую определит риск-менеджмент позже на одного заёмщика",
+   "problem": "Наличие незавершённого требования (TBD/отложенное решение): сумма лимита рефинансирования отдана на откуп риск-менеджменту «позже», что блокирует точную оценку и реализацию.",
+   "outcome": "unmatched",
+   "doc": "refinance"
+  },
+  {
+   "where": "DOC",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "## 2. Функциональные требования",
+   "problem": "В наборе требований полностью отсутствуют требования к обработке ошибок (таймауты интеграции с кредитным бюро, сбои при перечислении средств, неверный формат реквизитов).",
+   "outcome": "unmatched",
+   "doc": "refinance"
+  },
+  {
+   "where": "DOC",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Доступность сервиса рефинансирования должна составлять непрерывной, без каких-либо простоев.",
+   "problem": "Формулировка «непрерывной, без каких-либо простоев» технически невыполнима и не содержит числового показателя доступности (например, 99.9%).",
+   "outcome": "unmatched",
+   "doc": "refinance"
+  },
+  {
+   "where": "RF-01",
+   "criterion": "set_ranked",
+   "severity": "major",
+   "quote": "Система должна получать из кредитного бюро список действующих кредитов заёмщика ",
+   "problem": "Ни у одного требования нет приоритета или признака стабильности (IEEE 830 §4.3.5) — невозможно спланировать порядок реализации и объём MVP.",
+   "outcome": "unmatched",
+   "doc": "refinance"
+  },
+  {
+   "where": "RF-04, RF-16",
+   "criterion": "set_consistent",
+   "severity": "major",
+   "quote": "сравнение старого и нового ежемесячного платежа с точностью до 1 тенге / старый и новый ежемесячный платёж рядом с точностью до 1 тенге",
+   "problem": "Дублирование требований: RF-04 и RF-16 описывают отображение сравнения старого и нового ежемесячного платежа с одинаковой точностью до 1 тенге.",
+   "outcome": "tp",
+   "doc": "refinance"
+  },
+  {
+   "where": "RF-10",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "в течение установленного периода",
+   "problem": "Неопределённость срока хранения согласия заёмщика («в течение установленного периода» без указания конкретного количества месяцев или лет), что нарушает требования полноты и валидации.",
+   "outcome": "unmatched",
+   "doc": "refinance"
+  },
+  {
+   "where": "RNF-02",
+   "criterion": "set_feasible",
+   "severity": "major",
+   "quote": "Доступность сервиса рефинансирования должна составлять непрерывной, без каких-либо простоев",
+   "problem": "Требование 100% доступности («без каких-либо простоев») является технически нереализуемым из-за необходимости проведения плановых технических работ и обновлений.",
+   "outcome": "unmatched",
+   "doc": "refinance"
+  },
+  {
+   "where": "DOC",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Время получения ответа кредитного бюро должно быть приемлемым для пользователя.",
+   "problem": "Метрика времени получения ответа кредитного бюро не определена («приемлемым» — субъективно), что делает невозможным тестирование требования.",
+   "outcome": "unmatched",
+   "doc": "refinance"
+  },
+  {
+   "where": "RF-01, RF-02, RF-03, RF-04",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Система должна получать из кредитного бюро список / Система должна позволять заёмщику выбрать для / Система должна рассчитывать новую ставку хранимой процедурой / Система должна показывать заёмщику ср",
+   "problem": "Критерии приёмки покрывают 0 % правил (0 из 22). Без примеров остаются: RF-01, RF-02, RF-03, RF-04, RF-05, RF-06, RF-07, RF-08. Приёмку нельзя провести по документу — каждый тестировщик придумает свои ожидаемые результаты.",
+   "outcome": "unmatched",
+   "doc": "refinance"
+  },
+  {
+   "where": "QR-01",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "практически мгновенно.",
+   "problem": "Использование качественного наречия «практически мгновенно» делает требование не проверяемым объективно. Подтверждено тест-пробой: тест составить невозможно — Невозможно написать проверяемый тест из-за отсутствия конкретного числового значения для времени распознавания.",
+   "outcome": "tp",
+   "doc": "qr"
+  },
+  {
+   "where": "QR-04",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "иными способами",
+   "problem": "Формулировка «иными способами» является размытой и допускает неоднозначную трактовку поддерживаемых методов аутентификации.",
+   "outcome": "unmatched",
+   "doc": "qr"
+  },
+  {
+   "where": "QR-06",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "максимально быстро",
+   "problem": "Фраза «максимально быстро» является субъективной и не позволяет сформировать объективный критерий приёмки. Подтверждено тест-пробой: тест составить невозможно — Отсутствует измеримый критерий для оценки скорости передачи статуса.",
+   "outcome": "tp",
+   "doc": "qr"
+  },
+  {
+   "where": "QR-08",
+   "criterion": "unambiguous",
+   "severity": "critical",
+   "quote": "в течение некоторого времени.",
+   "problem": "Неопределенность периода времени («некоторого времени») делает требование неполным и непроверяемым.",
+   "outcome": "tp",
+   "doc": "qr"
+  },
+  {
+   "where": "QR-08",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "в течение некоторого времени.",
+   "problem": "Тест составить невозможно: Невозможно определить корректность реализации возврата из-за неопределенности временного интервала.",
+   "outcome": "tp",
+   "doc": "qr"
+  },
+  {
+   "where": "QR-09",
+   "criterion": "complete",
+   "severity": "critical",
+   "quote": "суммой TBD",
+   "problem": "Использование метки TBD делает требование неполным и нереализуемым до уточнения конкретного лимита.",
+   "outcome": "tp",
+   "doc": "qr"
+  },
+  {
+   "where": "QR-09",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "суммой TBD",
+   "problem": "Отсутствие числового значения делает проверку требования невозможной. Подтверждено тест-пробой: тест составить невозможно — Требование содержит неопределенность TBD вместо конкретного лимита суммы, что исключает составление проверяемого сценария с числами.",
+   "outcome": "unmatched",
+   "doc": "qr"
+  },
+  {
+   "where": "QR-11",
+   "criterion": "appropriate",
+   "severity": "major",
+   "quote": "через распределённую блокировку в Redis",
+   "problem": "Использование конкретной технологии (Redis) на уровне функциональных требований нарушает принцип отделения 'что' от 'как'.",
+   "outcome": "tp",
+   "doc": "qr"
+  },
+  {
+   "where": "QR-14",
+   "criterion": "singular",
+   "severity": "major",
+   "quote": "сохранить продавца в избранное, а также делиться им с друзьями в социальных сетях и оставлять отзыв",
+   "problem": "Требование объединяет несколько несвязанных функций: добавление в избранное, шэринг в соцсети и оставление отзыва.",
+   "outcome": "tp",
+   "doc": "qr"
+  },
+  {
+   "where": "QNF-02",
+   "criterion": "feasible",
+   "severity": "critical",
+   "quote": "составлять абсолютной при любых условиях",
+   "problem": "Абсолютная доступность (100%) технически недостижима в реальных распределенных системах.",
+   "outcome": "tp",
+   "doc": "qr"
+  },
+  {
+   "where": "QNF-02",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "при любых условиях",
+   "problem": "Формулировка «при любых условиях» не позволяет составить объективный критерий проверки и исключает плановые технические работы. Подтверждено тест-пробой: тест составить невозможно — Требование содержит нереализуемый и непроверяемый показатель «абсолютной при любых условиях».",
+   "outcome": "tp",
+   "doc": "qr"
+  },
+  {
+   "where": "QNF-05",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "должен быть безопасным.",
+   "problem": "Тест составить невозможно: Отсутствуют конкретные технические требования к безопасности обмена (протоколы, шифрование), что делает проверку субъективной.",
+   "outcome": "tp",
+   "doc": "qr"
+  },
+  {
+   "where": "QNF-05",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "Обмен с кассой продавца должен быть безопасным",
+   "problem": "Термин «безопасным» является размытым и не задает конкретных требований к шифрованию, протоколам или аутентификации.",
+   "outcome": "tp",
+   "doc": "qr"
+  },
+  {
+   "where": "QNF-06",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "красивым и удобным даже для пожилых",
+   "problem": "Субъективные и неизмеримые понятия «красивый» и «удобный» невозможно проверить объективными тестами. Подтверждено тест-пробой: тест составить невозможно — Используются субъективные термины «красивым и удобным», для которых невозможно составить однозначный приёмочный тест.",
+   "outcome": "tp",
+   "doc": "qr"
+  },
+  {
+   "where": "QR-05, QR-15",
+   "criterion": "set_consistent",
+   "severity": "critical",
+   "quote": "Система должна отклонять просроченный динамический QR, срок действия которого истёк 5 минут назад и более. / Система должна принимать к оплате динамический QR в течение 15 минут после его формирования",
+   "problem": "Противоречие в сроках валидности динамического QR: QR-15 разрешает оплату в течение 15 минут, а QR-05 говорит об отклонении только в случае, если он истёк '5 минут назад и более' (что фактически создает серую зону с 15 по 20 минуту).",
+   "outcome": "tp",
+   "doc": "qr"
+  },
+  {
+   "where": "QR-09",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна ограничивать сумму одной оплаты по QR суммой TBD.",
+   "problem": "Наличие незаполненного маркера TBD (плейсхолдера) в требовании QR-09 делает ограничение суммы неопределенным.",
+   "outcome": "unmatched",
+   "doc": "qr"
+  },
+  {
+   "where": "QNF-02",
+   "criterion": "set_feasible",
+   "severity": "major",
+   "quote": "Доступность сервиса оплат по QR должна составлять абсолютной при любых условиях.",
+   "problem": "Требование абсолютной доступности (100%) при любых условиях физически и технически нереализуемо (feasible) в распределенных системах с учетом возможных сетевых сбоев и отказов оборудования.",
+   "outcome": "unmatched",
+   "doc": "qr"
+  },
+  {
+   "where": "QR-09",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "ограничивать сумму одной оплаты по QR суммой TBD",
+   "problem": "Лимит одной операции обозначен как TBD, из-за чего отсутствует значение по умолчанию для ограничений на проведение платежей.",
+   "outcome": "unmatched",
+   "doc": "qr"
+  },
+  {
+   "where": "QR-01",
+   "criterion": "set_ranked",
+   "severity": "major",
+   "quote": "Система должна распознавать статический и динамический QR-код камерой приложения",
+   "problem": "Ни у одного требования нет приоритета или признака стабильности (IEEE 830 §4.3.5) — невозможно спланировать порядок реализации и объём MVP.",
+   "outcome": "unmatched",
+   "doc": "qr"
+  },
+  {
+   "where": "QR-08",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна позволять продавцу вернуть оплату полностью в течение некоторого времени.",
+   "problem": "Использование неопределенной формулировки 'в течение некоторого времени' в требовании QR-08 делает его невалидируемым и неполным.",
+   "outcome": "unmatched",
+   "doc": "qr"
+  },
+  {
+   "where": "QR-01",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Система должна распознавать статический и динамический QR-код камерой приложения практически мгновенно.",
+   "problem": "Неизмеримая формулировка 'практически мгновенно' в QR-01 не позволяет валидировать соответствие системы ожиданиям.",
+   "outcome": "unmatched",
+   "doc": "qr"
+  },
+  {
+   "where": "QR-06",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Система должна передавать продавцу статус оплаты максимально быстро после списания.",
+   "problem": "Использование расплывчатой формулировки 'максимально быстро' в QR-06 делает невозможным тестирование и подтверждение выполнения требования.",
+   "outcome": "unmatched",
+   "doc": "qr"
+  },
+  {
+   "where": "QR-05",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "срок действия которого истёк 5 минут назад и более",
+   "problem": "Термин «просроченный динамический QR» противоречит требованию QR-15 (срок 15 минут), а условие «истёк 5 минут назад и более» нечётко определяет границу валидности кода.",
+   "outcome": "unmatched",
+   "doc": "qr"
+  },
+  {
+   "where": "QR-08",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "вернуть оплату полностью в течение некоторого времени",
+   "problem": "Не указан альтернативный сценарий частичного возврата и конкретный срок, в течение которого возможен возврат (параметр «некоторого времени» не определён).",
+   "outcome": "unmatched",
+   "doc": "qr"
+  },
+  {
+   "where": "QNF-02",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Доступность сервиса оплат по QR должна составлять абсолютной при любых условиях.",
+   "problem": "Требование «абсолютной при любых условиях» технически недостижимо и не содержит числовой метрики доступности (например, 99.99%).",
+   "outcome": "unmatched",
+   "doc": "qr"
+  },
+  {
+   "where": "QR-01, QR-02, QR-03, QR-04",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Система должна распознавать статический и динамический / Система должна показывать покупателю название продавца и / Система должна списывать оплату с карты, выбранной / Система должна запрашивать подт",
+   "problem": "Критерии приёмки покрывают 0 % правил (0 из 22). Без примеров остаются: QR-01, QR-02, QR-03, QR-04, QR-05, QR-06, QR-07, QR-08. Приёмку нельзя провести по документу — каждый тестировщик придумает свои ожидаемые результаты.",
+   "outcome": "unmatched",
+   "doc": "qr"
+  },
+  {
+   "where": "FX-01",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "прочими популярными валютами",
+   "problem": "Тест составить невозможно: Невозможно составить тест из-за неопределённости набора «прочими популярными валютами».",
+   "outcome": "unmatched",
+   "doc": "fx"
+  },
+  {
+   "where": "FX-01",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "прочими популярными валютами",
+   "problem": "Формулировка «прочими популярными валютами» является размытой и открытой для субъективного толкования, так как не перечислены конкретные коды валют.",
+   "outcome": "unmatched",
+   "doc": "fx"
+  },
+  {
+   "where": "FX-06",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "в кратчайшие сроки",
+   "problem": "Субъективная формулировка «в кратчайшие сроки» делает требование непроверяемым, так как отсутствует точный временной интервал. Подтверждено тест-пробой: тест составить невозможно — Невозможно составить тест из-за отсутствия конкретного числового значения для «кратчайших сроков».",
+   "outcome": "tp",
+   "doc": "fx"
+  },
+  {
+   "where": "FX-08",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "и/или",
+   "problem": "Использование союза «и/или» создает двусмысленность в отношении того, что именно обязана выдавать система (только квитанцию, только выписку или и то, и другое).",
+   "outcome": "tp",
+   "doc": "fx"
+  },
+  {
+   "where": "FX-09",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "значение которого будет согласовано в календарный месяц",
+   "problem": "Лимит не задан конкретным числом или ссылкой на документ, его значение отложено на будущее («будет согласовано»), что делает требование непроверяемым. Подтверждено тест-пробой: тест составить невозможно — Невозможно составить тест из-за отсутствия конкретного числового значения лимита («значение которого будет согласовано»).",
+   "outcome": "unmatched",
+   "doc": "fx"
+  },
+  {
+   "where": "FX-09",
+   "criterion": "complete",
+   "severity": "major",
+   "quote": "значение которого будет согласовано в календарный месяц на одного клиента",
+   "problem": "Отсутствует конкретная сумма лимита и реакция системы при превышении лимита.",
+   "outcome": "tp",
+   "doc": "fx"
+  },
+  {
+   "where": "FX-10",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "столько, сколько потребуется.",
+   "problem": "Формулировка «столько, сколько потребуется» субъективна и не имеет измеримого срока хранения. Подтверждено тест-пробой: тест составить невозможно — Срок хранения не определен («столько, сколько потребуется»), что исключает проверку.",
+   "outcome": "tp",
+   "doc": "fx"
+  },
+  {
+   "where": "FX-11",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "при значительном изменении курса",
+   "problem": "Тест составить невозможно: Невозможно проверить условие «значительное изменение курса» из-за отсутствия точного порога.",
+   "outcome": "unmatched",
+   "doc": "fx"
+  },
+  {
+   "where": "FX-11",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "при значительном изменении курса.",
+   "problem": "Понятие «значительное изменение курса» не определено количественно.",
+   "outcome": "tp",
+   "doc": "fx"
+  },
+  {
+   "where": "FNF-01",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "Время проведения обмена должно быть комфортным.",
+   "problem": "Формулировка субъективна, отсутствует конкретное измеримое значение времени проведения транзакции (в секундах или миллисекундах). Подтверждено тест-пробой: тест составить невозможно — Требование содержит субъективную оценку «комфортным» без числовых порогов времени выполнения.",
+   "outcome": "tp",
+   "doc": "fx"
+  },
+  {
+   "where": "FNF-01",
+   "criterion": "unambiguous",
+   "severity": "major",
+   "quote": "комфортным",
+   "problem": "Использование размытого качественного прилагательного вместо чёткой метрики.",
+   "outcome": "tp",
+   "doc": "fx"
+  },
+  {
+   "where": "FNF-02",
+   "criterion": "feasible",
+   "severity": "critical",
+   "quote": "всегда стопроцентной",
+   "problem": "100% доступность («всегда») технически недостижима из-за планового обслуживания и возможных аварий инфраструктуры.",
+   "outcome": "tp",
+   "doc": "fx"
+  },
+  {
+   "where": "FNF-02",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "Доступность сервиса обмена должна составлять всегда стопроцентной.",
+   "problem": "Тест составить невозможно: Требование задает абсолютную доступность 100%, что невозможно проверить на конечной выборке времени без учета плановых работ.",
+   "outcome": "tp",
+   "doc": "fx"
+  },
+  {
+   "where": "FNF-02",
+   "criterion": "correct",
+   "severity": "major",
+   "quote": "Доступность сервиса обмена должна составлять всегда стопроцентной.",
+   "problem": "Фактическая ошибка в проектировании нефункциональных требований (абсолютные показатели SLA не применяются).",
+   "outcome": "unmatched",
+   "doc": "fx"
+  },
+  {
+   "where": "FNF-03",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "защищённо",
+   "problem": "Термин «защищённо» является неопределённым и не содержит конкретных требований к шифрованию или протоколам безопасности. Подтверждено тест-пробой: тест составить невозможно — Отсутствуют технические требования к шифрованию (протокол, алгоритмы), что делает невозможным однозначную проверку.",
+   "outcome": "tp",
+   "doc": "fx"
+  },
+  {
+   "where": "FNF-06",
+   "criterion": "verifiable",
+   "severity": "critical",
+   "quote": "современным и приятным глазу",
+   "problem": "Субъективные критерии дизайна («современным», «приятным глазу») невозможно объективно проверить с помощью тест-кейсов. Подтверждено тест-пробой: тест составить невозможно — Субъективные формулировки «современным и приятным глазу» не имеют проверяемых критериев приемки.",
+   "outcome": "tp",
+   "doc": "fx"
+  },
+  {
+   "where": "FX-03, FX-15",
+   "criterion": "set_consistent",
+   "severity": "critical",
+   "quote": "Система должна фиксировать курс на 60 секунд с момента показа клиенту. / Система должна гарантировать клиенту показанный курс в течение 5 минут.",
+   "problem": "Прямое противоречие в длительности фиксации и гарантии курса: в FX-03 указано 60 секунд, а в FX-15 — 5 минут.",
+   "outcome": "tp",
+   "doc": "fx"
+  },
+  {
+   "where": "FX-12, FX-16",
+   "criterion": "set_consistent",
+   "severity": "critical",
+   "quote": "Система должна запрещать обмен в выходные дни с 00:00 субботы до 08:00 понедельника по времени Алматы. / Система должна проводить обмен валют круглосуточно, включая выходные и праздничные дни.",
+   "problem": "Противоречие режима работы сервиса: FX-12 запрещает обмен в выходные дни (с субботы до понедельника), а FX-16 требует круглосуточную работу включая выходные.",
+   "outcome": "tp",
+   "doc": "fx"
+  },
+  {
+   "where": "FX-09",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна ограничивать обмен лимитом, значение которого будет согласовано в календарный месяц на одного клиента.",
+   "problem": "В требовании содержится неопределенность (TBD/несогласованное значение лимита) и отсутствует логика обработки превышения лимита.",
+   "outcome": "unmatched",
+   "doc": "fx"
+  },
+  {
+   "where": "DOC",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "## 2. Функциональные требования",
+   "problem": "В наборе требований полностью отсутствуют сценарии обработки ошибок интеграции (например, недоступность АБС, сбой шины Kafka, таймауты при списании/зачислении средств).",
+   "outcome": "unmatched",
+   "doc": "fx"
+  },
+  {
+   "where": "FX-03, FX-15",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна фиксировать курс на 60 секунд с момента показа клиенту. / Система должна гарантировать клиенту показанный курс в течение 5 минут.",
+   "problem": "В требованиях содержится логическое противоречие: в FX-03 фиксация курса указана на 60 секунд, а в FX-15 — в течение 5 минут. Неясно, какой таймаут является валидным.",
+   "outcome": "unmatched",
+   "doc": "fx"
+  },
+  {
+   "where": "FX-12, FX-16",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна запрещать обмен в выходные дни с 00:00 субботы до 08:00 / Система должна проводить обмен валют круглосуточно, включая выходные и праздничные дни.",
+   "problem": "Прямое противоречие между FX-12 (запрет обмена в выходные) и FX-16 (обмен круглосуточно, включая выходные). Невозможно определить корректное поведение системы в выходные дни.",
+   "outcome": "unmatched",
+   "doc": "fx"
+  },
+  {
+   "where": "FX-01",
+   "criterion": "set_ranked",
+   "severity": "major",
+   "quote": "Система должна поддерживать обмен между тенге и валютами USD, EUR, RUB и прочими",
+   "problem": "Ни у одного требования нет приоритета или признака стабильности (IEEE 830 §4.3.5) — невозможно спланировать порядок реализации и объём MVP.",
+   "outcome": "unmatched",
+   "doc": "fx"
+  },
+  {
+   "where": "FNF-01",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Время проведения обмена должно быть комфортным.",
+   "problem": "Неметризуемое нефункциональное требование (use of subjective terms 'комфортным'), которое невозможно валидировать тестированием.",
+   "outcome": "unmatched",
+   "doc": "fx"
+  },
+  {
+   "where": "FNF-02",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Доступность сервиса обмена должна составлять всегда стопроцентной.",
+   "problem": "Нереализуемое и некорректно сформулированное требование к доступности (100% недостижимо технически; грамматическая ошибка).",
+   "outcome": "unmatched",
+   "doc": "fx"
+  },
+  {
+   "where": "FX-10",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна хранить историю обменов клиента столько, сколько потребуется.",
+   "problem": "Срок хранения истории не определен («сколько потребуется»), что исключает возможность проектирования архивации и соблюдения законодательных норм.",
+   "outcome": "unmatched",
+   "doc": "fx"
+  },
+  {
+   "where": "DOC",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна обновлять курс банка в приложении каждые 30 секунд через WebSocket-подписку на шину Kafka.",
+   "problem": "Техническое противоречие архитектуры: Kafka является шиной сообщений (обычно на базе TCP/очередей), а WebSocket — протоколом для клиент-серверного взаимодействия. Нет описания шлюза/сервера конвертации сообщений Kafka в WebSocket для клиента.",
+   "outcome": "unmatched",
+   "doc": "fx"
+  },
+  {
+   "where": "FX-01",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна поддерживать обмен между тенге и валютами USD, EUR, RUB и",
+   "problem": "Термин «прочими популярными валютами» не определён конкретным списком кодов валют, что приведёт к разногласиям при реализации и тестировании.",
+   "outcome": "unmatched",
+   "doc": "fx"
+  },
+  {
+   "where": "FX-11",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна позволять клиенту установить целевой курс и получить push-уведомление при значительном",
+   "problem": "Квалификатор «значительном изменении курса» не имеет количественного или процентного порога, а также непонятно, задаёт ли его клиент вместе с целевым курсом.",
+   "outcome": "unmatched",
+   "doc": "fx"
+  },
+  {
+   "where": "FX-05",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна обновлять курс банка в приложении каждые 30 секунд через WebSocket-подписку",
+   "problem": "Не описано поведение приложения и пользователя при разрыве WebSocket-соединения или сбое шины Kafka (переподключение, таймаут, отображение устаревшего курса).",
+   "outcome": "unmatched",
+   "doc": "fx"
+  },
+  {
+   "where": "FX-09",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Система должна ограничивать обмен лимитом, значение которого будет согласовано в календарный месяц",
+   "problem": "Не указано, какое значение лимита применяется по умолчанию для новых клиентов до момента его индивидуального согласования.",
+   "outcome": "unmatched",
+   "doc": "fx"
+  },
+  {
+   "where": "FNF-02",
+   "criterion": "set_complete",
+   "severity": "major",
+   "quote": "Доступность сервиса обмена должна составлять всегда стопроцентной.",
+   "problem": "Требование «всегда стопроцентной» доступности технически недостижимо и не содержит метрики плановых технических работ (регламента).",
+   "outcome": "unmatched",
+   "doc": "fx"
+  },
+  {
+   "where": "FX-01, FX-02, FX-03, FX-04",
+   "criterion": "set_validatable",
+   "severity": "major",
+   "quote": "Система должна поддерживать обмен между тенге и валютами / Система должна показывать клиенту курс банка и сумму к / Система должна фиксировать курс на 60 секунд с момента / Система должна проводить об",
+   "problem": "Критерии приёмки покрывают 0 % правил (0 из 23). Без примеров остаются: FX-01, FX-02, FX-03, FX-04, FX-05, FX-06, FX-07, FX-08. Приёмку нельзя провести по документу — каждый тестировщик придумает свои ожидаемые результаты.",
+   "outcome": "unmatched",
+   "doc": "fx"
+  }
+ ]
+}

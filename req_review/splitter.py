@@ -116,7 +116,8 @@ def _is_heading(line: str, nxt: str | None) -> str | None:
 REQ_SECTION_RE = re.compile(
     r"нефункциональн|требования к данным|данным|интеграц|дизайн процесса|\bui\b|интерфейс|логика работы|особые правила|"
     r"критери\w* при[её]мк|общие параметры|параметр|request body|тело запроса|^ответ|статус|successful|"
-    r"тестирование требований|ограничени|безопасност|производительн|доступност",
+    r"тестирование требований|ограничени|безопасност|производительн|доступност|"
+    r"қабылдау критери|функционалдық емес|қауіпсіздік",  # v13+: казахские разделы
     re.IGNORECASE)
 # Служебные разделы шаблона — не требования
 EXCLUDED_SECTION_RE = re.compile(r"ревью требований|блок согласующ|общие сведения|содержание|история изменени|лист согласования",
@@ -176,7 +177,7 @@ KIND_RU = {"requirement": "требование", "spec": "элемент спе
            "placeholder": "незаполненное место"}
 _SPEC_SECTION = re.compile(r"общие параметры|параметр|request body|тело запроса|^ответ\b|response|статус|^\d{3}\b|"
                            r"path-|query-|header|заголовки запроса|коды ответа", re.I)
-_ACC_SECTION = re.compile(r"критери\w* при[её]мк|acceptance|сценари\w* приёмк", re.I)
+_ACC_SECTION = re.compile(r"критери\w* при[её]мк|acceptance|сценари\w* приёмк|қабылдау критери\w*", re.I)
 _PLACEHOLDER = re.compile(r"^(?:заполня\w+|tbd|tbc|будет (?:определ|уточн)\w*|уточня\w+|определяется позже)\b", re.I)
 
 
@@ -236,7 +237,7 @@ def split_requirements(doc: Document) -> SplitResult:
             if id_cell is None:
                 if table_header is None:
                     table_header = cells
-                elif cells and MODAL_RE.search(" ".join(cells)):
+                elif cells and MODAL_RE.search(re.sub(r"«[^»]*»", "", " ".join(cells))):  # v13+: текст сообщения в «…» — не требование
                     candidates_no_id.append((ln, _clean(max(cells, key=len)), section))
                 continue
             close()
@@ -293,7 +294,7 @@ def split_requirements(doc: Document) -> SplitResult:
         # --- кандидат без идентификатора ---
         b = BULLET_RE.match(raw) or LIST_NUM_RE.match(raw)
         text = b.group("text") if b else stripped
-        if MODAL_RE.search(text) and len(text) > 15:
+        if MODAL_RE.search(re.sub(r"«[^»]*»", "", text)) and len(text) > 15:
             candidates_no_id.append((ln, _clean(text), section))
     close()
 
@@ -303,8 +304,24 @@ def split_requirements(doc: Document) -> SplitResult:
         # Смешанные документы: часть требований с ID, часть — без ID в разделах «НФТ», «Данные», «Интеграция»,
         # «Логика работы метода», «Критерии приёмки», параметры API… Такие пункты тоже требования: агент присваивает
         # им свои номера и сохраняет дословный текст (ТЗ: «если номеров не было — присвоить свои и сохранить цитату»).
+        # v13+: строка таблицы критериев приёмки, где в первой колонке — ID проверяемого правила («| TR-02 | … |»), —
+        # это ссылка на правило, а не повторное объявление ID: элемент — критерий приёмки, ID — в extra["refs"]
+        declared = {r["doc_id"] for r in reqs if r["doc_id"] and not _ACC_SECTION.search(r["section"] or "")}
+        by_no = {ln.lineno: ln.text for ln in lines}
+        for r in reqs:
+            if r["doc_id"] and r["doc_id"] in declared and _ACC_SECTION.search(r["section"] or ""):
+                raw = by_no.get(r["start"], "")
+                refs = [x for x in re.findall(r"[A-ZА-ЯЁ]{1,6}-\d{1,4}", raw.split("|")[1] if raw.count("|") >= 2 else raw)
+                        if x in declared] or [r["doc_id"]]
+                cells = [c.strip() for c in raw.strip().strip("|").split("|")] if raw.count("|") >= 2 else []
+                if len(cells) >= 2 and r["text"] in raw:  # текст строки приёмки — все колонки после ссылки на правило
+                    full = " | ".join(cells[1:])
+                    if full.strip():
+                        r["text"] = full
+                r["extra"] = {**(r["extra"] or {}), "refs": refs}
+                r["doc_id"] = None
         taken = {n for r in reqs for n in range(r["start"], r["end"] + 1)}
-        units = _section_units(lines, taken, {r["section"] for r in reqs})
+        units = _section_units(lines, taken, {r["section"] for r in reqs if r["doc_id"]})
         if units:
             reqs = sorted(reqs + units, key=lambda r: r["start"])
             unit_lines = {u["start"] for u in units}

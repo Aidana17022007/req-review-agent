@@ -2,6 +2,40 @@
 
 Версия схемы: **2.5**. Правило: изменения только добавляющие — поля 2.0 не переименовываются и не удаляются.
 
+## HTML-отчёт: `data.engine` (v13+, для блоков интерфейса)
+
+В данных HTML-отчёта (`html_report.build_data`) — сжатый блок `engine`; ключа нет — блок не показывается. Отчёт < 1 МБ,
+поэтому тексты не дублируются: подписи — по id, тексты замечаний — по номеру S-xx / R-xxx.N.
+
+| Ключ | Формат |
+|---|---|
+| `verify` | `{"ok","quotes_ok","quotes_total","sha_ok"}` — плашка «Отчёт проверен: N из N цитат, SHA совпадает» |
+| `stages` | `[[этап, начало_с, длительность_с, параллельно 0/1], …]`; `critical_path` — `{"stages","seconds","sum"}` |
+| `cost` | строка «стоимость прогона» (готовый текст) |
+| `strong`, `runs`, `journal` | как `passport.strong` / `passport.runs` / путь журнала |
+| `compliance` | `[[id проверки, "fired"/"passed", "S-xx" или ""], …]` (подписи — `compliance.CHECKS`) |
+| `checklist` | `{"section","summary":{"да","частично","нет","не оценено"},"items":[[строка документа, ответ, [S-xx…]], …]}` |
+| `trace_gaps` | `{"nodes","edges","gaps":[[тип разрыва, "S-xx"], …]}` |
+| `revised` | при `--answers`: `{"changed":[[rid, было, стало, [Q-xx]]],"added":[[NEW-xx, текст, Q-xx]],"open":[[Q-xx, rid, плейсхолдер]],"summary":{…}}` |
+| `judge` | `{"rejected":{причина: число},"dropped_quotes","doubtful"}` — «Как работал агент»: сколько кандидатов отсеяно и почему |
+
+## Что добавлено в 2.5 · v13 (комплаенс, стоимость, стабильность, сильная модель)
+
+Поля только добавлены; версия схемы не меняется.
+
+| Поле | Тип | Смысл |
+|---|---|---|
+| `compliance` | объект | «Комплаенс и безопасность» (правила, без модели); нет поля — `REQLENS_COMPLIANCE=0` |
+| `compliance.checks[]` | объект | `{"id","title","norm","kb","status","where","finding","new"}`; `id`: `pii_unmasked`, `secrets_in_logs`, `card_storage`, `optional_auth`, `no_auth`, `no_audit`, `no_consent`; `status`: `fired` (нарушение) / `passed` (описано) / `not_applicable`; `kb` — раздел kb/law_kz; `finding` — `S-xx` (новое — `new: true`, источник «комплаенс (правило)»; уже найденное — `new: false`) |
+| `compliance.fired`, `compliance.new_findings` | число | сработало проверок / новых замечаний |
+| `passport.cost` | объект | `{"model","tokens_in","tokens_out","calls","free_tier","usd","kzt","per_call_usd","price","checked","note"}` — оценка по `config/prices.yaml`; цены нет — `usd: null` и пояснение в `note` (цены не выдумываются) |
+| `passport.runs` | объект | только при `--runs N`: `{"n","temperatures","findings_per_run","stable","unstable","rule"}` |
+| `requirements[].findings[].stability`, `set_findings[].stability` | строка | при `--runs N`: «k из N» — в скольких независимых прогонах найдено; без флага — `""` |
+| `passport.strong` | объект | только при `--strong`: `{"model": "провайдер:модель", "note"}` |
+
+Артефакт при `--runs N`: `<имя>_runs.json` — краткие копии всех прогонов (тексты замечаний) для `bench/stability.py`.
+В профиле deep узкие проходы дополнены классом `focus_compliance` (`review_stats.focused`).
+
 ## Что добавлено в 2.5 · v12 (трассировка, время этапов)
 
 Поля только добавлены; версия схемы не меняется.

@@ -65,6 +65,13 @@ PASSES = {
 дубли и идемпотентность, опоздавшие и пропущенные события, повторы и таймауты, что при недоступности второй стороны,
 мониторинг. Замечание — если что-то не определено.
 """ + _COMMON),
+    "focus_compliance": ("комплаенс и безопасность", """Ты — специалист по информационной безопасности и комплаенсу
+банка. Для КАЖДОГО требования с персональными данными, деньгами, доступом или журналами проверь: маскирование номера
+карты, ИИН и телефона на экранах, в чеках и уведомлениях; не пишутся ли ПИН, CVV, пароли, коды и токены в журналы;
+не хранятся ли CVV/ПИН; обязательно ли подтверждение денежных операций и смены настроек; есть ли журнал аудита (кто,
+что, когда); получено ли согласие клиента на сбор данных и запросы во внешние базы; нет ли способа обойти обязательную
+проверку (лимиты, AML, 2FA). Замечание — только с цитатой требования, где проблема видна.
+""" + _COMMON),
 }
 
 _UI = re.compile(r"\bui\b|ux|дизайн|экран|интерфейс", re.I)
@@ -86,6 +93,8 @@ def applicable(task: str, split, doc) -> bool:
         return any(_ACC.search(ln.text) for ln in doc.lines)
     if task == "focus_nfr":
         return any(_NFR.search(ln.text) for ln in doc.lines)
+    if task == "focus_compliance":
+        return bool(targets(task, split, doc))
     if task in ("focus_errors_ui", "focus_data", "focus_integration"):
         return bool(targets(task, split, doc))
     return True
@@ -110,6 +119,9 @@ def targets(task: str, split, doc) -> list[dict]:
         sel = [r for r in reqs if _DATA.search(r.section or "") or re.search(r"параметр|ответ", r.section or "", re.I)]
     elif task == "focus_integration":
         sel = [r for r in reqs if _INTEG.search(r.section or "") or re.search(r"процессинг|событи", r.text, re.I)]
+    elif task == "focus_compliance":  # v13: деньги, персональные данные, доступ, журналы
+        sel = [r for r in reqs if re.search(r"номер\w* карт|\bИИН\b|номер\w* телефон|паспорт|перев[оеё]д|оплат|списа|зачисл|"
+                                            r"обмен|подтвержд|журнал|\bлог|парол|\bПИН|CVV|токен|согласи", r.text, re.I)]
     else:
         sel = [r for r in reqs if _NFR.search(r.section or "") or getattr(r, "category", "") in ("performance", "availability")]
     return [{"id": r.rid, "doc_id": r.doc_id, "text": r.text[:240]} for r in sel[:30]]

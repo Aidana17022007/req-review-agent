@@ -51,6 +51,9 @@ def coverage_map(rv, domain: dict | None) -> list[dict]:
     for st in steps:
         kws = [k.lower() for k in st.get("keywords", [])]
         reqs = [rr.req.rid for rr in rv.req_results if any(k in rr.req.text.lower() for k in kws)]
-        out.append({"id": st["id"], "title": st["title"], "reqs": reqs, "covered": bool(reqs),
-                    "question": st.get("question", "")})
+        # v13+: шаг описан вне нарезки (таблица ошибок, раздел статусов) — тоже покрыт, ссылка «DOC»
+        in_doc = not reqs and any(any(k in ln.text.lower() for k in kws) for ln in rv.doc.lines
+                                  if not ln.text.lstrip().startswith("#"))
+        out.append({"id": st["id"], "title": st["title"], "reqs": reqs or (["DOC"] if in_doc else []),
+                    "covered": bool(reqs) or in_doc, "question": st.get("question", "")})
     return out

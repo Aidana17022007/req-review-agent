@@ -34,6 +34,7 @@ class LLMStats:
     prompt_tokens: int = 0
     output_tokens: int = 0
     errors: list[str] = field(default_factory=list)
+    cache_misses: int = 0  # v13: LLM_CACHE=only — запросов, которых не оказалось в кэше
 
 
 class BaseLLM:
@@ -66,6 +67,10 @@ class BaseLLM:
                 return data
             except (ValueError, OSError):
                 pass
+        if cache and os.getenv("LLM_CACHE", "1").strip().lower() == "only":  # v13: абляция — только из кэша, без квоты
+            with self._lock:
+                self.stats.cache_misses += 1
+            raise LLMError("ответа нет в кэше (LLM_CACHE=only)")
         last_err: Exception | None = None
         for attempt in range(self.max_retries + 1):
             try:
@@ -140,12 +145,14 @@ class BaseLLM:
         """Старты запросов разносятся на min_interval — общий слот для всех потоков (LLM_RPM соблюдается и параллельно)."""
         if self.min_interval <= 0:
             return
+        # perf_counter — точные часы и на Windows (там monotonic шагает по ~15,6 мс, и интервал «сжимался»);
+        # sleep может проснуться чуть раньше срока — досыпаем до назначенного слота
         with self._lock:
-            now = time.monotonic()
+            now = time.perf_counter()
             start = max(now, self._last_call + self.min_interval)
             self._last_call = start
-        if start > now:
-            time.sleep(start - now)
+        while (left := start - time.perf_counter()) > 0:
+            time.sleep(left)
 
     def _call(self, system: str, prompt: str, *, task: str, context: dict) -> str:  # pragma: no cover
         raise NotImplementedError

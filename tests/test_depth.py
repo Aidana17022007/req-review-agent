@@ -519,7 +519,7 @@ def test_deep_profile_runs_focused_passes_with_verified_quotes(tmp_path, monkeyp
     monkeypatch.setenv("RAG", "off")
     rv = review_document(REAL, MockLLM(), Options(profile="deep", domain="none"), log=lambda *a: None)
     assert set(rv.focus) == {"focus_bounds", "focus_api_negative", "focus_acceptance", "focus_nfr", "focus_errors_ui",
-                             "focus_data", "focus_integration"}
+                             "focus_data", "focus_integration", "focus_compliance"}  # v13: + комплаенс
     added = [f for f in rv.set_findings if f.source.startswith("LLM (узкий проход")]
     assert added and all(v >= 0 for v in rv.focus.values())
     assert any(d["problem"] == "[mock] выдуманный пропуск" for d in rv.dropped)

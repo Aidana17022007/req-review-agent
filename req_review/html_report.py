@@ -269,8 +269,64 @@ def build_data(ctx) -> dict:
         # v9 (SCHEMA 2.4): ответы аналитика и повестка решений — только показ; без полей блоки в отчёте скрыты
         "answers": _answers(getattr(ctx, "answers", None)),
         "decisions": _decisions(getattr(ctx, "decisions", None)),
+        # v12–v13 (SCHEMA 2.5): компактно — для блоков HTML и Studio; нет данных — нет ключа (блок скрыт)
+        "engine": _engine(ctx),
     }
     return data
+
+
+def _engine(ctx) -> dict:
+    """Новые поля движка в сжатом виде (отчёт < 1 МБ): самопроверка, этапы, стоимость, сильная модель, стабильность,
+    комплаенс, чек-лист банка, разрывы трассировки, исправленное ТЗ, причины отсева кандидатов судьёй."""
+    from collections import Counter
+
+    rv, p = ctx.rv, ctx.passport or {}
+    out: dict = {}
+    if v := p.get("verify"):
+        out["verify"] = {k: v.get(k) for k in ("ok", "quotes_ok", "quotes_total", "sha_ok")}
+    if cp := p.get("critical_path"):
+        out["stages"] = [[s["stage"], round(s["start_s"], 1), round(s["seconds"], 1), int(bool(s.get("parallel")))]
+                         for s in p.get("stages") or []]
+        out["critical_path"] = {"stages": cp["stages"], "seconds": cp["seconds"], "sum": cp["stages_sum_s"]}
+    if c := p.get("cost"):
+        from .cost import line
+
+        out["cost"] = line(c)
+    for k in ("strong", "runs", "journal"):
+        if p.get(k):
+            out[k] = p[k]
+    comp = getattr(rv, "compliance", None) or {}
+    if comp:
+        from .compliance import to_json as cj
+
+        out["compliance"] = [[x["id"], x["status"], x.get("finding", "")] for x in cj(rv)["checks"]
+                             if x["status"] != "not_applicable"]  # подписи проверок — в шаблоне по id
+    bc = getattr(rv, "bank_checklist", None) or {}
+    if bc:
+        out["checklist"] = {"section": bc["section"], "summary": bc["summary"],
+                            "items": [[i["line"], i["answer"], i["refs"][:3]] for i in bc["items"]]}  # текст — строка документа
+    if getattr(rv, "traceability", None):
+        from .traceability import to_json as tj
+
+        t = tj(rv)
+        out["trace_gaps"] = {"nodes": sum(t["stats"]["nodes"].values()), "edges": sum(t["stats"]["edges"].values()),
+                             "gaps": [[g["type"], g.get("finding", "")] for g in t["gaps"]]}  # текст — у замечания S-xx
+    rev = ((getattr(ctx, "answers", None) or {}).get("revised")) or {}
+    if rev:
+        out["revised"] = {"changed": [[c["rid"], c["before"][:140], c["after"][:180], c["qids"]] for c in rev.get("changed", [])[:12]],
+                          "added": [[a["id"], a["text"][:180], a["from"]] for a in rev.get("added", [])[:6]],
+                          "open": [[o["qid"], o.get("rid", ""), o["placeholder"][:120]] for o in rev.get("open", [])[:10]],
+                          "summary": {k: v for k, v in ((ctx.answers or {}).get("summary") or {}).items() if k != "closed_blockers"}}
+    reasons = Counter()
+    for r in rv.rejected:
+        why = str(r.get("reason", "")).lower()
+        reasons["дубль" if "дубл" in why else "нет опоры в тексте" if "цитат" in why or "опор" in why else
+                "закрыто ответом" if "ответом" in why else "свёрнуто" if "свёрнуто" in why else
+                "не подтверждено повторно" if "самосогласован" in why else "не дефект (судья)"] += 1
+    if reasons or rv.dropped:
+        out["judge"] = {"rejected": dict(reasons), "dropped_quotes": len(rv.dropped),
+                        "doubtful": sum(1 for f in rv.set_findings if (f.critic_note or "").startswith("Судья сомневается"))}
+    return out
 
 
 ANSWER_TYPES = {"concrete", "evasive", "contradictory"}

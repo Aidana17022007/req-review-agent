@@ -44,6 +44,10 @@ class Options:
     batch_size: int = 8
     pdf: bool | None = None  # PDF-версия отчёта; None — по профилю (deep — да)
     ensemble: str = ""  # v7: «модель1,модель2» — два прогона и объединение подтверждённых замечаний
+    strong: str = ""  # v13: «провайдер:модель» сильной модели (--strong) — для честной строки паспорта
+    journal: str = ""  # v13+: папка журналов (runs/) — вход и выход каждого обращения к модели, этапы; "" — без журнала
+    replay: str = ""  # v13+: runs/<id> — повтор прогона из журнала, без сети
+    runs: int = 1  # v13: N независимых прогонов (разная температура) — «найдено в k из N», устойчивые замечания
     fix_loop: bool = False  # v7: «исправил → проверил заново» — блок «До / После» и файл <отчёт>_before_after.md
     cascade: str = ""  # v9: «быстрая,сильная» — быстрая проверяет всё, сильная — подозрительные требования и набор
     decisions_llm: bool = False  # v9: модель перефразирует повестку решений на бизнес-язык (иначе — формулировки кода)
@@ -146,6 +150,20 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
 
     recovered = recover_uncovered(doc, split, llm, log=log)
     stt["Нарезка"] = (a, time.monotonic(), calls() - c)
+    # v13: доменная проверка и глоссарий зависят только от документа и нарезки — запрос уходит сразу, параллельно
+    # с проверкой требований и набора (общий ограничитель LLM_CONCURRENCY); ответ разбирается на своём этапе
+    from types import SimpleNamespace
+
+    from .extras import extras_call
+    from .parallel import concurrency
+
+    domain = load_domain(opts.domain)
+    extras_pool = extras_future = None
+    if concurrency() > 1 and os.getenv("REQLENS_EXTRAS_PREFETCH", "1") != "0":
+        from concurrent.futures import ThreadPoolExecutor
+
+        extras_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="extras")
+        extras_future = extras_pool.submit(extras_call, SimpleNamespace(doc=doc, split=split), llm, domain)
     step(2)
     c = calls()
     # размер пакета: явный LLM_BATCH_SIZE важнее профиля; deep — 6 требований на запрос
@@ -172,8 +190,11 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
             rr.test_possible, rr.test_gherkin, rr.test_blocker, rr.test_reason = None, "", "", ""
     step(4)
     a, c = time.monotonic(), calls()
-    domain = load_domain(opts.domain)
-    run_extras(rv, llm, domain, log=log)
+    try:
+        run_extras(rv, llm, domain, log=log, prefetched=extras_future)
+    finally:
+        if extras_pool is not None:
+            extras_pool.shutdown(wait=True)
     # R4: категории требований и карта покрытия процесса (без обращений к модели)
     from .categories import apply_categories, coverage_map
     from .checker import SetFinding, SetRef
@@ -186,7 +207,7 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
         rv.set_findings.append(SetFinding(
             "gap", "set_complete", [SetRef("DOC", _anchor(rv))],
             "Шаги типового процесса не покрыты ни одним требованием: " + "; ".join(s["title"] for s in gaps) + ".",
-            "major" if len(gaps) >= 3 else "minor",
+            "minor",  # v13+: карта процесса — подсказка по ключевым словам (без модели), не повод для «с оговорками»
             "Добавить требования или явно указать, что шаг вне рамок. Вопросы аналитику: "
             + " ".join(f"{s['title']}: {s['question']}" for s in gaps), "карта покрытия"))
     # v5: покрытие правил критериями приёмки (после перекрёстной проверки — её связи «пример ↔ правило» учитываются)
@@ -201,8 +222,10 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
     step(5)
     if critic:
         run_critic(rv, llm, log=log)
-    elif os.getenv("REQLENS_CRITIC_CRITICAL", "1") != "0" and any(
-            f.severity == "critical" for rr in rv.req_results for f in rr.findings):
+    elif os.getenv("REQLENS_CRITIC_CRITICAL", "1") != "0" and (any(
+            f.severity == "critical" for rr in rv.req_results for f in rr.findings) or any(
+            f.severity == "critical" or (f.kind == "contradiction" and "LLM" in (f.source or ""))
+            or ("проход полноты" in (f.source or "") and f.severity != "minor") for f in rv.set_findings)):
         # self-consistency: даже в fast критичные замечания перепроверяются вторым проходом (1 запрос)
         run_critic(rv, llm, log=log, only_critical=True)
     # Шум: «не по шаблону / нет субъекта» к пунктам без ID (шаги логики, строки таблиц, критерии приёмки) — это одно
@@ -242,8 +265,16 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
         ts = rv.traceability["stats"]
         log(f"  трассировка: узлов {sum(ts['nodes'].values())}, связей {sum(ts['edges'].values())}, разрывов "
             f"{ts['gaps']} (новых замечаний {ts['new_findings']}, связано с найденными {ts['linked']})")
+    if os.getenv("REQLENS_COMPLIANCE", "1") != "0":  # v13: комплаенс и безопасность (правила, нормы kb/law_kz)
+        from .compliance import run as run_compliance
+
+        rv.compliance = run_compliance(rv)
+        log(f"  комплаенс и безопасность: нарушений {rv.compliance['fired']}, новых замечаний {rv.compliance['findings']}")
     default_confidence(rv)
     rv.depth = depth_summary(rv, acc)
+    from .bank_checklist import fill as fill_checklist  # v13+: чек-лист «Ревью требований» из шаблона документа
+
+    rv.bank_checklist = fill_checklist(rv)
     rv.depth["review_stats"]["calibration"] = rv.calibration  # v8: калибровка серьёзности
     rv.depth["review_stats"]["self_check"] = rv.self_check or None  # v6: самосогласованность
     rv.depth["review_stats"]["focused"] = rv.focus or None  # v6: узкие проходы {task: добавлено}
@@ -396,8 +427,11 @@ def build_context(rv, llm, opts: Options, started: datetime, t0: float, input_pa
         "model": llm.label, "agent_version": version or agent_version(), "code": code or code_state(), "profile": opts.profile,
         "mode": "офлайн: документ не передавался третьим лицам" if offline and llm.provider != "mock" else
                 ("тестовый (mock)" if llm.provider == "mock" else
+                 "повтор из журнала: модель не вызывалась, ответы взяты из runs/<id>" if llm.provider == "replay" else
                  "только правила: модель не вызывалась, смысловые противоречия не проверялись" if llm.provider == "rules"
                  else "облачная модель"),
+        **({"strong": {"model": opts.strong, "note": "прогон на сильной модели (--strong); отчёт для сдачи — на "
+                                                      "бесплатной модели"}} if getattr(opts, "strong", "") else {}),
         "calls": llm.stats.calls, "cached": llm.stats.cached, "retries": llm.stats.retries, "tokens_in": llm.stats.prompt_tokens,
         "tokens_out": llm.stats.output_tokens, "duration_s": round(time.monotonic() - t0),
         "model_switches": list(getattr(llm.stats, "switches", [])),
@@ -500,9 +534,42 @@ def _run(input_path, output_path, opts: Options, log, step, llm_wrap, make_llm, 
         log(f"каскад моделей: быстрая {cascade.fast.label}, сильная {cascade.strong.label}")
     else:
         llm = make_llm() if make_llm else build_llm_from_env()
+    if opts.replay:  # v13+: повтор из журнала — ответы модели берутся из runs/<id>/calls
+        from .journal import ReplayLLM
+
+        llm = ReplayLLM(opts.replay)
+        log(f"повтор прогона из журнала {opts.replay}")
+    journal_dir = None
+    if opts.journal:
+        import hashlib as _hl
+
+        from .journal import JournalLLM, new_dir
+
+        sha = _hl.sha256(Path(input_path).read_bytes()).hexdigest() if Path(input_path).exists() else "nofile"
+        journal_dir = new_dir(Path(opts.journal), sha)
+        llm = JournalLLM(llm, journal_dir)
     if llm_wrap:
         llm = llm_wrap(llm)
     rv = review_document(input_path, llm, opts, log=log, step=tstep)
+    runs_info, runs_brief = None, []
+    if opts.runs > 1:  # v13: стабильность — ещё N−1 прогонов с другой температурой, сопоставление без новых запросов
+        from .stability import brief, mark, temperatures
+
+        temps = temperatures(opts.runs)
+        others = []
+        old_t = getattr(llm, "temperature", 0.0)
+        try:
+            for k, t in enumerate(temps[1:], start=2):
+                log(f"стабильность: прогон {k} из {opts.runs} (температура {t})")
+                if hasattr(llm, "temperature"):
+                    llm.temperature = t
+                others.append(review_document(input_path, llm, opts, log=lambda m: log("  [run] " + m)))
+        finally:
+            if hasattr(llm, "temperature"):
+                llm.temperature = old_t
+        runs_info = mark(rv, others)
+        runs_brief = [brief(x) for x in [rv, *others]]
+        log(f"стабильность: устойчивых замечаний {runs_info['stable']}, найдено в одном прогоне {runs_info['unstable']}")
     ens_info = None
     if models:  # v7: второй прогон другой моделью и объединение подтверждённых замечаний
         from .ensemble import merge, refresh_depth
@@ -526,6 +593,8 @@ def _run(input_path, output_path, opts: Options, log, step, llm_wrap, make_llm, 
     if opts.answers:  # v9: ответы аналитика — до построения отчёта, чтобы закрытые замечания не попали в разделы 3–6
         ans_state = _apply_answers(rv, llm, opts.answers, log)
     ctx = build_context(rv, llm, opts, started, t0, input_path, started_code, started_version)
+    if journal_dir is not None:  # v13+: путь к журналу — в паспорте
+        ctx.passport["journal"] = str(journal_dir)
     ctx.trace = timeline
     if cascade is not None:
         ctx.passport["cascade"] = cascade.passport()
@@ -550,6 +619,8 @@ def _run(input_path, output_path, opts: Options, log, step, llm_wrap, make_llm, 
     ctx.decisions = build_decisions(_to_json(ctx))  # v9: повестка решений — код из подтверждённых замечаний
     if opts.decisions_llm:
         ctx.decisions = rephrase(ctx.decisions, llm, log)
+    if runs_info:  # v13: стабильность по N прогонам
+        ctx.passport["runs"] = runs_info
     if ens_info:
         ctx.passport["ensemble"] = ens_info
         ctx.passport["model"] = " + ".join(ens_info["models"]) + " (ансамбль)"
@@ -589,6 +660,10 @@ def _run(input_path, output_path, opts: Options, log, step, llm_wrap, make_llm, 
 
     tstep(6)
     ctx.passport["duration_s"] = round(time.monotonic() - t0)
+    from .cost import estimate  # v13: оценка стоимости прогона по config/prices.yaml
+
+    ctx.passport["cost"] = estimate(ctx.passport.get("model", llm.label), llm.stats.prompt_tokens, llm.stats.output_tokens,
+                                    llm.stats.calls)
     if sr := stage_report(rv.stage_times):  # v12: время этапов и критический путь
         from .parallel import concurrency
 
@@ -598,6 +673,15 @@ def _run(input_path, output_path, opts: Options, log, step, llm_wrap, make_llm, 
         log("этапы: " + " · ".join(f"{x['stage']} {x['seconds']:.1f} с" + (" ‖" if x.get("parallel") else "")
                                    for x in sr["stages"])
             + f" | критический путь {sr['critical_path_s']:.1f} с: " + " → ".join(sr["critical_path"]))
+    try:  # v13+: самопроверка отчёта тем же кодом, что `review.py verify` (цитаты, SHA-256, нарезка, счётчики)
+        from .exports import to_json as _to_json
+        from .verify_report import verify_data
+
+        vd = verify_data(_to_json(ctx), rv.doc, rv.split)
+        ctx.passport["verify"] = {k: vd[k] for k in ("ok", "quotes_ok", "quotes_total", "sha_ok", "requirements_ok",
+                                                     "counts_ok")}
+    except Exception as e:  # noqa: BLE001 — самопроверка не ломает прогон
+        log(f"самопроверка отчёта не выполнена: {e}")
     out = Path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)
     stem = out.with_suffix("")
@@ -669,6 +753,12 @@ def _run(input_path, output_path, opts: Options, log, step, llm_wrap, make_llm, 
         p = stem.with_suffix(".json")
         write_json(ctx, p)
         ctx.artifacts["Данные (JSON)"] = p
+    if runs_brief:  # v13: краткие копии каждого прогона — для bench/stability.py (среднее и разброс полноты)
+        import json as _json
+
+        p = out.parent / f"{stem.name}_runs.json"
+        p.write_text(_json.dumps({"runs": runs_brief, "info": runs_info}, ensure_ascii=False, indent=1), encoding="utf-8")
+        ctx.artifacts["Прогоны для оценки стабильности (JSON)"] = p
     if opts.xlsx:
         p = out.parent / f"{stem.name}_traceability.xlsx"
         write_xlsx(ctx, p)
@@ -684,4 +774,9 @@ def _run(input_path, output_path, opts: Options, log, step, llm_wrap, make_llm, 
         timeline.append({"i": 7, "t": round(time.monotonic() - t0, 2)})  # конец записи отчётов
         write_html(ctx, p)
         ctx.artifacts["Интерактивный отчёт (HTML)"] = p
+    if journal_dir is not None:  # v13+: итог прогона в журнал runs/<id>/run.json
+        from .journal import finish
+
+        finish(journal_dir, ctx, input_path)
+        ctx.artifacts["Журнал прогона (runs/)"] = journal_dir
     return ctx

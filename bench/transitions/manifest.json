@@ -1,0 +1,718 @@
+{
+ "fix_per_doc": 3,
+ "docs": {
+  "payments": {
+   "before": "bench/out/payments_seeded.md",
+   "after": "bench/transitions/payments_after.md",
+   "fixed": [
+    {
+     "id": "PAY-01",
+     "type": "vague",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "NFR-01",
+     "type": "vague",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "PAY-07",
+     "type": "missing_units",
+     "criteria": [
+      "verifiable",
+      "unambiguous",
+      "complete"
+     ]
+    }
+   ],
+   "kept": [
+    {
+     "id": "PAY-08",
+     "criteria": [
+      "complete"
+     ]
+    },
+    {
+     "id": "NFR-05",
+     "criteria": [
+      "complete"
+     ]
+    },
+    {
+     "id": "PAY-09",
+     "criteria": [
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "PAY-03",
+     "criteria": [
+      "unambiguous",
+      "complete"
+     ]
+    },
+    {
+     "id": "PAY-13",
+     "criteria": [
+      "appropriate"
+     ]
+    },
+    {
+     "id": "PAY-12",
+     "criteria": [
+      "singular"
+     ]
+    },
+    {
+     "id": "NFR-06",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "NFR-02",
+     "criteria": [
+      "feasible",
+      "verifiable"
+     ]
+    }
+   ]
+  },
+  "credit": {
+   "before": "bench/out/credit_seeded.md",
+   "after": "bench/transitions/credit_after.md",
+   "fixed": [
+    {
+     "id": "CR-03",
+     "type": "vague",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "CR-11",
+     "type": "missing_units",
+     "criteria": [
+      "verifiable",
+      "unambiguous",
+      "complete"
+     ]
+    },
+    {
+     "id": "CR-04",
+     "type": "open_list",
+     "criteria": [
+      "complete"
+     ]
+    }
+   ],
+   "kept": [
+    {
+     "id": "CR-10",
+     "criteria": [
+      "complete"
+     ]
+    },
+    {
+     "id": "CR-13",
+     "criteria": [
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "CR-05",
+     "criteria": [
+      "unambiguous",
+      "complete"
+     ]
+    },
+    {
+     "id": "CR-07",
+     "criteria": [
+      "appropriate"
+     ]
+    },
+    {
+     "id": "CR-12",
+     "criteria": [
+      "singular"
+     ]
+    },
+    {
+     "id": "CNF-01",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "CNF-02",
+     "criteria": [
+      "feasible",
+      "verifiable"
+     ]
+    },
+    {
+     "id": "CNF-03",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "CR-06",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    }
+   ]
+  },
+  "onboarding": {
+   "before": "bench/out/onboarding_seeded.md",
+   "after": "bench/transitions/onboarding_after.md",
+   "fixed": [
+    {
+     "id": "ON-04",
+     "type": "vague",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "ON-03",
+     "type": "open_list",
+     "criteria": [
+      "complete"
+     ]
+    },
+    {
+     "id": "ON-10",
+     "type": "tbd",
+     "criteria": [
+      "complete"
+     ]
+    }
+   ],
+   "kept": [
+    {
+     "id": "ON-12",
+     "criteria": [
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "ON-13",
+     "criteria": [
+      "unambiguous",
+      "complete"
+     ]
+    },
+    {
+     "id": "ON-14",
+     "criteria": [
+      "appropriate"
+     ]
+    },
+    {
+     "id": "ON-08",
+     "criteria": [
+      "singular"
+     ]
+    },
+    {
+     "id": "ONF-03",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "ON-05",
+     "criteria": [
+      "feasible",
+      "verifiable"
+     ]
+    },
+    {
+     "id": "ONF-02",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "ONF-01",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "ON-11",
+     "criteria": [
+      "complete",
+      "conforming"
+     ]
+    }
+   ]
+  },
+  "deposit_kk": {
+   "before": "bench/out/deposit_kk_seeded.md",
+   "after": "bench/transitions/deposit_kk_after.md",
+   "fixed": [
+    {
+     "id": "DEP-01",
+     "type": "vague",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "DNF-01",
+     "type": "vague",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "DEP-08",
+     "type": "missing_units",
+     "criteria": [
+      "verifiable",
+      "unambiguous",
+      "complete"
+     ]
+    }
+   ],
+   "kept": [
+    {
+     "id": "DEP-11",
+     "criteria": [
+      "complete"
+     ]
+    },
+    {
+     "id": "DNF-05",
+     "criteria": [
+      "complete"
+     ]
+    },
+    {
+     "id": "DEP-09",
+     "criteria": [
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "DEP-04",
+     "criteria": [
+      "unambiguous",
+      "complete"
+     ]
+    },
+    {
+     "id": "DEP-13",
+     "criteria": [
+      "appropriate"
+     ]
+    },
+    {
+     "id": "DEP-14",
+     "criteria": [
+      "singular"
+     ]
+    },
+    {
+     "id": "DNF-06",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "DNF-02",
+     "criteria": [
+      "feasible",
+      "verifiable"
+     ]
+    }
+   ]
+  },
+  "cashback": {
+   "before": "bench/out/cashback_seeded.md",
+   "after": "bench/transitions/cashback_after.md",
+   "fixed": [
+    {
+     "id": "CB-04",
+     "type": "vague",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "CB-09",
+     "type": "vague",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "CB-10",
+     "type": "missing_units",
+     "criteria": [
+      "verifiable",
+      "unambiguous",
+      "complete"
+     ]
+    }
+   ],
+   "kept": [
+    {
+     "id": "CB-06",
+     "criteria": [
+      "complete"
+     ]
+    },
+    {
+     "id": "CB-03",
+     "criteria": [
+      "complete"
+     ]
+    },
+    {
+     "id": "CB-11",
+     "criteria": [
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "CB-12",
+     "criteria": [
+      "unambiguous",
+      "complete"
+     ]
+    },
+    {
+     "id": "CB-05",
+     "criteria": [
+      "appropriate"
+     ]
+    },
+    {
+     "id": "CB-13",
+     "criteria": [
+      "singular"
+     ]
+    },
+    {
+     "id": "CNF-06",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "CNF-02",
+     "criteria": [
+      "feasible",
+      "verifiable"
+     ]
+    },
+    {
+     "id": "CNF-03",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    }
+   ]
+  },
+  "refinance": {
+   "before": "bench/out/refinance_seeded.md",
+   "after": "bench/transitions/refinance_after.md",
+   "fixed": [
+    {
+     "id": "RF-06",
+     "type": "vague",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "RNF-01",
+     "type": "vague",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "RF-10",
+     "type": "missing_units",
+     "criteria": [
+      "verifiable",
+      "unambiguous",
+      "complete"
+     ]
+    }
+   ],
+   "kept": [
+    {
+     "id": "RF-07",
+     "criteria": [
+      "complete"
+     ]
+    },
+    {
+     "id": "RF-11",
+     "criteria": [
+      "complete"
+     ]
+    },
+    {
+     "id": "RF-14",
+     "criteria": [
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "RF-05",
+     "criteria": [
+      "unambiguous",
+      "complete"
+     ]
+    },
+    {
+     "id": "RF-03",
+     "criteria": [
+      "appropriate"
+     ]
+    },
+    {
+     "id": "RF-12",
+     "criteria": [
+      "singular"
+     ]
+    },
+    {
+     "id": "RNF-06",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "RNF-02",
+     "criteria": [
+      "feasible",
+      "verifiable"
+     ]
+    },
+    {
+     "id": "RNF-03",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    }
+   ]
+  },
+  "qr": {
+   "before": "bench/out/qr_seeded.md",
+   "after": "bench/transitions/qr_after.md",
+   "fixed": [
+    {
+     "id": "QR-06",
+     "type": "vague",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "QR-01",
+     "type": "vague",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "QR-08",
+     "type": "missing_units",
+     "criteria": [
+      "verifiable",
+      "unambiguous",
+      "complete"
+     ]
+    }
+   ],
+   "kept": [
+    {
+     "id": "QR-04",
+     "criteria": [
+      "complete"
+     ]
+    },
+    {
+     "id": "QR-09",
+     "criteria": [
+      "complete"
+     ]
+    },
+    {
+     "id": "QR-07",
+     "criteria": [
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "QR-12",
+     "criteria": [
+      "unambiguous",
+      "complete"
+     ]
+    },
+    {
+     "id": "QR-11",
+     "criteria": [
+      "appropriate"
+     ]
+    },
+    {
+     "id": "QR-14",
+     "criteria": [
+      "singular"
+     ]
+    },
+    {
+     "id": "QNF-06",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "QNF-02",
+     "criteria": [
+      "feasible",
+      "verifiable"
+     ]
+    },
+    {
+     "id": "QNF-05",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    }
+   ]
+  },
+  "fx": {
+   "before": "bench/out/fx_seeded.md",
+   "after": "bench/transitions/fx_after.md",
+   "fixed": [
+    {
+     "id": "FX-06",
+     "type": "vague",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "FNF-01",
+     "type": "vague",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "FX-10",
+     "type": "missing_units",
+     "criteria": [
+      "verifiable",
+      "unambiguous",
+      "complete"
+     ]
+    }
+   ],
+   "kept": [
+    {
+     "id": "FX-01",
+     "criteria": [
+      "complete"
+     ]
+    },
+    {
+     "id": "FX-09",
+     "criteria": [
+      "complete"
+     ]
+    },
+    {
+     "id": "FX-08",
+     "criteria": [
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "FX-11",
+     "criteria": [
+      "unambiguous",
+      "complete"
+     ]
+    },
+    {
+     "id": "FX-05",
+     "criteria": [
+      "appropriate"
+     ]
+    },
+    {
+     "id": "FX-13",
+     "criteria": [
+      "singular"
+     ]
+    },
+    {
+     "id": "FNF-06",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    },
+    {
+     "id": "FNF-02",
+     "criteria": [
+      "feasible",
+      "verifiable"
+     ]
+    },
+    {
+     "id": "FNF-03",
+     "criteria": [
+      "verifiable",
+      "unambiguous"
+     ]
+    }
+   ]
+  }
+ }
+}

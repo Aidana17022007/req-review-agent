@@ -47,7 +47,7 @@ def test_throttle_spaces_starts_across_threads():
 
         def _call(self, system, prompt, *, task, context):
             with self.lk:
-                self.starts.append(time.monotonic())
+                self.starts.append(time.perf_counter())  # точные часы и на Windows
                 self.active += 1
                 self.peak = max(self.peak, self.active)
             time.sleep(0.1)

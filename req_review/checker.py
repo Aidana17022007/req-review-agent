@@ -29,6 +29,7 @@ class Finding:
     critic_note: str = ""
     basis: list = field(default_factory=list)  # основания из базы знаний kb/: [{"source","section","quote","url"}]
     ensemble: str = ""  # v7: «модель A» / «модель B» / «обе» / «правило» — при прогоне ансамблем (--ensemble)
+    stability: str = ""  # v13: «k из N» — при --runs N (найдено в k независимых прогонах)
 
 
 @dataclass
@@ -69,6 +70,7 @@ class SetFinding:
     values: list = field(default_factory=list)  # конфликтующие значения: [{"rid", "value", "quote"}]
     basis: list = field(default_factory=list)
     ensemble: str = ""  # v7: источник при прогоне ансамблем
+    stability: str = ""  # v13: «k из N» при --runs N
 
 
 @dataclass
@@ -94,6 +96,8 @@ class ReviewResult:
     coverage: list = field(default_factory=list)  # карта покрытия шагов процесса домена
     bank_rules: dict = field(default_factory=dict)  # v10: чек-лист банка (--rules): сводка по правилам
     stage_times: dict = field(default_factory=dict)  # v12: {этап: (начало, конец)} по time.monotonic()
+    bank_checklist: dict = field(default_factory=dict)  # v13+: заполненный чек-лист «Ревью требований»
+    compliance: dict = field(default_factory=dict)  # v13: комплаенс и безопасность {checks, fired, findings}
     traceability: dict = field(default_factory=dict)  # v12: граф трассировки {nodes, edges, gaps}
     depth: dict = field(default_factory=dict)  # v5: учёт строк, матрица критериев, покрытие приёмкой, вердикты, план
 
@@ -259,7 +263,10 @@ def _norm_crit(c: str, allowed: dict, default: str) -> str:
 
 def check_requirements(reqs: list[Requirement], doc: Document, llm: BaseLLM, batch_size: int,
                        dropped: list[dict], log=print) -> list[ReqResult]:
-    hints_by_req = {r.rid: check_requirement(r) for r in reqs}
+    import os as _os
+
+    # v13: REQLENS_HINTS=0 — абляция «без правил»: модель не получает подсказки правил, правила не добавляют замечаний
+    hints_by_req = {r.rid: (check_requirement(r) if _os.getenv("REQLENS_HINTS", "1") != "0" else []) for r in reqs}
     results = {r.rid: ReqResult(req=r) for r in reqs}
     llm_out: dict[str, dict] = {}
     from .rag.context import context_for, mode_for, record
@@ -310,6 +317,9 @@ def check_requirements(reqs: list[Requirement], doc: Document, llm: BaseLLM, bat
             if not isinstance(f, dict):  # ответ модели не по схеме — пропускаем элемент
                 continue
             quote = str(f.get("quote", "")).strip()
+            if not str(f.get("problem", "")).strip():  # v13+: замечание без формулировки проблемы — не замечание
+                dropped.append({"where": r.rid, "quote": quote, "problem": "(модель не сформулировала проблему)"})
+                continue
             if not quote_in(quote, r.text):
                 dropped.append({"where": r.rid, "quote": quote, "problem": f.get("problem", "")})
                 continue
@@ -424,7 +434,18 @@ def deterministic_set_checks(split: SplitResult, doc: Document) -> list[SetFindi
                                       "Оставить одно требование, второе удалить или явно разграничить область применения.", "правило"))
     # модальные утверждения без идентификаторов
     if split.method == "ids":
-        for ln, text in split.unnumbered[:15]:
+        # v13+: в разделах-описаниях («Назначение и рамки», «Введение», «Термины») «позволяет / должен» описывает
+        # функцию или термин, а не требование — без замечания (ложная тревога на полных ТЗ)
+        sec_of = {}
+        cur = ""
+        for x in doc.lines:
+            mh = re.match(r"^\s*#{1,6}\s+(.+?)\s*$", x.text)
+            if mh:
+                cur = mh.group(1)
+            sec_of[x.lineno] = cur
+        _DESCR = re.compile(r"назначени|рамк|введени|термин|глоссари|определени|обзор", re.I)
+        unnumbered = [(ln, t) for ln, t in split.unnumbered if not _DESCR.search(sec_of.get(ln.lineno, ""))]
+        for ln, text in unnumbered[:15]:
             m = MODAL_RE.search(text) or MODAL_RE.search(ln.text)
             word = m.group(0) if m else "должен"
             out.append(SetFinding("structure", "set_traceable", [SetRef("DOC", text[:120])],
@@ -468,10 +489,10 @@ def deterministic_set_checks(split: SplitResult, doc: Document) -> list[SetFindi
                 "правило"))
     # ранжирование
     has_priority = any(
-        any(re.search(r"приоритет|priority|важност", k, re.I) for k in r.extra) or
-        re.search(r"\b(приоритет|must|should|could|высокий|средний|низкий)\b", r.text, re.I)
+        any(re.search(r"приоритет|priority|важност|басымдық", k, re.I) for k in r.extra) or
+        re.search(r"\b(приоритет|must|should|could|высокий|средний|низкий|жоғары|орташа|төмен)\b", r.text, re.I)
         for r in reqs)
-    if reqs and not has_priority and not re.search(r"приоритет|priority", doc.text, re.I):
+    if reqs and not has_priority and not re.search(r"приоритет|priority|басымдық", doc.text, re.I):
         out.append(SetFinding("structure", "set_ranked", [SetRef(reqs[0].rid, reqs[0].text[:80])],
                               "Ни у одного требования нет приоритета или признака стабильности (IEEE 830 §4.3.5) — "
                               "невозможно спланировать порядок реализации и объём MVP.",
@@ -490,12 +511,34 @@ def check_set(split: SplitResult, doc: Document, llm: BaseLLM, dropped: list[dic
     doc_part = _doc_context(doc) if mode_for(doc) == "full" else outline(doc, 8000)  # длинный документ: оглавление + термины
     prompt = (f"НАЗВАНИЕ ДОКУМЕНТА: {doc.title}\n\nДОКУМЕНТ:\n<<<\n{doc_part}\n>>>\n\n"
               f"НАРЕЗКА ТРЕБОВАНИЙ (JSON):\n{json.dumps(payload, ensure_ascii=False, indent=1)}")
-    try:
-        data = llm.generate_json(SYSTEM_SET, prompt, task="set", context={"reqs": reqs, "doc": doc})
-    except LLMFatalError:
-        raise
-    except LLMError:
+    # v13: запрос набора, перекрёстная проверка и проход полноты независимы — параллельно; каждый видит только
+    # детерминированные находки, слияние (отсев повторов) — в прежнем порядке: набор → числа → перекрёстная → полнота
+    import os as _os
+
+    from .depth import completeness_pass
+    from .parallel import concurrency, pmap
+
+    base = list(found)
+    side: dict[str, tuple[list, list]] = {"cross": (list(base), []), "gaps": (list(base), [])}
+
+    def branch(name):
+        if name == "set":
+            try:
+                return llm.generate_json(SYSTEM_SET, prompt, task="set", context={"reqs": reqs, "doc": doc})
+            except LLMFatalError:
+                raise
+            except LLMError as e:
+                return e
+        fl, dl = side[name]
+        (crosscheck if name == "cross" else completeness_pass)(split, doc, llm, dl, fl, log)
+        return None
+
+    parallel = _os.getenv("REQLENS_SET_PARALLEL", "1") != "0" and concurrency() > 1
+    data = pmap(branch, ["set", "cross", "gaps"] if parallel else ["set"])[0]
+    if isinstance(data, Exception):
         add_numeric_conflicts(found, reqs, log)
+        if parallel:
+            _merge_side(found, side, dropped)
         return found, False
     for f in data.get("findings", []) or []:
         if not isinstance(f, dict):  # ответ модели не по схеме — пропускаем элемент
@@ -523,12 +566,37 @@ def check_set(split: SplitResult, doc: Document, llm: BaseLLM, dropped: list[dic
                                 str(f.get("problem", "")).strip(), _norm_sev(f.get("severity")),
                                 str(f.get("fix", "")).strip(), "LLM"))
     add_numeric_conflicts(found, reqs, log)
-    crosscheck(split, doc, llm, dropped, found, log)
-    from .depth import completeness_pass  # v5: узкий проход полноты по чек-листу (1 запрос)
-
-    completeness_pass(split, doc, llm, dropped, found, log)
+    if parallel:
+        _merge_side(found, side, dropped)
+    else:
+        crosscheck(split, doc, llm, dropped, found, log)
+        completeness_pass(split, doc, llm, dropped, found, log)  # v5: узкий проход полноты по чек-листу (1 запрос)
     found.sort(key=lambda f: {"critical": 0, "major": 1, "minor": 2}[f.severity])
     return found, True
+
+
+def _merge_side(found: list[SetFinding], side: dict, dropped: list[dict]) -> None:
+    """Слить параллельные ветки набора в found с теми же правилами отсева повторов, что при последовательном прогоне:
+    перекрёстная — противоречие по той же паре требований не дублируется; полнота — тот же критерий и цитата."""
+    n0 = {id(f) for f in found}
+    cross_f, cross_d = side["cross"]
+    have = {frozenset(r.req_id for r in f.refs) for f in found if f.kind == "contradiction"}
+    for f in cross_f:
+        if id(f) in n0 or f.kind != "contradiction":
+            continue
+        k = frozenset(r.req_id for r in f.refs)
+        if k not in have:
+            have.add(k)
+            found.append(f)
+    dropped.extend(cross_d)
+    gaps_f, gaps_d = side["gaps"]
+    seen = {(f.criterion, x.quote) for f in found for x in f.refs}
+    for f in gaps_f:
+        if id(f) in n0 or any((f.criterion, r.quote) in seen for r in f.refs):
+            continue
+        seen |= {(f.criterion, r.quote) for r in f.refs}
+        found.append(f)
+    dropped.extend(gaps_d)
 
 
 def add_numeric_conflicts(found: list[SetFinding], reqs: list[Requirement], log=print) -> None:
