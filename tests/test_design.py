@@ -1,4 +1,4 @@
-"""Дизайн-система v5 «Daylight»: токены — один источник правды, контраст AA, единые иконки, логотип и иконки PWA, витрина."""
+"""Дизайн-система v3 «Ecliptic Dawn»: токены — один источник правды, контраст AA, единые иконки, логотип и иконки PWA, витрина."""
 import re
 from pathlib import Path
 
@@ -125,21 +125,13 @@ def test_styleguide_shows_every_token_group_and_component(tmp_path):
     assert all(f"<span>{n}</span>" in html for n in ICONS)
 
 
-def test_v5_light_is_default_with_manrope_and_flat_panels():
-    """v5 «Daylight»: светлая тема по умолчанию (:root), шрифт Manrope встроен в HTML, панели 16 px, главная кнопка — синяя."""
-    from req_review.ui.fonts import fonts_css
-
-    assert T["version"].startswith("5.") and T["default_theme"] == "light"
+def test_v3_dark_is_default_and_dawn_tokens_exist():
+    """v3: тёмная тема по умолчанию (:root), градиент рассвета и страницы, белая главная кнопка, панели 36 px."""
+    assert T["version"].startswith("4.") and T["default_theme"] == "dark"
     css = tokens_css()
     root = css.split("[data-theme=")[0]
-    assert "color-scheme: light" in root and f"--panel: {T['color']['light']['panel']}" in root
-    assert T["font"]["sans"].startswith("Manrope") and T["radius"]["panel"] == "16px"
-    fonts = fonts_css()
-    assert fonts.count("@font-face") == 4 and "data:font/woff2;base64," in fonts and "http" not in fonts
-    assert "U+20B8" in fonts and "U+04D8-04D9" in fonts, "знак ₸ и казахские буквы — во встроенном шрифте"
-    base = (UI_DIR / "assets" / "base.css").read_text(encoding="utf-8")
-    v5 = base.split("v5 «Daylight»: внешний вид")[1]
-    assert "backdrop-filter" not in v5 and "--grad-" not in v5, "v5 — без стекла и градиентов"
+    assert "color-scheme: dark" in root and f"--panel: {T['color']['dark']['panel']}" in root
+    assert {"dawn", "page", "glow"} <= T["gradient"].keys() and T["radius"]["panel"] == "36px"
     for theme in ("light", "dark"):
         c = T["color"][theme]
         assert contrast(rgb(c["on-primary"]), rgb(c["primary"])) >= AA_TEXT
