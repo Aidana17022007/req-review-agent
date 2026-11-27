@@ -85,7 +85,9 @@ def test_before_after_report_section_and_fixed_document(runs):
     assert "### Ответы аналитика" in md and "| Q-01 | конкретный |" in md and "**Было → стало**" in md
     assert md.index("## 6. Итог") < md.index("### Ответы аналитика")  # 6 разделов ТЗ на месте
     fixed = (d / "r1" / "report_requirements_fixed.md").read_text(encoding="utf-8")
-    assert "Уточнено ответом Q-01: Проверка получателя — не дольше 2 секунд" in fixed
+    # v12: значение из ответа вписано в формулировку требования (не дописка «Уточнено ответом»), источник — в сноске
+    assert "первую букву фамилии. Проверка получателя — не дольше 2 секунд" in fixed and "ответ аналитика Q-01" in fixed
+    assert (d / "r1" / "report_revised.md").exists()
     assert data["schema_version"] == "2.5" and data["passport"]["answers"]["closed"] == 2
 
 
@@ -157,4 +159,4 @@ def test_label_mismatch_is_unknown_not_another_question():
               "Q-09": {"answer": "c", "key": ("S-30", "set_consistent", "R-003,R-011")},  # тот же вопрос второй раз
               "Q-02": {"answer": "d", "key": None}}  # без метки — по номеру
     pairs, unknown = _resolve(qs, parsed)
-    assert [(q.qid, a) for q, a in pairs] == [("Q-02", "b")] and unknown == ["Q-01", "Q-09", "Q-02"]
+    assert [(q.qid, a) for q, a, _opt in pairs] == [("Q-02", "b")] and unknown == ["Q-01", "Q-09", "Q-02"]

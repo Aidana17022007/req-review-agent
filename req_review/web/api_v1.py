@@ -286,7 +286,7 @@ async def run_answers(rid: str, request: Request):
     qs = [SimpleNamespace(qid=q.get("qid", ""), rid=q.get("rid", ""), ref=q.get("ref", ""), criterion=q.get("criterion", ""),
                           refs=q.get("refs", []) or [])
           for q in json.loads(src_json.read_text(encoding="utf-8")).get("questions", [])]
-    _pairs, unknown = _resolve(qs, parsed)  # то же сопоставление, что и при перепроверке
+    _triples, unknown = _resolve(qs, parsed)  # то же сопоставление, что и при перепроверке
     import uuid
 
     new_id = uuid.uuid4().hex[:12]
