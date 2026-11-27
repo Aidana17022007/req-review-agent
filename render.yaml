@@ -26,6 +26,11 @@ services:
         value: deepseek-chat
       - key: OPENAI_API_KEY
         sync: false            # вводится в панели Render, в git не хранится
+      # резерв: DeepSeek отказал (нет баланса, ключ, квота, не отвечает) — тот же прогон продолжается на Gemini
+      - key: LLM_BACKUP_PROVIDER
+        value: gemini
+      - key: GEMINI_API_KEY
+        sync: false            # ключ Google AI Studio, вводится в панели Render; без него резерва нет, всё как раньше
       - key: LLM_TIMEOUT
         value: "60"
       - key: REQLENS_PROFILE
@@ -35,9 +40,9 @@ services:
       - key: REQLENS_DATA
         value: /tmp/reqlens    # история прогонов (на бесплатном тарифе диск не сохраняется между деплоями)
       - key: DEMO_UPLOADS_PER_IP
-        value: "2"             # v9: проверок с моделью с одного адреса в сутки (UTC); 0 — без лимита
+        value: "5"             # v9: проверок с моделью с одного адреса в сутки (UTC); 0 — без лимита
       - key: DEMO_UPLOADS_TOTAL
-        value: "5"             # v9: проверок с моделью всего в сутки; готовый пример и «только правила» не считаются
+        value: "30"            # v9: проверок с моделью всего в сутки; готовый пример и «только правила» не считаются
       - key: DEMO_UPLOADS_PER_IP_HOUR
         value: "3"             # v13: проверок с моделью с одного адреса за час
       - key: DEMO_LIMIT_FALLBACK
