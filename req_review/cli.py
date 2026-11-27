@@ -39,6 +39,8 @@ def build_parser() -> argparse.ArgumentParser:
                     help="ансамбль двух моделей: два прогона и объединение подтверждённых замечаний (или LLM_ENSEMBLE)")
     ap.add_argument("--answers", default=None, metavar="ОТВЕТЫ.md",
                     help="ответы аналитика (шаблон <отчёт>_answers_template.md): перепроверка, конкретные ответы закрывают замечания")
+    ap.add_argument("--rules", default=None, metavar="ФАЙЛ",
+                    help="чек-лист банка в YAML: fintech (пример) или путь к .rules.yaml (также REQLENS_RULES)")
     ap.add_argument("--cascade", default=None, metavar="FAST,STRONG",
                     help="каскад моделей: быстрая проверяет всё, сильная — подозрительные требования и набор (или LLM_CASCADE)")
     ap.add_argument("--decisions-llm", action="store_true",
@@ -80,13 +82,21 @@ def main(argv: list[str] | None = None) -> int:
         profile=profile,
         html=not args.no_html, fixed=not args.no_fixed, xlsx=not args.no_xlsx, jira=not args.no_jira,
         json=not args.no_json, tests=not args.no_tests, critic=args.critic,
-        rescore=True if args.fix_loop else args.rescore, fix_loop=args.fix_loop, answers=args.answers or "", decisions_llm=args.decisions_llm,
+        rescore=True if args.fix_loop else args.rescore, fix_loop=args.fix_loop, answers=args.answers or "", rules=args.rules or os.getenv("REQLENS_RULES", ""), decisions_llm=args.decisions_llm,
         ensemble=args.ensemble or os.getenv("LLM_ENSEMBLE", ""),
         cascade=args.cascade or os.getenv("LLM_CASCADE", ""),
         domain=args.domain or os.getenv("REQLENS_DOMAIN", "fintech"), compare=args.compare,
         batch_size=int(os.getenv("LLM_BATCH_SIZE", "20")), pdf=args.pdf,
     )
     con = Console(quiet=args.quiet)
+    if opts.rules:  # v10: файл правил проверяется до прогона — понятная ошибка без трейсбека и без трат квоты
+        from .bank_rules import RulesError, load_rules
+
+        try:
+            load_rules(opts.rules)
+        except RulesError as e:
+            con.error(f"Ошибка в чек-листе банка: {e}")
+            return 2
     apply_profile_env(profile)
     try:
         from .llm import build_llm_from_env

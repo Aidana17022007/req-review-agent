@@ -17,7 +17,7 @@ EARS = {"ubiquitous": "постоянное", "event": "по событию", "s
 ICON = {"critical": "🔴", "major": "🟠", "minor": "🟡"}
 KIND = {
     "contradiction": "Противоречие", "duplicate": "Дублирование", "terminology": "Терминология",
-    "gap": "Пропуск", "dependency": "Зависимость/ссылка", "structure": "Структура/трассируемость", "other": "Прочее",
+    "gap": "Пропуск", "dependency": "Зависимость/ссылка", "structure": "Структура/трассируемость", "other": "Прочее", "bank_rule": "Чек-лист банка",
 }
 CRITICAL_CRITERIA = {"verifiable", "complete", "set_consistent", "set_complete"}
 
@@ -280,6 +280,8 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
         for a in d.areas:
             w(f"| {a.title} | {st[a.status]} | {'; '.join(_q(q) for q in a.quotes) or '—'} |")
         w("")
+    if getattr(rv, "bank_rules", None):
+        _bank_rules(w, rv.bank_rules, by_rid)
     if rv.glossary and (rv.glossary.terms or rv.glossary.synonyms):
         w("### Глоссарий и согласованность терминов")
         w("")
@@ -489,6 +491,29 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
         w("")
     w(f"*Отчёт сформирован автоматически агентом ReqLens / req-review ({_cell(agent_version)}).*")
     return "\n".join(L) + "\n"
+
+
+def _bank_rules(w, br: dict, by_rid) -> None:
+    """v10: подраздел «Чек-лист банка» — что проверено правилами банка из YAML (--rules)."""
+    w(f"### Чек-лист банка: {_cell(br['name'])}")
+    w("")
+    w(f"Файл правил `{_cell(br['file'])}`: правил {br['total']}, сработало {br['fired']}, выполнено {br['passed']}, "
+      f"не применимо {br['not_applicable']}" + (f", выключено {br['disabled']}" if br.get("disabled") else "")
+      + f". Замечаний по правилам: {br['findings']} (источник «правило банка: <id>», цитаты дословные).")
+    if br.get("disclaimer"):
+        w("")
+        w(f"*{_cell(br['disclaimer'])}*")
+    w("")
+    w("| Правило | Серьёзность | Критерий | Статус | Где |")
+    w("|---|---|---|---|---|")
+    st = {"fired": "🔴 сработало", "passed": "✅ выполнено", "not_applicable": "— не применимо", "disabled": "⏸ выключено"}
+    for r in br["rules"]:
+        where = ", ".join(_label(x, by_rid) for x in r["where"][:6]) + (" …" if len(r["where"]) > 6 else "")
+        if r["status"] == "disabled":
+            where = _cell(r.get("reason", ""))[:160]
+        w(f"| {r['id']}. {_cell(r['title'])} | {ICON[r['severity']]} {SEVERITY[r['severity']].lower()} | "
+          f"{_cell(r['criterion_name'])} | {st[r['status']]} | {where or '—'} |")
+    w("")
 
 
 def _authenticity(llm_stats, ctx, model_label: str) -> str:

@@ -86,7 +86,7 @@ def test_before_after_report_section_and_fixed_document(runs):
     assert md.index("## 6. Итог") < md.index("### Ответы аналитика")  # 6 разделов ТЗ на месте
     fixed = (d / "r1" / "report_requirements_fixed.md").read_text(encoding="utf-8")
     assert "Уточнено ответом Q-01: Проверка получателя — не дольше 2 секунд" in fixed
-    assert data["schema_version"] == "2.4" and data["passport"]["answers"]["closed"] == 2
+    assert data["schema_version"] == "2.5" and data["passport"]["answers"]["closed"] == 2
 
 
 def test_default_run_has_no_answers_field(runs):
