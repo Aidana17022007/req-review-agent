@@ -1,6 +1,8 @@
-# Проверка требований в каждом PR, который меняет документы требований («requirements as code»).
-# Без секрета GEMINI_API_KEY работает в режиме mock (правила + эвристики) — так пример воспроизводим без ключа.
-# С секретом в настройках репозитория (Settings → Secrets → GEMINI_API_KEY) проверка идёт настоящей моделью.
+# «Требования как код»: ReqLens проверяет документ требований в каждом Pull Request и оставляет ОДИН комментарий
+# (обновляет его при новых коммитах): вердикт, критичные было → стало, новые и исправленные дефекты с цитатами,
+# ссылка на полный отчёт. Подключение в репозитории банка — docs/REQUIREMENTS_AS_CODE.md.
+# Секрет GEMINI_API_KEY — проверка моделью; без секрета — только детерминированные правила (это пишется в комментарии).
+# Переменная репозитория REQ_GATE=1 — проверка PR «красная», если в PR появился новый критичный дефект.
 name: Requirements review
 
 on:
@@ -9,12 +11,28 @@ on:
       - "docs/**/*.md"
       - "docs/**/*.pdf"
       - "docs/**/*.docx"
-      - "tests/fixtures/sample_requirements.md"
   workflow_dispatch:
+    inputs:
+      document:
+        description: "Документ для проверки"
+        default: "bench/real/notifications.md"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: requirements-review-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   review:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      LLM_MIN_INTERVAL: "0"
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,20 +42,64 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      - name: Review requirements
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          LLM_MIN_INTERVAL: "0"
+      - name: Какие документы изменены
+        id: docs
         run: |
-          if [ -z "$GEMINI_API_KEY" ]; then export LLM_PROVIDER=mock; echo "Секрета нет — режим mock"; fi
-          f=$(ls docs/requirements.* 2>/dev/null | head -1)
-          [ -z "$f" ] && f=tests/fixtures/sample_requirements.md
-          python review.py "$f" review/report.md --quiet
-          {
-            echo "## ReqLens: проверка требований"
-            sed -n '/## 5. Сводка/,/## 6. Итог/p' review/report.md | head -40
-          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git diff --name-only --diff-filter=AMR "origin/${{ github.base_ref }}...HEAD" -- 'docs/*.md' 'docs/*.pdf' 'docs/*.docx' \
+              | grep -vE '^docs/(README|API|SCHEMA|DEPLOY|DEMO|DESIGN_SYSTEM|DECISIONS|PITCH|TZ_COMPLIANCE|REQUIREMENTS_AS_CODE)[^/]*\.md$' \
+              | grep -vE '^docs/(assets|examples)/' | head -3 > changed.txt || true
+          else
+            echo "${{ inputs.document }}" > changed.txt
+          fi
+          echo "Документы: $(tr '\n' ' ' < changed.txt)"
+          echo "count=$(grep -c . changed.txt || true)" >> "$GITHUB_OUTPUT"
+      - name: Прогон агента (ветка и base)
+        if: steps.docs.outputs.count != '0'
+        run: |
+          RULES=""
+          if [ -z "$GEMINI_API_KEY" ]; then export LLM_PROVIDER=rules; RULES="--rules-only"; echo "Секрета нет — только правила"; fi
+          mkdir -p review
+          n=0
+          while read -r f; do
+            [ -z "$f" ] && continue
+            n=$((n+1)); d="review/doc$n"; mkdir -p "$d/new" "$d/old"
+            python review.py "$f" "$d/new/report.md" --quiet --no-xlsx --no-jira --pdf || true
+            OLD=""
+            if [ "${{ github.event_name }}" = "pull_request" ] && git cat-file -e "origin/${{ github.base_ref }}:$f" 2>/dev/null; then
+              ext="${f##*.}"; git show "origin/${{ github.base_ref }}:$f" > "$d/old/base.$ext"
+              python review.py "$d/old/base.$ext" "$d/old/report.md" --quiet --no-xlsx --no-jira --no-html || true
+              [ -f "$d/old/report.json" ] && OLD="--old $d/old/report.json"
+            fi
+            [ -f "$d/new/report.json" ] || { echo "::warning::Отчёт по $f не построен"; continue; }
+            python scripts/pr_comment.py --new "$d/new/report.json" $OLD --doc "$f" $RULES \
+              --artifact-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+              --out "$d/comment.md" --gate && echo ok > "$d/gate_ok" || echo fail > "$d/gate_fail"
+          done < changed.txt
+          cat review/doc*/comment.md > review/comment.md 2>/dev/null || true
+          [ -s review/comment.md ] && cat review/comment.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Комментарий в PR (один, обновляется)
+        if: github.event_name == 'pull_request' && steps.docs.outputs.count != '0'
+        run: |
+          [ -s review/comment.md ] || exit 0
+          pr=${{ github.event.pull_request.number }}
+          id=$(gh api "repos/${{ github.repository }}/issues/$pr/comments" --paginate \
+                 --jq '.[] | select(.body | contains("<!-- reqlens-pr-review -->")) | .id' | head -1)
+          body=$(jq -Rs '{body: .}' < review/comment.md)
+          if [ -n "$id" ]; then
+            echo "$body" | gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$id" --input - > /dev/null
+          else
+            echo "$body" | gh api -X POST "repos/${{ github.repository }}/issues/$pr/comments" --input - > /dev/null
+          fi
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: requirements-review
           path: review/
+          if-no-files-found: ignore
+      - name: Шлюз качества (REQ_GATE=1)
+        if: vars.REQ_GATE == '1'
+        run: |
+          if ls review/doc*/gate_fail >/dev/null 2>&1; then
+            echo "::error::В PR появился новый критичный дефект требований — см. комментарий ReqLens"; exit 1
+          fi
