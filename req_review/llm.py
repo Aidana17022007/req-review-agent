@@ -145,12 +145,14 @@ class BaseLLM:
         """Старты запросов разносятся на min_interval — общий слот для всех потоков (LLM_RPM соблюдается и параллельно)."""
         if self.min_interval <= 0:
             return
+        # perf_counter — точные часы и на Windows (там monotonic шагает по ~15,6 мс, и интервал «сжимался»);
+        # sleep может проснуться чуть раньше срока — досыпаем до назначенного слота
         with self._lock:
-            now = time.monotonic()
+            now = time.perf_counter()
             start = max(now, self._last_call + self.min_interval)
             self._last_call = start
-        if start > now:
-            time.sleep(start - now)
+        while (left := start - time.perf_counter()) > 0:
+            time.sleep(left)
 
     def _call(self, system: str, prompt: str, *, task: str, context: dict) -> str:  # pragma: no cover
         raise NotImplementedError

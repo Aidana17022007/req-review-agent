@@ -139,3 +139,18 @@ def test_model_unavailable_falls_back_to_rules_with_code_3(tmp_path, monkeypatch
     assert "правила" in data["passport"]["mode"]
     monkeypatch.setenv("REQLENS_FALLBACK_RULES", "0")
     assert _run(tmp_path, src=FIX, name="r2.md")[0] == 4
+
+
+def test_html_engine_block_compact_and_size(tmp_path, monkeypatch):
+    import json as _json
+
+    from req_review.html_report import build_data
+    from req_review.pipeline import Options, run
+
+    monkeypatch.setenv("LLM_PROVIDER", "rules")
+    ctx = run(str(REAL), str(tmp_path / "r.md"), Options(xlsx=False, jira=False, journal=""), log=lambda m: None)
+    e = build_data(ctx)["engine"]
+    assert e["verify"]["ok"] and e["stages"] and e["critical_path"]["stages"] and e["checklist"]["items"]
+    assert {c[1] for c in e["compliance"]} <= {"fired", "passed"} and e["trace_gaps"]["gaps"]
+    assert len(_json.dumps(e, ensure_ascii=False).encode()) < 3000  # отчёт < 1 МБ — блок сжатый
+    assert (tmp_path / "r.html").stat().st_size < 1024 * 1024
