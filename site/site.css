@@ -96,16 +96,13 @@ a{color:var(--accent)}
 .hero-text .cta,.cta.center{justify-content:center}
 
 /* логотипы стандартов */
-.logos{padding:22px clamp(20px,4vw,56px)}
-.logos ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;justify-content:space-between;gap:14px 28px}
-.logos li{color:var(--text-2);font-weight:600;font-size:15px;letter-spacing:-.01em;opacity:.85}
 
 /* KPI «на полу» в перспективе */
 .kpis{padding-bottom:clamp(40px,6vw,72px)}
 .floor{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;perspective:1200px}
 .tile{background:linear-gradient(180deg,var(--surface-2),var(--surface));border:1px solid var(--border);border-radius:var(--r-card);padding:24px;
   transform:rotateX(14deg);transform-origin:50% 100%;box-shadow:0 30px 60px rgba(2,3,12,.35)}
-.tile b{display:block;font-weight:500;font-size:clamp(34px,4vw,54px);letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums}
+.tile b{display:block;white-space:nowrap;font-weight:500;font-size:clamp(28px,3.4vw,54px);letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums}
 .tile>span{display:block;margin-top:12px;color:var(--text-2);font-size:14px}.tile em{font-style:normal;font-weight:600;color:var(--critical)}
 .tile:first-child,.tile:last-child{filter:blur(.4px);opacity:.92}
 

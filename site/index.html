@@ -11,7 +11,7 @@
 <link rel="preload" href="fonts/inter-cyrillic-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="site.css">
-<script>try{var t=localStorage.getItem("reqlens-theme")||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");document.documentElement.dataset.theme=t}catch(e){}</script>
+<script>try{var t=localStorage.getItem("reqlens-theme")||"dark";document.documentElement.dataset.theme=t}catch(e){}</script>
 </head>
 <body>
 <a class="skip" href="#main" data-i18n="skip">Перейти к содержимому</a>
@@ -54,17 +54,11 @@
       <a class="btn btn-dark" data-pdf href="report/report.pdf"><span data-i18n="cta.pdf">Отчёт в PDF</span><i aria-hidden="true">›</i></a>
     </div>
     <p class="note wake" id="wake" role="status" hidden></p>
-    <p class="note" data-studio-note hidden data-i18n="cta.try.studio">Studio в браузере: готовый пример — без прогона и квоты; свой файл — до 5 проверок в сутки.</p>
+    <p class="note" data-studio-note hidden data-i18n="cta.try.studio">Studio в браузере: готовый пример — без прогона и квоты; свой файл — до 2 проверок с моделью в сутки, дальше — проверка правилами.</p>
     <p class="note" data-nostudio data-i18n="cta.try.report">Интерактивный отчёт по документу организаторов — открывается в браузере, без установки и без ключа.</p>
   </div>
 </section>
 
-<!-- 2. Стандарты и модели -->
-<section class="panel logos" aria-label="Стандарты и модели">
-  <ul>
-    <li>ISO/IEC/IEEE 29148</li><li>IEEE 830</li><li>Gemini</li><li>OpenAI-compatible</li><li>Claude</li><li>Ollama</li>
-  </ul>
-</section>
 
 <!-- try -->
 
@@ -72,7 +66,7 @@
 <section class="panel kpis">
   <div class="kpi-head">
     <p class="eyebrow" data-i18n="kpi.eyebrow">Результат</p>
-    <h2 class="h1"><span data-i18n="kpi.t1">Создано вокруг</span><br><span class="dim" data-i18n="kpi.t2">вашего процесса ревью.</span></h2>
+    <h2 class="h1"><span data-i18n="kpi.t1">Документ организаторов:</span><br><span class="dim" data-i18n="kpi.t2">что нашёл агент.</span></h2>
   </div>
   <div class="floor">
     <div class="tile reveal"><b data-k="found">26 из 26</b><span data-i18n="kpi.found">ожидаемых дефектов документа организаторов найдено</span></div>
@@ -85,7 +79,7 @@
 <!-- 4. Возможности -->
 <section class="panel" id="features">
   <p class="eyebrow" data-i18n="feat.eyebrow">Возможности</p>
-  <h2 class="h1"><span data-i18n="feat.t1">Всё для ревью требований —</span><br><span class="dim" data-i18n="feat.t2">в одном прогоне агента.</span></h2>
+  <h2 class="h1"><span data-i18n="feat.t1">Что вы получите</span><br><span class="dim" data-i18n="feat.t2">после одной проверки.</span></h2>
   <div class="cards">
     <article class="card reveal"><div class="crop"><img src="img/f-probe.webp" width="960" height="600" loading="lazy" alt="Экран тестов: тест-проба Given/When/Then"></div><h3 data-i18n="f1.t">Тест-проба Given/When/Then</h3><p data-i18n="f1.d">К каждому требованию агент пишет приёмочный тест. Не получилось — доказательство непроверяемости с цитатой.</p></article>
     <article class="card reveal"><div class="crop"><img src="img/f-report.webp" width="960" height="600" loading="lazy" alt="Интерактивный отчёт: дефекты подчёркнуты в тексте"></div><h3 data-i18n="f2.t">Интерактивный отчёт и «Спроси отчёт»</h3><p data-i18n="f2.d">Дефекты подчёркнуты прямо в тексте: клик — объяснение, пункт стандарта и формулировка. Офлайн-ассистент «Спроси отчёт» отвечает внутри HTML-файла, без сети.</p></article>
@@ -123,7 +117,7 @@
 <!-- 6. Скриншоты -->
 <section class="panel" id="shots">
   <p class="eyebrow" data-i18n="shots.eyebrow">Интерфейс</p>
-  <h2 class="h1"><span data-i18n="shots.t1">Один отчёт —</span> <span class="dim" data-i18n="shots.t2">пять способов его прочитать.</span></h2>
+  <h2 class="h1"><span data-i18n="shots.t1">Отчёт:</span> <span class="dim" data-i18n="shots.t2">документ, граф, тесты, правки.</span></h2>
   <div class="tabs">
     <input type="radio" name="tab" id="t1" checked><label for="t1" data-i18n="tab.doc">Документ</label>
     <input type="radio" name="tab" id="t2"><label for="t2" data-i18n="tab.graph">3D-граф</label>
@@ -144,7 +138,7 @@
 <!-- 7. Бенчмарк -->
 <section class="panel" id="bench">
   <p class="eyebrow" data-i18n="bench.eyebrow">Бенчмарк</p>
-  <h2 class="h1"><span data-i18n="bench.t1">Точность, которую можно проверить.</span><br><span class="dim" data-k="bench-sub">5 документов, 67 заранее известных дефектов.</span></h2>
+  <h2 class="h1"><span data-i18n="bench.t1">Точность на бенчмарке.</span><br><span class="dim" data-k="bench-sub">5 документов, 67 заранее известных дефектов.</span></h2>
   <div class="table">
     <table>
       <thead><tr><th scope="col" data-i18n="b.doc">Документ</th><th scope="col" data-i18n="b.found">Найдено</th><th scope="col">Recall</th><th scope="col">Precision</th></tr></thead>
