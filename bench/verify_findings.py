@@ -106,7 +106,8 @@ def write_human(items: list[dict], path: Path = HUMAN) -> None:
     out = ["# Ручная проверка находок отчёта для сдачи", "",
            "В последней колонке — **да** (настоящий дефект), **нет** или **спорно**, можно с комментарием. Проверяйте по",
            "тексту документа (bench/real/notifications.md), не глядя на вердикт модели. Файл пересобирается",
-           "`python bench/verify_findings.py`, вписанное сохраняется по ключу строки.", "",
+           "`python bench/verify_findings.py`, вписанное сохраняется по ключу строки. Удобнее — в `bench/real/human_check.html`",
+           "(текст требования рядом), затем `python bench/gold_score.py --labels human_labels.json`.", "",
            "| Ключ | Где | Серьёзность | Замечание | Человек |", "|---|---|---|---|---|"]
     for it in items:
         out.append(f"| {it['key']} | {it['where']} | {it['severity']} | {' '.join(it['problem'].split())[:240].replace('|', '/')} | "

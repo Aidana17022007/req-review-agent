@@ -1,0 +1,92 @@
+{
+ "agent": {
+  "found": 29,
+  "total": 30,
+  "recall": 0.9666666666666667,
+  "recall_ci": [
+   0.9,
+   1.0
+  ],
+  "critical_found": 7,
+  "critical_total": 7,
+  "findings": 89,
+  "matched": 40,
+  "false_clean": 16,
+  "false_clean_significant": 10,
+  "clean_total": 15,
+  "clean_flagged": 12,
+  "precision": 0.7142857142857143,
+  "precision_ci": [
+   0.5892857142857143,
+   0.8214285714285714
+  ],
+  "precision_strict": 0.449438202247191,
+  "precision_strict_ci": [
+   0.34831460674157305,
+   0.5617977528089888
+  ],
+  "method": "перцентильный бутстреп, 1000 повторов, seed 13",
+  "calls": 85,
+  "model": "gemini / gemini-3.5-flash-lite"
+ },
+ "baseline": {
+  "found": 20,
+  "total": 30,
+  "recall": 0.6666666666666666,
+  "recall_ci": [
+   0.5,
+   0.8333333333333334
+  ],
+  "critical_found": 5,
+  "critical_total": 7,
+  "findings": 21,
+  "matched": 18,
+  "false_clean": 0,
+  "false_clean_significant": 0,
+  "clean_total": 15,
+  "clean_flagged": 0,
+  "precision": 1.0,
+  "precision_ci": [
+   1.0,
+   1.0
+  ],
+  "precision_strict": 0.8571428571428571,
+  "precision_strict_ci": [
+   0.6666666666666666,
+   1.0
+  ],
+  "method": "перцентильный бутстреп, 1000 повторов, seed 13",
+  "calls": 3,
+  "model": "gemini / gemini-3.5-flash-lite"
+ },
+ "rules": {
+  "found": 8,
+  "total": 30,
+  "recall": 0.26666666666666666,
+  "recall_ci": [
+   0.13333333333333333,
+   0.43333333333333335
+  ],
+  "critical_found": 1,
+  "critical_total": 7,
+  "findings": 25,
+  "matched": 7,
+  "false_clean": 4,
+  "false_clean_significant": 4,
+  "clean_total": 15,
+  "clean_flagged": 4,
+  "precision": 0.6363636363636364,
+  "precision_ci": [
+   0.36363636363636365,
+   0.9090909090909091
+  ],
+  "precision_strict": 0.28,
+  "precision_strict_ci": [
+   0.12,
+   0.48
+  ],
+  "method": "перцентильный бутстреп, 1000 повторов, seed 13",
+  "calls": 0,
+  "model": "без модели / только детерминированные правила"
+ }
+}
