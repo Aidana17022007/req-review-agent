@@ -27,7 +27,7 @@ from dotenv import load_dotenv  # noqa: E402
 from req_review.llm import build_llm_from_env  # noqa: E402
 from req_review.pipeline import ROOT, Options, agent_version, review_document  # noqa: E402
 
-KEEP_SECTIONS = ("## Реальный документ организаторов", "## Слепые документы")  # пишут real_eval.py и blind_eval.py
+KEEP_SECTIONS = ("## Реальный документ организаторов", "## Слепые документы", "## Сравнение с «голой» моделью")  # пишут real_eval.py и blind_eval.py
 TYPE_RU = {"vague": "Размытые слова", "missing_units": "Нет значений / единиц", "open_list": "Открытое перечисление",
            "tbd": "TBD / не заполнено", "and_or": "«и/или»", "conditional": "Условность «при необходимости»",
            "design": "Проектное решение", "compound": "Составное требование", "subjective": "Субъективная оценка",
