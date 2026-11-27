@@ -94,6 +94,9 @@ def env():
     e = Environment(loader=FileSystemLoader(str(TEMPLATES)), autoescape=select_autoescape(["html", "j2"]))
     e.globals.update(icon=icon, ICONS=ICONS, tokens_css=tokens_css, asset=asset, asset_min=asset_min, asset_b64=asset_b64,
                      logo_mark=logo_mark_factory(), favicon_href=favicon_href)
+    from .proof import headline  # v15: главные цифры на стартовом экране Studio — из файлов репозитория
+
+    e.globals["proof_headline"] = headline
     return e
 
 

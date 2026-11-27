@@ -98,6 +98,13 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
 @media (prefers-reduced-motion:no-preference){.ans-qi.done .a-done{animation:ans-in var(--motion-slow) var(--motion-ease)}}
 @keyframes ans-in{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
 @media (max-width:640px){.side-col{position:static}#frame{height:72vh}#proj-sel{max-width:100%}}
+/* v15: стартовый экран — путь жюри за 3 минуты: готовый пример или своё ТЗ, под кнопками — главные цифры из файлов */
+.start-hero{display:flex;flex-direction:column;gap:12px;margin-bottom:16px;border-color:color-mix(in srgb,var(--brand) 35%,var(--border))}
+.start-hero .btn-lg{min-width:min(100%,260px);justify-content:center}
+.hero-nums{display:flex;flex-wrap:wrap;gap:8px 18px;margin:0;color:var(--text-2)}
+.hero-nums>span{display:inline-flex;gap:6px;align-items:baseline;min-width:0}
+.hero-nums b{color:var(--text);font-size:15px;white-space:nowrap}
+.det-go{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 </style>
 <script>(function(){try{var t=localStorage.getItem("reqlens-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}})()</script>
 </head>
@@ -134,6 +141,15 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
         <header class="pagehead"><div><div class="caption">Новая проверка</div><h1 class="display" style="margin-top:6px" id="h-upload">Загрузите документ требований</h1>
           <p class="muted" style="margin-top:6px">Агент выделит требования, проверит каждое и набор целиком, попробует написать тесты и предложит правки.</p></div></header>
         <div id="health"></div>
+        <section class="card start-hero" id="start-hero" aria-label="С чего начать">
+          <div class="row wrap" style="gap:12px">
+            <button class="btn btn-primary btn-lg" id="example" type="button">{{ icon("eye", 18) }}Открыть готовый пример</button>
+            <button class="btn btn-outline btn-lg" id="hero-upload" type="button">{{ icon("upload", 18) }}Загрузить своё ТЗ</button>
+          </div>
+          <p class="small muted" style="margin:0"><span>Готовый пример — отчёт по документу организаторов: открывается сразу, без прогона и без квоты.</span> <span>Своё ТЗ — PDF, DOCX, MD или TXT.</span></p>
+          {% set hl = proof_headline() %}{% if hl %}
+          <p class="hero-nums small" id="hero-nums">{% for r in hl %}<span><b>{{ r.value }}</b> <span>{{ {"organizers": "дефектов документа организаторов найдено", "gold_recall": "полнота на эталоне из 150 дефектов", "gold_precision": "проверенная точность"}[r.id] }}</span></span>{% endfor %}</p>{% endif %}
+        </section>
         <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(260px,340px);align-items:start" id="up-grid">
           <form id="form" class="card stack">
             <label class="drop" id="drop">
@@ -163,10 +179,9 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
               <span class="small">Для банковского контура — офлайн-режим (Ollama): профиль «Офлайн», документ не покидает ваш сервер.</span></div></div>
             <p class="small faint" id="up-policy" hidden></p>
             <div class="row wrap" style="justify-content:flex-end">
-              <button class="btn btn-outline" id="example" type="button">{{ icon("eye", 16) }}Открыть готовый пример</button>
               <button class="btn btn-outline" id="demo" type="button" hidden>{{ icon("play", 16) }}Демо</button>
               <button class="btn btn-outline" id="sample" type="button">{{ icon("file", 16) }}Пример документа</button>
-              <button class="btn btn-primary" id="go" type="submit" disabled>{{ icon("play", 16) }}Запустить проверку</button>
+              <button class="btn btn-outline" id="go" type="submit" disabled>{{ icon("play", 16) }}Запустить проверку</button>
             </div>
             <p class="small faint">Версии одного документа складываются в историю проекта: балл по версиям и сравнение «до / после». Тот же файл повторно не проверяется — откроется прошлый результат.
               Быстрый профиль — минимум обращений к модели; полный — плюс критик-агент; офлайн — локальная модель через Ollama. «Только правила» — без модели и без расхода квоты.</p>
@@ -184,6 +199,8 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
         <header class="pagehead"><div class="grow"><div class="caption">Проекты</div><h1 class="display" style="margin-top:6px" id="h-projects">Проекты и история проверок</h1>
           <p class="muted" style="margin-top:6px">Проект — один документ требований и все его версии.</p></div>
           <div class="row wrap"><button class="btn btn-primary" id="pj-new" type="button">{{ icon("plus", 16) }}Новый проект</button></div></header>
+        <div class="banner-err banner-warn" id="pj-ephemeral" role="note" hidden>{{ icon("alert", 18) }}<div><b>Бесплатный сервер: история проверок очищается при обновлении.</b>
+          <span class="small">Скачайте нужные отчёты (HTML, JSON, .md) — после перезапуска сервера проекты пропадут.</span></div></div>
         <div class="pj-grid" id="pj-list"><div class="skel-card"><div class="skel skel-lg" style="width:60%"></div><div class="skel" style="width:40%"></div></div></div>
       </section>
 
@@ -341,13 +358,15 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
 
   // ---------------- API v1 (docs/API.md): ошибки приходят как {"error": {"code", "message"}} — текст показываем как есть
   async function api(path,opt={}){
-    let r;try{r=await fetch("/api/v1"+path,opt);}catch(x){throw Object.assign(new Error("Сервер ReqLens недоступен."),{code:"network"});}
+    let r;try{r=await fetch("/api/v1"+path,opt);}catch(x){throw Object.assign(new Error(navigator.onLine===false?"Нет интернета: проверьте подключение и повторите.":"Нет связи с сервером ReqLens. Бесплатный сервер просыпается до минуты — подождите и повторите."),{code:navigator.onLine===false?"offline":"network"});}
     const j=await r.json().catch(()=>null);
     if(!r.ok){const e=(j&&j.error)||{},ra=+(e.retry_after||r.headers.get("Retry-After")||0);
       throw Object.assign(new Error(e.message||(j&&j.detail)||hostErr(r.status)),{code:e.code||"error",status:r.status,extra:{...e,retry_after:ra||null}});}
     return j||{};}
   // ответ не от ReqLens (HTML вместо JSON): запрос остановил хостинг — защита от атак, сон или перезапуск сервера
   function hostErr(st){return st===403?"Запрос остановила защита хостинга (HTTP 403). Повторите загрузку; если ошибка повторяется — проверьте файл локально: python review.py <файл> <отчёт>.md"
+    :st===413?"Файл больше лимита хостинга (HTTP 413). Уменьшите файл: сохраните без картинок или как PDF с текстовым слоем."
+    :st===429?"Слишком много запросов подряд (HTTP 429). Подождите минуту и повторите — или откройте готовый пример."
     :st>=500?`Сервер временно недоступен (HTTP ${st}): бесплатный сервер просыпается или перезапускается. Подождите минуту и повторите.`
     :`Сервер ответил ошибкой HTTP ${st}.`;}
   // файл уходит в base64: фильтр хостинга блокирует запросы с текстом вроде «curl … Authorization: Bearer» — обычным в ТЗ на API
@@ -371,6 +390,8 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
     $("#sidebar").classList.remove("open");window.scrollTo({top:0});}
   const enable=(n,fn)=>{const b=$(n);b.disabled=false;b.onclick=fn;};
   $("#nav-new").onclick=()=>{clearErr();show("s-upload");};
+  // v15: хостинг (Render) стирает диск при каждом деплое — предупреждаем везде, кроме локального запуска
+  $("#pj-ephemeral").hidden=/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
   $("#nav-projects").onclick=()=>{clearErr();show("s-projects");loadProjects().then(renderProjects);};
   const net=()=>document.body.classList.toggle("offline",!navigator.onLine);addEventListener("online",net);addEventListener("offline",net);net();
 
@@ -431,6 +452,7 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
     catch(e){show("s-upload");showErr(e.code==="not_found"?"noexample":"error",e.message);}
     finally{b.classList.remove("loading");}}
   $("#example").onclick=openExample;
+  $("#hero-upload").onclick=()=>{$("#file").click();};
   $("#sample").onclick=async()=>{const b=$("#sample");b.classList.add("loading");
     try{const t=await (await fetch("/api/v1/sample")).text();await launch(new File([t],"Пример_P2P-переводы.md",{type:"text/markdown"}));}catch(x){showErr("error","Не удалось загрузить демо-документ.");}
     finally{b.classList.remove("loading");}};
@@ -841,10 +863,21 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
         ${g.length>5?`<p class="small faint">и ещё ${g.length-5} — в отчёте</p>`:""}</div>`);}
     const a=d.answers,sm=a&&a.summary,rv=a&&a.revised;
     if(sm||rv)parts.push(`<div><div class="caption" style="margin-bottom:6px">После ответов аналитика</div><p class="small">${sm?`Блокеров закрыто: <b>${+sm.blockers_closed}</b> из <b>${+sm.blockers_total}</b> · открытых замечаний: ${+sm.open_before} → <b>${+sm.open_after}</b>`:""}${sm&&rv?"<br>":""}${rv?`Исправленное ТЗ: изменено <b>${(rv.changed||[]).length}</b>, новых требований <b>${(rv.added||[]).length}</b>, осталось уточнить <b>${(rv.open||[]).length}</b>`:""}</p></div>`);
+    const te=p.time_estimate;
+    if(te&&te.manual_hours!=null)parts.push(`<div><div class="caption" style="margin-bottom:6px">Экономия времени (оценка)</div><p class="small"><span>вручную</span> ≈ <b>${esc(te.manual_hours)} ч</b> · <span>агентом</span> <b>${esc(te.agent_minutes)} мин</b></p>
+      <p class="small faint">${esc(`${te.doc_lines} строк ÷ ${te.lines_per_hour} строк в час`)}</p></div>`);
+    const cs=p.cost;if(cs&&typeof cs==="object")parts.push(`<div><div class="caption" style="margin-bottom:6px">Стоимость прогона</div><p class="small">${cs.usd==null?esc(cs.note||"цена модели не задана"):`<b>${esc(cs.kzt)} ₸</b> · $${esc(cs.usd)}`}</p></div>`);
+    const br=d.bank_rules,cp=d.compliance;
+    if(br||cp){const n=k=>br&&br[k]!=null?+br[k]:0,cf=cp?(cp.checks||[]).filter(x=>x.status==="fired").length:0;
+      parts.push(`<div><div class="caption" style="margin-bottom:6px">Чек-лист банка</div>${br?`<p class="small"><span>Правила банка</span>: <span class="chip sev-critical">${ic("alert",12)}сработало</span> <b>${n("fired")}</b> <span class="chip sev-ok">${ic("check",12)}выполнено</span> <b>${n("passed")}</b> <span class="chip chip-outline">не применимо</span> <b>${n("not_applicable")}</b></p>`:""}
+        ${cp?`<p class="small" style="margin-top:4px"><span>Комплаенс и безопасность</span>: <span>нарушений</span> <b>${cf}</b></p>`:""}</div>`);}
+    const go=[["revised","Исправленное ТЗ",d.answers&&d.answers.revised],["trace","Трассировка",t&&t.stats],["bank","Чек-лист банка",br||cp]].filter(x=>x[2]);
+    if(go.length)parts.push(`<div class="det-go">${go.map(([v,l])=>`<button type="button" class="btn btn-sm btn-ghost" data-view="${v}">${ic("arrow-right",14)}${l}</button>`).join("")}</div>`);
     if(p.strong)parts.push(`<div><span class="chip chip-brand">${ic("cpu",13)}сильная модель${typeof p.strong==="string"?": "+esc(p.strong):p.strong.model?": "+esc(p.strong.model):""}</span></div>`);
     return parts.join("");}
   function renderDetails(d){const h=detailsHTML(d);$("#det-body").innerHTML=h;$("#det-card").hidden=!h;}
-  $("#det-body").onclick=e=>{const b=e.target.closest("[data-ref]");if(b&&/^(R-\d+|S-\d+)$/.test(b.dataset.ref))frameGo(b.dataset.ref);};
+  $("#det-body").onclick=e=>{const v=e.target.closest("[data-view]");if(v&&/^(revised|trace|bank)$/.test(v.dataset.view))return frameGo(v.dataset.view);
+    const b=e.target.closest("[data-ref]");if(b&&/^(R-\d+|S-\d+)$/.test(b.dataset.ref))frameGo(b.dataset.ref);};
   async function loadQuestions(run,files){
     const j=files.find(f=>f[2].endsWith(".json")),tpl=files.find(f=>f[2].endsWith("_answers_template.md"));
     state.report=null;if(!j)return;
@@ -895,6 +928,19 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
   const VCH={"нельзя":"critical","с оговорками":"major","можно":"ok"};
   const vchip=v=>v?`<span class="chip sev-${VCH[v]||"major"}">${ic(VCH[v]==="ok"?"check":VCH[v]==="critical"?"x":"alert",13)}${esc(v)}</span>`:'<span class="faint">—</span>';
   const tchip=t=>{const m=ATYPE[t]||ATYPE.evasive;return `<span class="chip ${m[0]}">${ic(m[1],13)}${m[2]}</span>`;};
+  function briefBlock(a){const s=a.summary,rv=a.revised||{},B=a.before||{},A=a.after||{},vb=B.verdict||{},va=A.verdict||{};
+    if(!s&&!B.verdict)return "";const cb=(s&&s.closed_blockers)||[],nc=(rv.changed||[]).length,na=(rv.added||[]).length,no=(rv.open||[]).length;
+    const vrow=(l,b,af)=>`<div class="brief-item"><span class="small muted">${l}</span><div class="row wrap" style="gap:6px">${vchip(b)}<span class="faint" aria-hidden="true">${ic("arrow-right",14)}</span>${vchip(af)}</div></div>`;
+    return `<div class="card brief" id="c-brief" style="margin-bottom:16px"><div class="card-title">${ic("spark")}<span class="h2 grow">Кратко</span><span class="small muted">после ответов аналитика</span></div>
+      <div class="brief-grid">${vrow("Разработка",vb.development,va.development)}${vrow("Тестирование",vb.testing,va.testing)}
+        ${s?`<div class="brief-item"><span class="small muted">Закрыто блокеров</span><div class="brief-num"><b>${+s.blockers_closed} из ${+s.blockers_total}</b></div></div>
+        <div class="brief-item"><span class="small muted">Открытых замечаний</span><div class="brief-num"><b>${+s.open_before}</b><span class="faint" aria-hidden="true">${ic("arrow-right",16)}</span><b style="color:${s.open_after<s.open_before?"var(--ok)":"var(--text)"}">${+s.open_after}</b></div></div>`:""}</div>
+      ${cb.length?`<ul class="brief-list">${cb.map(c=>`<li><span class="chip sev-ok mono">${ic("check",12)}${esc(c.id)}</span><div class="grow" style="min-width:0"><div class="small">${esc(clip(c.problem||"",150))}</div>
+        <div class="small" style="margin-top:2px"><span class="muted">${esc(`закрыто ответом ${c.qid}`)}</span>${c.quote?` <span class="q-in">«${esc(clip(c.quote,160))}»</span>`:""}</div></div></li>`).join("")}</ul>`:""}
+      <div class="row wrap" style="gap:8px;margin-top:12px">${nc||na||no?`<button class="btn btn-sm btn-primary" type="button" data-open-view="revised">${ic("check",14)}<span>Исправленное ТЗ</span></button>
+        <span class="small muted">${esc(`изменено ${nc} · новых ${na} · осталось уточнить ${no}`)}</span>`:""}
+        <button class="btn btn-sm btn-ghost" type="button" data-open-view="trace">${ic("trace",14)}Трассировка</button>
+        <button class="btn btn-sm btn-ghost" type="button" data-open-view="bank">${ic("bank",14)}Чек-лист банка</button></div></div>`;}
   function ansBlock(a){const B=a.before||{},A=a.after||{},vb=B.verdict||{},va=A.verdict||{},items=a.items||[];
     const n={};items.forEach(x=>{n[x.type]=(n[x.type]||0)+1;});
     const kp=(l,b,af,u,lower)=>{if(b==null||af==null)return "";const d=af-b,good=lower?d<0:d>0;
@@ -915,7 +961,9 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
   // ---------------- До / После
   function renderCompare(c,ctx={}){
     if(!c&&!ctx.answers){showErr("error","Сравнение не построено.");return;}
-    const pre=ctx.answers?ansBlock(ctx.answers):"";
+    const pre=ctx.answers?briefBlock(ctx.answers)+ansBlock(ctx.answers):"";
+    // кнопки «Кратко»: отчёт новой версии сразу на нужном разделе (#revised / #trace / #bank)
+    $("#c-body").onclick=e=>{const b=e.target.closest("[data-open-view]");if(b&&ctx.run)openRun(ctx.run.id,{ref:b.dataset.openView});};
     $("#c-title").textContent=ctx.answers?"Было → стало":"До / После";
     if(!c){$("#c-sub").textContent=`${ctx.run?ctx.run.doc_name:"Документ"} · перепроверка с ответами аналитика`;$("#c-body").innerHTML=pre;
       $$("#c-body [data-to]").forEach(el=>countUp(el,el.dataset.to));const run=ctx.run;$("#c-open-new").onclick=()=>run&&openRun(run.id);
@@ -1041,8 +1089,28 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
     "Новый проект":"Жаңа жоба","Проверить новую версию":"Жаңа нұсқаны тексеру","Удалить проект":"Жобаны жою","Динамика по версиям":"Нұсқалар бойынша динамика",
     "Версия":"Нұсқа","Документ":"Құжат","Проверено":"Тексерілді","Режим и статус":"Режим және күй","Удалить безвозвратно":"Біржола жою","Отмена":"Болдырмау",
     "Проектов пока нет":"Әзірге жоба жоқ","Загрузить документ":"Құжатты жүктеу","Создать":"Құру","Название проекта":"Жоба атауы","Введите название":"Атауын енгізіңіз",
+    // v15: стартовый экран, «Кратко», подробности прогона, предупреждение «Проекты», ошибки хостинга
+    "С чего начать":"Неден бастау","Загрузить своё ТЗ":"Өз ТТ-ны жүктеу",
+    "Готовый пример — отчёт по документу организаторов: открывается сразу, без прогона и без квоты.":"Дайын мысал — ұйымдастырушылар құжаты бойынша есеп: бірден ашылады, прогонсыз және квотасыз.",
+    "Своё ТЗ — PDF, DOCX, MD или TXT.":"Өз ТТ — PDF, DOCX, MD немесе TXT.",
+    "дефектов документа организаторов найдено":"ұйымдастырушылар құжатының ақаулары табылды","полнота на эталоне из 150 дефектов":"150 ақаудан тұратын эталондағы толықтық",
+    "проверенная точность":"тексерілген дәлдік",
+    "Бесплатный сервер: история проверок очищается при обновлении.":"Тегін сервер: тексерулер тарихы жаңартылған кезде өшіріледі.",
+    "Скачайте нужные отчёты (HTML, JSON, .md) — после перезапуска сервера проекты пропадут.":"Қажетті есептерді жүктеп алыңыз (HTML, JSON, .md) — сервер қайта іске қосылғанда жобалар жойылады.",
+    "Нет интернета: проверьте подключение и повторите.":"Интернет жоқ: қосылымды тексеріп, қайталаңыз.",
+    "Нет связи с сервером ReqLens. Бесплатный сервер просыпается до минуты — подождите и повторите.":"ReqLens серверімен байланыс жоқ. Тегін сервер бір минутқа дейін оянады — күтіп, қайталаңыз.",
+    "Файл больше лимита хостинга (HTTP 413). Уменьшите файл: сохраните без картинок или как PDF с текстовым слоем.":"Файл хостинг лимитінен үлкен (HTTP 413). Файлды кішірейтіңіз: суреттерсіз немесе мәтін қабаты бар PDF ретінде сақтаңыз.",
+    "Слишком много запросов подряд (HTTP 429). Подождите минуту и повторите — или откройте готовый пример.":"Қатарынан тым көп сұрау (HTTP 429). Бір минут күтіп, қайталаңыз — немесе дайын мысалды ашыңыз.",
+    "Кратко":"Қысқаша","после ответов аналитика":"аналитик жауаптарынан кейін","Закрыто блокеров":"Жабылған блокерлер","Открытых замечаний":"Ашық ескертулер",
+    "Исправленное ТЗ":"Түзетілген ТТ","Трассировка":"Трассировка","Чек-лист банка":"Банк чек-парағы",
+    "Экономия времени (оценка)":"Уақыт үнемі (бағалау)","вручную":"қолмен","агентом":"агентпен","Стоимость прогона":"Прогон құны",
+    "цена модели не задана":"модель бағасы көрсетілмеген","Правила банка":"Банк ережелері","сработало":"іске қосылды","выполнено":"орындалды",
+    "не применимо":"қолданылмайды","Комплаенс и безопасность":"Комплаенс және қауіпсіздік","нарушений":"бұзушылықтар",
   };
   const KK_RE=[
+    [/^(\d+) из (\d+)$/,"$2 ішінен $1"],[/^(\d+ %) \((\d+) из (\d+)\)$/,"$1 ($3 ішінен $2)"],[/^от (\d+) до (\d+ %)$/,"$1–$2"],
+    [/^закрыто ответом (Q-\d+)$/,"$1 жауабымен жабылды"],[/^([\d.,]+) ч$/,"$1 сағ"],[/^(\d+) строк ÷ (\d+) строк в час$/,"$1 жол ÷ сағатына $2 жол"],
+    [/^изменено (\d+) · новых (\d+) · осталось уточнить (\d+)$/,"өзгертілді $1 · жаңа $2 · нақтылау қалды $3"],
     [/^шаг (\d+) из (\d+)$/,"$2 қадамның $1-і"],[/^проверено (\d+) из (\d+)$/,"$2 ішінен $1 тексерілді"],[/^версий: (\d+)$/,"нұсқалар: $1"],[/^версий: (\d+) · (.+)$/,"нұсқалар: $1 · $2"],[/^критичных: (\d+)$/,"критикалық: $1"],
     [/^черновик сохранён · (\d\d:\d\d)$/,"черновик сақталды · $1"],
     [/^Можно снова через (?:(\d+) ч )?(\d+) мин — около (.+)\.$/,(m,h,mi,at)=>`Қайта ${h?h+" сағ ":""}${mi} мин кейін — шамамен ${at}.`],
@@ -1050,7 +1118,7 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
     [/^Перепроверка с ответами аналитика · учтено ответов: (\d+)$/,"Аналитик жауаптарымен қайта тексеру · ескерілген жауаптар: $1"],
     [/^Ответ на (Q-\d+)$/,"$1 сұрағына жауап"],[/^Нет таких вопросов: (.+) — эти ответы не учтены$/,"Мұндай сұрақтар жоқ: $1 — бұл жауаптар ескерілмеді"],
   ];
-  const SKIP="script,style,pre,code,textarea,.msg,.pj-name,#pj-name,#p-name,#c-sub,.def-list,.tbl td.small,option";
+  const SKIP="script,style,pre,code,textarea,.msg,.pj-name,#pj-name,#p-name,#c-sub,.def-list,.tbl td.small,option,.q-in";
   function tr(s){const t=s.trim();if(!t)return s;let r=KK[t];
     if(r==null)for(const [re,rep] of KK_RE)if(re.test(t)){r=t.replace(re,rep);break;}
     return r==null?s:s.replace(t,r);}
