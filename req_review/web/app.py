@@ -510,13 +510,22 @@ async def events(job_id: str):
         raise HTTPException(404)
 
     async def gen():
-        i = 0
+        # Пока модель думает над одним этапом (30–60 с), новых событий нет. Прокси хостинга (Render) закрывает
+        # «молчащее» соединение, и страница показывала «поток недоступен», хотя прогон шёл. Комментарий SSE
+        # «: ping» раз в SSE_HEARTBEAT секунд держит соединение; EventSource его игнорирует.
+        i, last = 0, time.monotonic()
+        beat = float(os.getenv("SSE_HEARTBEAT", "15"))
+        yield ": open\n\n"
         while True:
             while i < len(job.events):
                 yield f"data: {json.dumps(job.events[i], ensure_ascii=False)}\n\n"
                 i += 1
+                last = time.monotonic()
             if job.done and i >= len(job.events):
                 break
+            if time.monotonic() - last >= beat:
+                yield ": ping\n\n"
+                last = time.monotonic()
             await asyncio.sleep(0.2)
 
     return StreamingResponse(gen(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
