@@ -15,6 +15,11 @@
  "judged": 157,
  "unjudged": 156,
  "f1": 0.9765258215962441,
+ "f1_strict": 0.6561514195583595,
+ "findings": 313,
+ "correct": 156,
+ "checked_gold": 157,
+ "checked_manual": 0,
  "critical_found": 17,
  "critical_total": 17,
  "by_doc": {
