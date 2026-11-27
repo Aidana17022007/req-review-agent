@@ -406,7 +406,11 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
     finally{b.classList.remove("loading");}};
 
   // ---------------- карточка ошибки
-  function clearErr(){$("#err").innerHTML="";}
+  // «одна белая кнопка на экран» (DESIGN_SYSTEM.md): пока видна карточка ошибки, её главное действие — единственное белое
+  function demote(on){$$(".btn-demoted").forEach(b=>{b.classList.remove("btn-demoted","btn-outline");b.classList.add("btn-primary");});
+    if(!on)return;const scr=document.querySelector(".screen.active");if(!scr)return;
+    [...scr.querySelectorAll(".btn-primary")].filter(b=>!b.closest("#err")).forEach(b=>{b.classList.remove("btn-primary");b.classList.add("btn-outline","btn-demoted");});}
+  function clearErr(){$("#err").innerHTML="";demote(false);}
   const ERR={key:["key","Нет ключа API","Модель не приняла запрос: ключ не задан или неверный.",["Откройте .env на сервере и впишите GEMINI_API_KEY (или OPENAI_API_KEY).","Перезапустите Studio: python -m req_review.web","Без ключа: режим «Только правила» или LLM_PROVIDER=mock в .env."]],
     quota:["clock","Лимит API исчерпан","Модель отказала из-за квоты (429). Уже полученные ответы сохранены в кэше — повторный запуск продолжит с того же места.",["Проверьте документ без модели — только правилами: размытые формулировки, плейсхолдеры, числа, правила API.","Подождите сброса квоты или смените GEMINI_MODEL / ключ.","Профиль «Офлайн» работает с локальной моделью без лимитов."]],
     noreqs:["file","Требований не найдено","Похоже, это не документ требований (ТЗ, SRS): агент не нашёл ни идентификаторов вида FR-01 / 3.1.2, ни формулировок «должен», «необходимо», «shall».",
@@ -444,6 +448,7 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
         :`<p class="small muted" style="margin-top:4px">${esc(extra.hint||e[2]||"")}</p>${msg&&msg!==e[1]?`<pre class="code small" style="margin-top:10px;white-space:pre-wrap">${esc(msg)}</pre>`:""}`}
       ${doc&&extra.hint?"":`<ul class="small" style="margin:10px 0 0;padding-left:18px">${e[3].map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`}
       <div class="row wrap" style="margin-top:12px">${btns}</div></div></div>`;
+    demote(!!errEl.querySelector(".btn-primary"));
     const on=(id,fn)=>{const b=$("#"+id);if(b)b.onclick=fn;};
     on("err-retry",()=>{clearErr();launch(state.src.file,{pid:state.src.pid,force:true,mode:state.src.mode,cmp:state.src.cmp});});
     on("err-rules",()=>{clearErr();launch(state.src.file,{pid:state.src.pid,force:true,mode:"rules",cmp:state.src.cmp});});
