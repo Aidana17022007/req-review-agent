@@ -10,6 +10,7 @@
 <meta name="theme-color" content="#02030C">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <style>
+{{ fonts_css()|safe }}
 {{ tokens_css()|safe }}
 {{ asset("base.css")|safe }}
 [hidden]{display:none!important}
@@ -291,7 +292,7 @@
   const jdel=p=>api(p,{method:"DELETE"});
 
   // ---------------- тема, меню, экраны
-  const cur=()=>document.documentElement.dataset.theme||"dark";
+  const cur=()=>document.documentElement.dataset.theme||"light";
   const themeBtn=()=>{const d=cur()==="dark";$("#btn-theme").innerHTML=ic(d?"sun":"moon",18)+`<span>${d?"Светлая тема":"Тёмная тема"}</span>`;};
   $("#btn-theme").onclick=()=>{const n=cur()==="dark"?"light":"dark";document.documentElement.dataset.theme=n;try{localStorage.setItem("reqlens-theme",n)}catch(e){}themeBtn();
     try{const f=$("#frame").contentDocument;if(f){f.documentElement.dataset.theme=n;}}catch(e){}};themeBtn();

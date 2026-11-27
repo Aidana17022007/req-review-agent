@@ -74,7 +74,9 @@ def env():
     from .icons import ICONS, icon
 
     e = Environment(loader=FileSystemLoader(str(TEMPLATES)), autoescape=select_autoescape(["html", "j2"]))
-    e.globals.update(icon=icon, ICONS=ICONS, tokens_css=tokens_css, asset=asset, asset_b64=asset_b64,
+    from .fonts import fonts_css
+
+    e.globals.update(icon=icon, ICONS=ICONS, tokens_css=tokens_css, fonts_css=fonts_css, asset=asset, asset_b64=asset_b64,
                      logo_mark=logo_mark_factory(), favicon_href=favicon_href)
     return e
 
