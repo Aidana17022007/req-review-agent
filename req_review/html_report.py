@@ -366,9 +366,9 @@ def render_html(ctx) -> str:
 
     data = build_data(ctx)
     # Markdown-отчёт нужен только кнопке «Скачать .md» — хранится сжатым (gzip+base64, распаковка по клику),
-    # чтобы HTML-отчёт оставался меньше 1 МБ и на длинных документах
+    # чтобы HTML-отчёт оставался меньше 1 МБ и на длинных документах; JSON — без пробелов после «,» и «:»
     md = data.pop("report_md", "") or ""
-    blob = json.dumps(data, ensure_ascii=False, default=str).replace("</", "<\\/")
+    blob = json.dumps(data, ensure_ascii=False, default=str, separators=(",", ":")).replace("</", "<\\/")
     tpl = env().get_template("report.html.j2")
     return tpl.render(title=ctx.rv.doc.title, data_json=blob, mock=data["mock"], report_md_b64=gzip_b64(md))
 
