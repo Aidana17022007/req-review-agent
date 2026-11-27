@@ -234,7 +234,9 @@
           <span>${ic("id", 14)}${esc(P.agent_version)}</span><span>${ic("shield", 14)}${esc(P.mode)}</span></div></div>
       <div class="row wrap no-print">
         ${EMBED ? "" : `<button class="btn btn-primary" id="btn-run">${ic("play", 16)}Запустить проверку</button>`}
+        <button class="btn btn-outline" id="btn-tour" type="button">${ic("play", 16)}Тур за 60 секунд</button>
         <button class="btn btn-outline" data-dl="md">${ic("download", 16)}Скачать отчёт</button></div>`;
+    $("#btn-tour").onclick = () => TOUR.start();
     const run = $("#btn-run");
     if (run) run.onclick = () => {
       $("#drawer-title").textContent = "Запустить проверку";
@@ -568,6 +570,7 @@
       <div class="ans-ba" aria-label="Было и стало после учёта ответов">
         ${baItem("Критичные", B.critical, A.critical, true)}${baItem("Существенные", B.major, A.major, true)}${baItem("Готовность", B.readiness, A.readiness, false, "%")}
         ${verdPair("Разработка", vb.development, va.development)}${verdPair("Тестирование", vb.testing, va.testing)}</div>
+      ${blockersHTML(B, A)}
       <div class="row wrap" style="gap:8px;margin:14px 0 4px">${Object.keys(ATYPE).filter((t) => n[t]).map((t) => `${typeChip(t)}<b class="small">${n[t]}</b>`).join(" ")}
         <span class="small faint grow" style="text-align:right">закрыто замечаний: <b>${CLOSED.length}</b></span></div>
       <div class="table-wrap"><table class="tbl ans-tbl"><thead><tr><th scope="col">Вопрос</th><th scope="col">Ответ</th><th scope="col">Тип ответа</th><th scope="col">Что закрыто / осталось</th></tr></thead>
@@ -599,6 +602,51 @@
         <div class="row wrap dec-foot">${d.source_ids.length ? `<span class="small faint">Основание:</span>${d.source_ids.map(src).join("")}` : ""}
           <span class="small faint grow" style="text-align:right">${d.wording === "модель" ? "перефразировано моделью" : "сформулировано кодом"}</span></div></li>`).join("")}</ol>
       ${SIBLING.decisions ? `<a class="btn btn-sm btn-ghost" href="${esc(SIBLING.decisions)}" download>${ic("download", 14)}Повестка решений (.md)</a>` : ""}</div>`;
+  }
+  // ------------------------------------------------------------ v9+: «Рассвет готовности» — солнце поднимается над горизонтом
+  const READY = Math.max(0, Math.min(100, +D.scores.readiness || 0));
+  const READY_BEFORE = ANS && ANS.before && ANS.before.readiness != null ? Math.max(0, Math.min(100, +ANS.before.readiness)) : null;
+  const PHASE = (p) => (p < 25 ? "до рассвета" : p < 60 ? "рассвет" : p < 90 ? "утро" : "ясный день");
+  const sunY = (p) => 114 - p * 0.84;  // 0 % — солнце под горизонтом (y = 100), 100 % — высоко в небе
+  function dawnHTML() {
+    const p = READY, y = sunY(p), b = READY_BEFORE, from = b != null ? sunY(b) : 118;
+    const stars = [[28, 22], [58, 40], [92, 16], [150, 30], [188, 18], [214, 44], [120, 52], [40, 66]]
+      .map(([x, yy], i) => `<circle cx="${x}" cy="${yy}" r="${i % 3 ? 0.9 : 1.4}" fill="currentColor"/>`).join("");
+    const rays = p >= 80 ? Array.from({ length: 12 }, (_, i) => { const a = (i * Math.PI) / 6, r1 = 22, r2 = 30;
+      return `<line x1="${(120 + Math.cos(a) * r1).toFixed(1)}" y1="${(y + Math.sin(a) * r1).toFixed(1)}" x2="${(120 + Math.cos(a) * r2).toFixed(1)}" y2="${(y + Math.sin(a) * r2).toFixed(1)}"/>`; }).join("") : "";
+    return `<div class="card dawn" id="dawn" data-block="dawn">
+      <div class="card-title">${ic("sun")}<span class="h2 grow">Рассвет готовности</span><span class="chip chip-outline">${esc(PHASE(p))}</span></div>
+      <svg class="dawn-sky" viewBox="0 0 240 130" role="img" aria-label="Готовность документа ${p}%: ${esc(PHASE(p))}">
+        <defs><linearGradient id="dw-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--dawn-800)"/><stop offset=".45" style="stop-color:var(--dawn-600)"/>
+          <stop offset=".8" style="stop-color:var(--dawn-400)"/><stop offset="1" style="stop-color:var(--dawn-200)"/></linearGradient>
+          <radialGradient id="dw-sun" cx=".4" cy=".35" r=".7"><stop offset="0" style="stop-color:#FFF6E8"/><stop offset=".55" style="stop-color:var(--dawn-100)"/><stop offset="1" style="stop-color:var(--dawn-300)"/></radialGradient>
+          <radialGradient id="dw-glow"><stop offset="0" style="stop-color:var(--dawn-100);stop-opacity:.9"/><stop offset="1" style="stop-color:var(--dawn-300);stop-opacity:0"/></radialGradient>
+          <clipPath id="dw-clip"><rect x="0" y="0" width="240" height="100"/></clipPath></defs>
+        <rect class="sky-night" x="0" y="0" width="240" height="100" rx="14"/>
+        <rect x="0" y="0" width="240" height="100" rx="14" fill="url(#dw-sky)" style="opacity:${(0.25 + 0.75 * p / 100).toFixed(2)}"/>
+        <g class="stars" style="opacity:${(0.9 * (1 - p / 100)).toFixed(2)}">${stars}</g>
+        <g clip-path="url(#dw-clip)">
+          ${b != null && b !== p ? `<circle class="ghost" cx="120" cy="${sunY(b).toFixed(1)}" r="16"/>` : ""}
+          <g class="sun" style="--dy:${(from - y).toFixed(1)}px">
+            <circle cx="120" cy="${y.toFixed(1)}" r="${(34 + p * 0.3).toFixed(1)}" fill="url(#dw-glow)" style="opacity:${(0.2 + 0.6 * p / 100).toFixed(2)}"/>
+            <g class="rays">${rays}</g><circle cx="120" cy="${y.toFixed(1)}" r="16" fill="url(#dw-sun)"/></g></g>
+        <line class="horizon" x1="0" y1="100" x2="240" y2="100"/><rect class="ground" x="0" y="100" width="240" height="30" rx="0"/>
+      </svg>
+      <div class="row between wrap" style="gap:8px;margin-top:10px"><div><span class="kpi-num" style="font-size:40px">${num(p, "%")}</span>
+        <div class="small muted">готовность документа</div></div>
+        ${b != null ? `<div class="small" style="text-align:right"><span class="muted">до ответов</span> <b>${b}%</b> → <b>${p}%</b></div>` : ""}</div></div>`;
+  }
+  // «Блокеры гаснут»: критичные до ответов — точки; закрытые ответами одна за другой зеленеют и гаснут
+  function blockersHTML(B, A) {
+    const b = +B.critical, a = +A.critical;
+    if (!isFinite(b) || !isFinite(a) || (!b && !a)) return "";
+    const keep = Math.min(a, b), closed = Math.max(0, b - a), added = Math.max(0, a - b), CAP = 40;
+    const kinds = [...Array(keep).fill("open"), ...Array(closed).fill("closed"), ...Array(added).fill("new")];
+    let k = 0;
+    const dots = kinds.slice(0, CAP).map((t) => `<i class="bk ${t}"${t === "closed" ? ` style="--i:${k++}"` : ""}></i>`).join("");
+    return `<div class="bk-row" role="img" aria-label="Критичные блокеры: было ${b}, стало ${a}, закрыто ${closed}">
+      <div class="bk-dots" aria-hidden="true">${dots}${kinds.length > CAP ? `<span class="small faint">+${kinds.length - CAP}</span>` : ""}</div>
+      <div class="small"><span>Закрыто блокеров:</span> <b>${closed}</b> <span>· открыто:</span> <b>${a}</b> / <b>${b}</b>${added ? ` <span>· новых:</span> <b>${added}</b>` : ""}</div></div>`;
   }
   function renderOverview(el) {
     const s = D.scores;
@@ -648,6 +696,7 @@
           ${profileHTML()}
         </div>
         <div class="col-fill">
+          ${dawnHTML()}
           <div class="card"><div class="card-title">${ic("trace")}<span class="h2 grow">Трассировка агента</span><span class="chip chip-brand">${D.trace.filter((t) => t.status !== "skip").length}/${D.trace.length}</span></div>${traceHTML()}</div>
           ${D.changes.length ? `<div class="card" style="display:flex;gap:14px;align-items:center"><span class="logo-mark" style="border-radius:14px;flex:none">${ic("wand")}</span>
             <div class="grow"><div class="caption">Исправленный документ</div><div class="small muted">${D.changes.length} формулировок исправлено${D.rescore ? ` · балл ${D.rescore.before} → ${D.rescore.after}` : ""}</div></div>
@@ -1319,6 +1368,112 @@
     document.dispatchEvent(new CustomEvent("reqlens:print"));
   });
 
+  // ------------------------------------------------------------ v9+: тур по отчёту за 60 секунд (для жюри и демо)
+  // Подсветка блока «прожектором», карточка с пояснением, автопереход; ←/→ — шаги, Esc — выход. Шаги — из данных отчёта.
+  const TOUR = (() => {
+    const AUTO = 7500;
+    let steps = [], i = 0, timer = 0, paused = false, ring = null, card = null, raf = 0;
+    function build() {
+      const s = [], v = DP && DP.verdict;
+      s.push({ view: "overview", sel: "#summary30", alt: "#verdict", title: "Вердикт",
+        text: v ? `Разработка: ${v.development}, тестирование: ${v.testing}. ${D.verdict.headline}.` : `${D.verdict.title}. ${D.verdict.headline}.` });
+      s.push({ view: "overview", sel: "#dawn", title: "Готовность",
+        text: `Готовность документа — ${READY}% (${PHASE(READY)})${READY_BEFORE != null ? `; до ответов аналитика было ${READY_BEFORE}%` : ""}.` });
+      const w = priorities(1)[0], f = w && w[1], ln = f && (f.line || ((f.refs || []).find((r) => r.line) || {}).line);
+      if (f && ln) s.push({ view: "doc", line: ln, sel: `#L${ln}`, title: "Самый серьёзный дефект",
+        text: `${f.kind === "set" ? f.fid : label(reqById[f.rid])} · ${f.cname}: ${short(f.problem || "", 170)}` });
+      if (ANS) { const B = ANS.before || {}, A = ANS.after || {};
+        s.push({ view: "overview", sel: "#answers", title: "Ответы аналитика",
+          text: `Учтено ответов: ${ANS.items.length}. Закрыто блокеров: ${Math.max(0, B.critical - A.critical)}, открыто ${A.critical} из ${B.critical}. Без цитаты ответа ничего не закрывается.` }); }
+      if (DEC.length) s.push({ view: "overview", sel: "#decisions", title: "Решения для владельца продукта",
+        text: `Развилок: ${DEC.length}. Первая — «${short(DEC[0].title, 120)}»: варианты и что меняется для клиента.` });
+      if (D.scores.tests_total) s.push({ view: "tests", sel: "#view-tests .card", alt: "#view-tests", title: "Приёмочные тесты",
+        text: `Тест можно составить для ${D.scores.tests_ok} из ${D.scores.tests_total} требований; сценарии Gherkin выгружаются в tests.feature.` });
+      s.push({ view: "overview", sel: "#pagehead", title: "Готово",
+        text: "Это весь отчёт за минуту. Скачайте отчёт .md для сдачи или спросите отчёт — ответы офлайн, со ссылками на строки документа." });
+      return s;
+    }
+    const target = (st) => document.querySelector(st.sel) || (st.alt && document.querySelector(st.alt));
+    function place() {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const st = steps[i], t = st && target(st); if (!t || !ring) return;
+        const r = t.getBoundingClientRect(), pad = 8, vw = innerWidth, vh = innerHeight;
+        const top = Math.max(4, r.top - pad), left = Math.max(4, r.left - pad), h = Math.min(vh - 8, r.height + 2 * pad), w = Math.min(vw - 8, r.width + 2 * pad);
+        Object.assign(ring.style, { top: top + "px", left: left + "px", width: w + "px", height: h + "px" });
+        if (vw < 640) { card.classList.add("dock"); card.style.top = card.style.left = ""; return; }
+        card.classList.remove("dock");
+        const cw = card.offsetWidth, ch = card.offsetHeight;
+        let cy = top + h + 12; if (cy + ch > vh - 8) cy = top - ch - 12; if (cy < 8) cy = Math.max(8, vh - ch - 16);
+        card.style.top = cy + "px"; card.style.left = Math.max(8, Math.min(vw - cw - 8, left)) + "px";
+      });
+    }
+    function arm() {
+      clearTimeout(timer); const bar = card.querySelector(".tour-bar i");
+      bar.classList.remove("run"); void bar.offsetWidth;
+      if (paused || i >= steps.length - 1) return;
+      bar.style.animationDuration = AUTO + "ms"; bar.classList.add("run");
+      timer = setTimeout(() => go(i + 1), AUTO);
+    }
+    function go(k) {
+      if (!ring) return;
+      i = Math.max(0, Math.min(steps.length - 1, k));
+      const st = steps[i];
+      hidePop(true); closeDrawer();
+      if (st.line) goLine(st.line); else if (active !== st.view) show(st.view);
+      const t = target(st);
+      if (t && !st.line) t.scrollIntoView({ behavior: REDUCED ? "auto" : "smooth", block: t.offsetHeight > innerHeight * 0.6 ? "start" : "center" });
+      card.querySelector(".tour-n").textContent = i + 1; card.querySelector(".tour-total").textContent = steps.length;
+      card.querySelector(".tour-t").textContent = st.title; card.querySelector(".tour-x").textContent = st.text;
+      card.querySelector("[data-tour=prev]").disabled = i === 0;
+      const nx = card.querySelector("[data-tour=next]"); nx.lastChild.textContent = i === steps.length - 1 ? "Завершить" : "Далее";
+      ring.classList.remove("pulse"); void ring.offsetWidth; ring.classList.add("pulse");
+      setTimeout(place, REDUCED ? 30 : 420); place(); arm();
+    }
+    function onKey(e) {
+      if (!ring) return;
+      if (e.key === "Escape") { e.preventDefault(); e.stopImmediatePropagation(); stop(); }
+      else if (e.key === "ArrowRight" || e.key === "Enter") { e.preventDefault(); e.stopImmediatePropagation(); i >= steps.length - 1 ? stop() : go(i + 1); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); e.stopImmediatePropagation(); go(i - 1); }
+    }
+    function start() {
+      if (ring) stop();
+      steps = build(); i = 0; paused = false;
+      ring = document.createElement("div"); ring.className = "tour-ring no-print"; ring.setAttribute("aria-hidden", "true");
+      card = document.createElement("div"); card.className = "tour-card no-print"; card.setAttribute("role", "dialog"); card.setAttribute("aria-label", "Тур по отчёту");
+      card.innerHTML = `<div class="caption"><span>Тур по отчёту</span> · <span class="tour-n">1</span> / <span class="tour-total"></span></div>
+        <div class="h3 tour-t" style="margin-top:6px"></div><p class="small tour-x" aria-live="polite" style="margin-top:6px"></p>
+        <div class="tour-bar" aria-hidden="true"><i></i></div>
+        <div class="row tour-btns" style="gap:6px;margin-top:10px"><button class="btn btn-sm btn-ghost" type="button" data-tour="prev">${ic("chevron", 14)}Назад</button>
+          <button class="btn btn-sm btn-ghost" type="button" data-tour="pause" title="Пауза">${ic("pause", 14)}<span>Пауза</span></button><span class="grow"></span>
+          <button class="btn btn-sm btn-ghost btn-icon" type="button" data-tour="stop" aria-label="Стоп" title="Стоп">${ic("x", 14)}</button>
+          <button class="btn btn-sm btn-primary" type="button" data-tour="next">${ic("arrow-right", 14)}<span>Далее</span></button></div>`;
+      document.body.append(ring, card);
+      card.addEventListener("click", (e) => {
+        const b = e.target.closest("[data-tour]"); if (!b) return;
+        const a = b.dataset.tour;
+        if (a === "prev") go(i - 1);
+        else if (a === "next") (i >= steps.length - 1 ? stop() : go(i + 1));
+        else if (a === "stop") stop();
+        else if (a === "pause") { paused = !paused; b.innerHTML = ic(paused ? "play" : "pause", 14) + `<span>${paused ? "Продолжить" : "Пауза"}</span>`; b.title = paused ? "Продолжить" : "Пауза"; arm(); }
+      });
+      document.addEventListener("keydown", onKey, true);
+      addEventListener("resize", place); addEventListener("scroll", place, true);
+      document.body.classList.add("touring");
+      go(0); card.querySelector("[data-tour=next]").focus({ preventScroll: true });
+    }
+    function stop() {
+      clearTimeout(timer); cancelAnimationFrame(raf);
+      document.removeEventListener("keydown", onKey, true); removeEventListener("resize", place); removeEventListener("scroll", place, true);
+      if (ring) ring.remove(); if (card) card.remove(); ring = card = null;
+      document.body.classList.remove("touring");
+      const b = $("#btn-tour"); if (b) b.focus({ preventScroll: true });
+    }
+    return { start, stop, get on() { return !!ring; } };
+  })();
+  window.REQLENS_TOUR = () => TOUR.start();  // Studio запускает тур в отчёте во фрейме
+  window.addEventListener("beforeprint", () => { if (TOUR.on) TOUR.stop(); });
+
   // ------------------------------------------------------------ API для модулей (report-graph.js) и старт
   window.RL = { D, $, $$, esc, ic, SEV, ORDER, KINDS, REDUCED, chip, statusChip, label, reqById, empty, toast, copy,
     show, goReq, goDocReq, goLine, openFinding, openDrawer, closeDrawer, RENDER, ONSHOW, ONHIDE, get active() { return active; } };
@@ -1334,6 +1489,7 @@
     };
     window.addEventListener("hashchange", route);
     route();
+    if (/[?&]tour=1(?:&|$)/.test(location.search)) setTimeout(() => TOUR.start(), REDUCED ? 100 : 900);
   }
   // модули подключаются следующими <script>; стартуем, когда все они выполнены
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else setTimeout(start, 0);

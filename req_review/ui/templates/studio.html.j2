@@ -228,7 +228,7 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
       <section class="screen" id="s-result" aria-labelledby="r-title">
         <header class="pagehead" style="flex-direction:column;align-items:stretch"><div><div class="caption" id="r-caption">Готово</div><h1 class="h1" style="margin-top:6px" id="r-title">Отчёт</h1>
             <div class="row wrap" style="margin-top:8px" id="r-meta"></div></div>
-          <div class="row wrap"><span class="row wrap" id="downloads"></span><button class="btn btn-sm btn-ghost" type="button" id="r-proj" hidden>{{ icon("history", 14) }}История проекта</button></div></header>
+          <div class="row wrap"><span class="row wrap" id="downloads"></span><button class="btn btn-sm btn-ghost" type="button" id="r-tour" hidden>{{ icon("play", 14) }}Тур за 60 секунд</button><button class="btn btn-sm btn-ghost" type="button" id="r-proj" hidden>{{ icon("history", 14) }}История проекта</button></div></header>
         <div id="r-note"></div>
         <div class="grid" id="res-grid">
           <iframe id="frame" title="Интерактивный отчёт"></iframe>
@@ -701,7 +701,7 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
   function setResult(R){state.res=R;
     $("#r-caption").textContent=R.caption;$("#r-title").textContent=R.title;$("#r-meta").innerHTML=R.meta||"";$("#r-note").innerHTML="";
     $("#downloads").innerHTML=R.files.map(([k,url,name],i)=>`<a class="btn btn-sm ${i===0?"btn-primary":"btn-outline"}" href="${esc(url)}" ${name.endsWith(".html")?'target="_blank" rel="noopener"':`download="${esc(name)}"`}>${ic(name.endsWith(".html")?"arrow-up-right":"download",14)}${esc(k)}</a>`).join("");
-    if(R.frame)$("#frame").src=R.frame;
+    $("#r-tour").hidden=true;if(R.frame)$("#frame").src=R.frame;
     const b=$("#cmp-fixed");b.disabled=!R.canFixed;b.title=R.fixedTitle||"";
     $("#cmp-card").hidden=!!R.example;$("#ans-card").hidden=true;
     $("#cmp-open").hidden=!R.compare;$("#r-proj").hidden=!R.pid;
@@ -709,6 +709,10 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
     if(R.example)sugg(["Что исправить первым?","Какие есть противоречия?","Можно ли начинать разработку?","Какие вопросы аналитику?"]);else loadSuggest();
     enable("#nav-report",()=>show("s-result"));}
   $("#r-proj").onclick=()=>{if(state.res&&state.res.pid)openProject(state.res.pid);};
+  // тур по отчёту (v9+) живёт в самом HTML-отчёте; Studio только запускает его во фрейме
+  const tourFn=()=>{try{return $("#frame").contentWindow.REQLENS_TOUR||null;}catch(e){return null;}};
+  $("#frame").addEventListener("load",()=>{$("#r-tour").hidden=!tourFn();});
+  $("#r-tour").onclick=()=>{const f=tourFn();if(!f)return;$("#frame").scrollIntoView({behavior:REDUCED?"auto":"smooth",block:"start"});setTimeout(f,REDUCED?0:350);};
   $("#cmp-open").onclick=()=>{if(state.res&&state.res.compare)renderCompare(state.res.compare,{run:state.run});};
   // режим «Демо»: сохранённый прогон живёт в старых эндпоинтах Studio (/jobs/…, /api/jobs/…/ask) и не попадает в историю
   function openLegacy(job,ev){const a=ev.artifacts,s=ev.summary;
@@ -837,6 +841,11 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
   const VCH={"нельзя":"critical","с оговорками":"major","можно":"ok"};
   const vchip=v=>v?`<span class="chip sev-${VCH[v]||"major"}">${ic(VCH[v]==="ok"?"check":VCH[v]==="critical"?"x":"alert",13)}${esc(v)}</span>`:'<span class="faint">—</span>';
   const tchip=t=>{const m=ATYPE[t]||ATYPE.evasive;return `<span class="chip ${m[0]}">${ic(m[1],13)}${m[2]}</span>`;};
+  function bkHTML(B,A){const b=+B.critical,a=+A.critical;if(!isFinite(b)||!isFinite(a)||(!b&&!a))return "";
+    const keep=Math.min(a,b),closed=Math.max(0,b-a),added=Math.max(0,a-b),kinds=[...Array(keep).fill("open"),...Array(closed).fill("closed"),...Array(added).fill("new")];
+    let k=0;const dots=kinds.slice(0,40).map(t=>`<i class="bk ${t}"${t==="closed"?` style="--i:${k++}"`:""}></i>`).join("");
+    return `<div class="bk-row" role="img" aria-label="Критичные блокеры: было ${b}, стало ${a}, закрыто ${closed}"><div class="bk-dots" aria-hidden="true">${dots}${kinds.length>40?`<span class="small faint">+${kinds.length-40}</span>`:""}</div>
+      <div class="small"><span>Закрыто блокеров:</span> <b>${closed}</b> <span>· открыто:</span> <b>${a}</b> / <b>${b}</b>${added?` <span>· новых:</span> <b>${added}</b>`:""}</div></div>`;}
   function ansBlock(a){const B=a.before||{},A=a.after||{},vb=B.verdict||{},va=A.verdict||{},items=a.items||[];
     const n={};items.forEach(x=>{n[x.type]=(n[x.type]||0)+1;});
     const kp=(l,b,af,u,lower)=>{if(b==null||af==null)return "";const d=af-b,good=lower?d<0:d>0;
@@ -848,6 +857,7 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
         <article class="kpi"><span class="lbl">Вердикт</span><div class="stack" style="gap:8px;margin-top:10px">
           <div class="row wrap small" style="gap:6px"><span class="muted">Разработка</span>${vchip(vb.development)}<span class="faint">→</span>${vchip(va.development)}</div>
           <div class="row wrap small" style="gap:6px"><span class="muted">Тестирование</span>${vchip(vb.testing)}<span class="faint">→</span>${vchip(va.testing)}</div></div></article></div>
+      ${bkHTML(B,A)}
       <div class="row wrap" style="gap:8px;margin-top:14px">${Object.keys(ATYPE).filter(t=>n[t]).map(t=>`${tchip(t)}<b class="small">${n[t]}</b>`).join(" ")}</div>
       ${state.unknown.length?`<div class="banner-err banner-warn" style="margin-top:12px">${ic("alert",18)}<div>Нет таких вопросов в прогоне: <b>${esc(state.unknown.join(", "))}</b> — эти ответы не учтены.</div></div>`:""}
       <div class="table-wrap" style="margin-top:12px"><table class="tbl ans-tbl"><thead><tr><th scope="col">Вопрос</th><th scope="col">Ответ</th><th scope="col">Тип ответа</th><th scope="col">Что закрыто / осталось</th></tr></thead><tbody>
@@ -973,6 +983,7 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
     "Под заголовком «### Q-xx» должен быть текст ответа — пустые вопросы не учитываются.":"«### Q-xx» тақырыбының астында жауап мәтіні болуы керек — бос сұрақтар есепке алынбайды.",
     "Если исходный прогон ещё идёт — дождитесь отчёта и отправьте ответы снова.":"Бастапқы прогон әлі жүріп жатса — есепті күтіп, жауаптарды қайта жіберіңіз.",
     // проекты
+    "Тур за 60 секунд":"60 секундтық тур","Закрыто блокеров:":"Жабылған блокерлер:","· открыто:":"· ашық:","· новых:":"· жаңа:",
     "Проекты и история проверок":"Жобалар және тексерулер тарихы","Проект — один документ требований и все его версии.":"Жоба — бір талаптар құжаты және оның барлық нұсқалары.",
     "Новый проект":"Жаңа жоба","Проверить новую версию":"Жаңа нұсқаны тексеру","Удалить проект":"Жобаны жою","Динамика по версиям":"Нұсқалар бойынша динамика",
     "Версия":"Нұсқа","Документ":"Құжат","Проверено":"Тексерілді","Режим и статус":"Режим және күй","Удалить безвозвратно":"Біржола жою","Отмена":"Болдырмау",

@@ -62,6 +62,22 @@ def test_report_without_answers_hides_block(reports):
     assert _decisions([{"title": ""}, {"title": "T", "where": [{"rid": "R-001", "line": "x"}]}])[0]["where"][0]["line"] is None
 
 
+def test_dawn_blockers_and_tour(reports):
+    """v9+: «Рассвет готовности», «блокеры гаснут» и тур по отчёту — в HTML; движение только без reduced-motion."""
+    from req_review.ui import asset
+
+    html = reports["r1"]
+    for marker in ("dawnHTML", "Рассвет готовности", "blockersHTML", "Закрыто блокеров:", "const TOUR", "REQLENS_TOUR",
+                   "Тур за 60 секунд", "tour=1", "Дайындық таңы", "60 секундтық тур"):
+        assert marker in html, marker
+    css = asset("base.css")
+    motion = re.findall(r"@media \(prefers-reduced-motion:no-preference\)\{(.*?)\n\}", css, re.S)
+    assert any("dawn-rise" in m for m in motion) and any("bk-off" in m for m in motion), "анимация — только без reduced-motion"
+    assert ".tour-ring{position:fixed;z-index:var(--z-modal)" in css and "@media print{.tour-ring,.tour-card{display:none" in css
+    studio = Path("req_review/ui/templates/studio.html.j2").read_text(encoding="utf-8")
+    assert 'id="r-tour"' in studio and "REQLENS_TOUR" in studio and "bkHTML(B,A)" in studio
+
+
 def test_report_ui_hides_v9_blocks_and_sibling_links_safely():
     from req_review.ui import asset
 
