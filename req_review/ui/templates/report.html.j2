@@ -10,7 +10,7 @@
 <style>
 {{ fonts_css()|safe }}
 {{ tokens_css()|safe }}
-{{ asset("base.css")|safe }}
+{{ asset_min("base.css")|safe }}
 </style>
 <script>(function(){try{var t=localStorage.getItem("reqlens-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}})()</script>
 </head>
@@ -68,13 +68,13 @@
 {# 3d-force-graph (с three.js) — инлайн, gzip+base64; распаковывается только при открытии раздела «Граф» #}
 <script type="application/octet-stream" id="lib-3d" data-enc="gzip-base64">{{ asset_b64("vendor/3d-force-graph.min.js.gz") }}</script>
 <script>
-{{ asset("report-i18n.js")|safe }}
+{{ asset_min("report-i18n.js")|safe }}
 </script>
 <script>
-{{ asset("report.js")|safe }}
+{{ asset_min("report.js")|safe }}
 </script>
 <script>
-{{ asset("report-graph.js")|safe }}
+{{ asset_min("report-graph.js")|safe }}
 </script>
 </body>
 </html>

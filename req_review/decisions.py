@@ -52,6 +52,12 @@ def _sentences(text: str) -> list[str]:
     return [s for s in out if len(re.findall(r"[А-Яа-яЁё]", s)) >= len(re.findall(r"[A-Za-z]", s)) / 2]
 
 
+def _first(text: str) -> str:
+    """Первое предложение по-русски или пустая строка (текст целиком на латинице, пустой — не ошибка)."""
+    ss = _sentences(text or "")
+    return ss[0] if ss else ""
+
+
 def _short(s: str, n: int) -> str:
     s = " ".join(str(s).split()).strip().rstrip(".")
     return s if len(s) <= n else s[: n - 1].rsplit(" ", 1)[0].rstrip(",;:") + "…"
@@ -73,9 +79,9 @@ def _impact(f: dict) -> str:
 def _item(f: dict, sid: str, reqs: dict) -> dict:
     labeled = [r for r in f.get("refs", []) if r.get("quote")]
     labels = list(dict.fromkeys(_label(r, reqs) for r in labeled))
-    fix = _short(_sentences(f.get("fix", ""))[0] if f.get("fix") else "", 200)
+    fix = _short(_first(f.get("fix", "")), 200)
     if f.get("kind") == "gap":
-        title = f"Нужно ли закрыть пропуск: {_short(_sentences(f.get('problem', ''))[0], 110)}?"
+        title = f"Нужно ли закрыть пропуск: {_short(_first(f.get('problem', '')), 110)}?"
         options = [f"Дописать в документ: {fix}" if fix else "Дописать требование в документ",
                    "Сознательно исключить из этой версии и записать это в документе"]
     elif f.get("values"):
@@ -83,12 +89,12 @@ def _item(f: dict, sid: str, reqs: dict) -> dict:
         title = f"Какое значение принять: {' или '.join(vals[:3])}?"
         options = [f"{v.get('value')} ({_label({'req_id': v.get('rid')}, reqs)})" for v in f["values"][:3]]
     elif len(labels) >= 2:
-        title = f"Что верно: {labels[0]} или {labels[1]}? {_short(_sentences(f.get('problem', ''))[0], 110)}"
+        title = f"Что верно: {labels[0]} или {labels[1]}? {_short(_first(f.get('problem', '')), 110)}"
         options = [f"Принять {_label(r, reqs)}: «{_quote(r)}»" for r in labeled[:2]]
         if fix:
             options.append(f"Изменить оба места: {fix}")
     else:
-        title = f"Как разрешить противоречие в {labels[0] if labels else 'документе'}? {_short(_sentences(f.get('problem', ''))[0], 110)}"
+        title = f"Как разрешить противоречие в {labels[0] if labels else 'документе'}? {_short(_first(f.get('problem', '')), 110)}"
         options = [f"Как предлагает агент: {fix}" if fix else "Исправить формулировку",
                    "Оставить как есть и явно описать исключение в документе"]
     return {"title": title, "where": _where(f, reqs), "impact": _impact(f), "options": options[:3], "source_ids": [sid],

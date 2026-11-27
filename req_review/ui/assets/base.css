@@ -740,3 +740,36 @@ body{background:var(--bg);font:var(--t-body);font-feature-settings:"tnum"}
   .ov{grid-template-columns:1fr}
   .dcard,.box,.ov-stat,.ov-verdict{break-inside:avoid}
 }
+/* v9: ответы аналитика — «было → стало», таблица ответов, цитата-основание */
+.ans-ba{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,128px),1fr));gap:10px}
+.ans-ba-item{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border:1px solid var(--border);border-radius:var(--r-field);background:var(--surface-2);min-width:0}
+.ans-ba-v{display:flex;align-items:center;flex-wrap:wrap;gap:6px;font:600 20px/1.1 var(--font-sans)}
+.ans-ba-v .was{color:var(--text-3);text-decoration:line-through;text-decoration-thickness:1px}
+.ans-ba-v .arr{color:var(--text-3);display:inline-flex}
+.ans-ba-v .now{color:var(--text)}
+.ans-ba-v .chip{font-size:12px}
+mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2px;box-shadow:inset 0 -2px 0 var(--ok)}
+.ans-tbl td{vertical-align:top}
+.ans-tbl tr.ans-contradictory td:first-child{box-shadow:inset 3px 0 0 var(--critical)}
+.ans-tbl tr.ans-evasive td:first-child{box-shadow:inset 3px 0 0 var(--major)}
+.ans-tbl tr.ans-concrete td:first-child{box-shadow:inset 3px 0 0 var(--ok)}
+/* v9: решения для владельца продукта */
+.dec-list{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:12px}
+.dec{border:1px solid var(--border);border-radius:var(--r-card);padding:14px 16px;background:var(--surface-2);display:grid;gap:10px;min-width:0;
+  transition:border-color var(--motion-base) var(--motion-ease),transform var(--motion-base) var(--motion-ease)}
+.dec:hover{border-color:var(--border-strong)}
+.dec-head{display:flex;gap:10px;align-items:flex-start}
+.dec-head .h3{overflow-wrap:anywhere}
+.dec-row{display:grid;gap:4px}
+.dec-opts{margin:0;padding-left:18px;display:grid;gap:2px}
+.dec-foot{gap:6px;align-items:center}
+.dec .chip b{margin-left:2px}
+/* появление: числа «стало» и чипы типа — один раз, только если пользователь не просил меньше движения */
+@media (prefers-reduced-motion:no-preference){
+  .ans-ba-v .now{animation:ans-pop var(--motion-slow) var(--motion-ease) .35s both}
+  .ans-ba-v .was{animation:ans-strike .5s var(--motion-ease) .15s both}
+  .dec:hover{transform:translateY(-1px)}
+}
+@keyframes ans-pop{from{opacity:0;transform:translateY(6px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes ans-strike{from{text-decoration-color:transparent}to{text-decoration-color:currentColor}}
+@media print{.ans-ba-item,.dec{background:#fff}}

@@ -178,7 +178,18 @@ html,body{height:100%;overflow:hidden}
     <p class="lead small">Только измеренные цифры: <code class="mono">bench/RESULTS.md</code>{% if bench_rag.recall != "—" %} и <code class="mono">bench/RESULTS_RAG.md</code>{% endif %}, модель и дата прогона указаны в файле. Баллы считает код по формулам из «Методики оценки».</p>
   </section>
 
-  <!-- 7b. Устойчивость: без модели, незнакомый документ, исправил → проверил заново -->
+  {% if blind %}<!-- 7a. Слепые документы: написаны вне команды, ключ дефектов — у автора (bench/blind_eval.py) -->
+  <section class="slide" aria-label="Слепые документы">
+    <div class="caption">Слепая оценка</div>
+    <h2 class="h1" style="margin-top:8px">Документы, которые агент видит впервые</h2>
+    <p class="lead small">Написаны не командой, ключ дефектов хранился отдельно, агент на них не настраивался.</p>
+    <div class="card" style="margin-top:16px;overflow-x:auto"><table class="trust" aria-label="Слепые документы">
+      <thead><tr>{% for h in blind.head %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+      <tbody>{% for r in blind.rows %}<tr>{% for c in r %}<td>{{ c }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div>
+    <p class="small muted" style="margin-top:10px">{{ blind.meta }} Источник: <code class="mono">bench/RESULTS.md</code>.</p>
+  </section>
+
+  {% endif %}<!-- 7b. Устойчивость: без модели, незнакомый документ, исправил → проверил заново -->
   <section class="slide" aria-label="Устойчивость">
     <div class="caption">Устойчивость</div>
     <h2 class="k2">Работает, даже когда модель недоступна</h2>

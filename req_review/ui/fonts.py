@@ -11,7 +11,7 @@ from . import ASSETS
 
 FAMILY = "Manrope"
 SUBSETS = (  # файлы урезаны до этих символов (fontTools subset, оставлены kern и liga), чтобы отчёт был < 1 МБ
-    ("latin", "U+0020-007E, U+00A0-00FF, U+2010-2027, U+2030-203A, U+20AC, U+2116, U+2190-2193, U+2212"),
+    ("latin", "U+0020-007E, U+00A0, U+00A7, U+00AB, U+00B0, U+00B7, U+00BB, U+00D7, U+2013-2014, U+2018-201E, U+2022, U+2026, U+2030, U+2039-203A, U+20AC, U+2116, U+2190-2193, U+2212"),
     ("latin-ext", "U+20B8"),
     ("cyrillic", "U+0400-045F, U+0490-0491, U+04B0-04B1"),
     ("cyrillic-ext", "U+0492-0493, U+049A-049B, U+04A2-04A3, U+04AE-04AF, U+04BA-04BB, U+04D8-04D9, U+04E8-04E9"),

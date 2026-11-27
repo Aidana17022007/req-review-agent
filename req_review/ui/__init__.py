@@ -59,6 +59,24 @@ def asset(name: str) -> str:
 
 
 @lru_cache(maxsize=None)
+def asset_min(name: str) -> str:
+    """Ассет для инлайна в офлайн-HTML без комментариев и отступов (исходник на диске не меняется) — отчёт < 1 МБ.
+
+    CSS: убираются /* … */ и отступы. JS: убираются только строки, целиком состоящие из // комментария, и отступы
+    в начале строк (код и строки внутри строк не трогаются)."""
+    import re
+
+    t = asset(name)
+    if name.endswith(".css"):
+        t = re.sub(r"/\*.*?\*/", "", t, flags=re.S)
+        return re.sub(r"\s*\n\s*", "\n", t).strip()
+    if name.endswith(".js"):
+        t = re.sub(r"(?m)^[ \t]*//[^\n]*\n", "", t)
+        return re.sub(r"(?m)^[ \t]+", "", t)
+    return t
+
+
+@lru_cache(maxsize=None)
 def asset_b64(name: str) -> str:
     """Бинарный ассет (например, gzip-бандл библиотеки) в base64 — для инлайна в офлайн-HTML без CDN."""
     import base64
@@ -76,7 +94,7 @@ def env():
     e = Environment(loader=FileSystemLoader(str(TEMPLATES)), autoescape=select_autoescape(["html", "j2"]))
     from .fonts import fonts_css
 
-    e.globals.update(icon=icon, ICONS=ICONS, tokens_css=tokens_css, fonts_css=fonts_css, asset=asset, asset_b64=asset_b64,
+    e.globals.update(icon=icon, ICONS=ICONS, tokens_css=tokens_css, fonts_css=fonts_css, asset=asset, asset_min=asset_min, asset_b64=asset_b64,
                      logo_mark=logo_mark_factory(), favicon_href=favicon_href)
     return e
 

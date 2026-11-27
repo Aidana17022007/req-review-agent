@@ -69,3 +69,19 @@ def test_rephrase_keeps_code_facts_and_rejects_new_numbers():
     assert out[1]["wording"] == "код" and out[1]["title"] == base[1]["title"]  # новое число 7 — формулировка модели отклонена
     assert rephrase([dict(d) for d in base], NS(provider="mock"))[0]["wording"] == "код"
     assert os.environ.get("LLM_CACHE") == "0"
+
+
+def test_latin_only_fix_or_problem_does_not_crash():
+    """Модель написала рекомендацию или проблему целиком латиницей (код, английский) — повестка строится, без IndexError."""
+    from req_review.decisions import build_decisions
+
+    reqs = [{"rid": "R-001", "doc_id": "FR-01", "line_start": 3, "text": "Система должна сохранять порог методом GET."},
+            {"rid": "R-002", "doc_id": "FR-02", "line_start": 4, "text": "Порог сохраняется методом PUT."}]
+    refs = [{"req_id": "R-001", "quote": "методом GET"}, {"req_id": "R-002", "quote": "методом PUT"}]
+    data = {"requirements": reqs, "set_findings": [
+        {"kind": "contradiction", "criterion": "set_consistent", "severity": "critical", "refs": refs,
+         "problem": "Method GET vs PUT.", "fix": "Use PUT /alerts/limit."},
+        {"kind": "gap", "criterion": "set_complete", "severity": "critical", "refs": refs[:1],
+         "problem": "Не указан таймаут.", "fix": "   "}]}
+    ds = build_decisions(data)
+    assert len(ds) >= 1 and all(d["title"] for d in ds)

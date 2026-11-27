@@ -63,6 +63,33 @@ def team(path: Path = ROOT / "docs" / "team.yaml") -> list[dict]:
     return out
 
 
+BLIND_HEAD = "## Слепые документы"
+
+
+def blind_results(path: Path = ROOT / "bench" / "RESULTS.md") -> dict | None:
+    """Раздел «Слепые документы» (пишет bench/blind_eval.py --results) → {"meta", "head", "rows"} для сайта и слайдов.
+
+    Только измеренные цифры: нет файла, нет раздела, нет таблицы или прогон на mock — None, и раздел не показывается.
+    """
+    if not path.exists():
+        return None
+    t = path.read_text(encoding="utf-8")
+    i = t.find(BLIND_HEAD)
+    if i < 0:
+        return None
+    j = t.find("\n## ", i + len(BLIND_HEAD))
+    sec = t[i:j if j >= 0 else len(t)]
+    meta = next((ln.strip() for ln in sec.splitlines() if ln.strip().startswith("*Дата:*")), "")
+    if "mock" in meta.lower():
+        return None
+    cells = lambda ln: [re.sub(r"\*\*(.+?)\*\*", r"\1", c).strip() for c in ln.strip().strip("|").split("|")]  # noqa: E731
+    table = [ln for ln in sec.splitlines() if ln.strip().startswith("|")]
+    rows = [cells(ln) for ln in table[2:] if not re.fullmatch(r"[\s|:-]+", ln)]
+    if len(table) < 3 or not rows:
+        return None
+    return {"meta": re.sub(r"\*([^*]+)\*", r"\1", meta), "head": cells(table[0]), "rows": rows}
+
+
 def build(out: Path = OUT) -> Path:
     from .a11y import contrast_table
     from .brand import OUT as BRAND_DIR
@@ -76,7 +103,8 @@ def build(out: Path = OUT) -> Path:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(html, encoding="utf-8")
     slides = ROOT / "docs" / "slides.html"
-    slides.write_text(env().get_template("slides.html.j2").render(bench=bench_metrics(), bench_rag=bench_metrics(ROOT / "bench" / "RESULTS_RAG.md"), team=team()), encoding="utf-8")
+    slides.write_text(env().get_template("slides.html.j2").render(bench=bench_metrics(), bench_rag=bench_metrics(ROOT / "bench" / "RESULTS_RAG.md"), team=team(),
+                                                                    blind=blind_results()), encoding="utf-8")
     return out
 
 
