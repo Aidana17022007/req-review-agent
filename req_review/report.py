@@ -468,6 +468,11 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
         for it in plan:
             w(f"| {_cell(', '.join(it['ids'][:4]))}: {_cell(it['title'][:90])} | {_cell(it['example'][:300])} | {it['example_source']} |")
         w("")
+    if getattr(rv, "bank_checklist", None):  # v13+: заполненный чек-лист «Ревью требований» из шаблона документа
+        from .bank_checklist import report_md as checklist_md
+
+        for line in checklist_md(rv.bank_checklist):
+            w(line)
     if ctx is not None:
         _extras_tail(w, ctx)
     lc = (getattr(rv, "depth", None) or {}).get("line_coverage")

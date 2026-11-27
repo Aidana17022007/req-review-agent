@@ -224,7 +224,8 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
         run_critic(rv, llm, log=log)
     elif os.getenv("REQLENS_CRITIC_CRITICAL", "1") != "0" and (any(
             f.severity == "critical" for rr in rv.req_results for f in rr.findings) or any(
-            f.severity == "critical" or (f.kind == "contradiction" and "LLM" in (f.source or "")) for f in rv.set_findings)):
+            f.severity == "critical" or (f.kind == "contradiction" and "LLM" in (f.source or ""))
+            or ("проход полноты" in (f.source or "") and f.severity != "minor") for f in rv.set_findings)):
         # self-consistency: даже в fast критичные замечания перепроверяются вторым проходом (1 запрос)
         run_critic(rv, llm, log=log, only_critical=True)
     # Шум: «не по шаблону / нет субъекта» к пунктам без ID (шаги логики, строки таблиц, критерии приёмки) — это одно
@@ -271,6 +272,9 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
         log(f"  комплаенс и безопасность: нарушений {rv.compliance['fired']}, новых замечаний {rv.compliance['findings']}")
     default_confidence(rv)
     rv.depth = depth_summary(rv, acc)
+    from .bank_checklist import fill as fill_checklist  # v13+: чек-лист «Ревью требований» из шаблона документа
+
+    rv.bank_checklist = fill_checklist(rv)
     rv.depth["review_stats"]["calibration"] = rv.calibration  # v8: калибровка серьёзности
     rv.depth["review_stats"]["self_check"] = rv.self_check or None  # v6: самосогласованность
     rv.depth["review_stats"]["focused"] = rv.focus or None  # v6: узкие проходы {task: добавлено}

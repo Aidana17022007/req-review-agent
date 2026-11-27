@@ -39,6 +39,10 @@ SYSTEM_CRITIC = """Ты — независимый строгий рецензе
 одно правило применяется только тогда, когда другое не применяется, — противоречия нет; (3) если пример даёт ровно тот
 результат, который следует из правил, — противоречия нет. В таких случаях — "drop" с причиной «противоречия нет: …»
 (такое замечание не удаляется, а понижается и помечается «судья сомневается» — человек решит сам).
+ПРОПУСК от прохода полноты проверяй по документу: если документ уже отвечает на вопрос (есть правило, строка таблицы
+ошибок или пример приёмки) — "drop" с причиной «описано: …»; если это общий вопрос «что если», который можно задать
+к любому ТЗ, а не конкретная дыра этого документа, — "downgrade" до minor; конкретный пропуск, без которого функцию
+нельзя реализовать или проверить, — "keep".
 Не добавляй новых замечаний. Будь объективен: отклоняй только явно ложные.
 Пиши на русском. Верни ТОЛЬКО JSON: {"verdicts":[{"n":1,"verdict":"keep|downgrade|drop|merge","into":null,
 "severity":"critical|major|minor","reason":"кратко, почему"}]}"""
@@ -71,6 +75,11 @@ def _collect(rv: ReviewResult) -> list[tuple[str, object, object]]:
     return items
 
 
+def _llm_gap(f) -> bool:
+    """v13+: пропуск, найденный проходом полноты модели, — в fast тоже идёт к судье (общие «что если» на чистом ТЗ)."""
+    return "проход полноты" in (f.source or "") and f.severity != "minor"
+
+
 def _llm_contradiction(f) -> bool:
     return getattr(f, "kind", "") == "contradiction" and "LLM" in (f.source or "") and not getattr(f, "values", None)
 
@@ -85,7 +94,8 @@ def run_critic(rv: ReviewResult, llm: BaseLLM, log=print, only_critical: bool = 
     all_items = _collect(rv)
     # v13+: в fast судья видит критичные и все противоречия, заявленные моделью (ложное противоречие на чистом ТЗ —
     # главный источник вердикта «нельзя» без причины)
-    items = [it for it in all_items if not only_critical or it[1].severity == "critical" or _llm_contradiction(it[1])]
+    items = [it for it in all_items if not only_critical or it[1].severity == "critical" or _llm_contradiction(it[1])
+             or _llm_gap(it[1])]
     rv.critic_scope = "critical" if only_critical else "all"
     if not items:
         rv.critic_used = True
