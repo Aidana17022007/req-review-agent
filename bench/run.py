@@ -27,6 +27,7 @@ from dotenv import load_dotenv  # noqa: E402
 from req_review.llm import build_llm_from_env  # noqa: E402
 from req_review.pipeline import ROOT, Options, agent_version, review_document  # noqa: E402
 
+KEEP_SECTIONS = ("## Реальный документ организаторов", "## Слепые документы")  # пишут real_eval.py и blind_eval.py
 TYPE_RU = {"vague": "Размытые слова", "missing_units": "Нет значений / единиц", "open_list": "Открытое перечисление",
            "tbd": "TBD / не заполнено", "and_or": "«и/или»", "conditional": "Условность «при необходимости»",
            "design": "Проектное решение", "compound": "Составное требование", "subjective": "Субъективная оценка",
@@ -123,7 +124,10 @@ def write_results(res: dict, label: str, version: str, base: dict | None = None)
     if "mock" in label:
         lines += ["", "> ⚠️ Прогон в режиме mock: модель не вызывалась, работают только словарные правила, детектор числовых "
                       "противоречий и эвристики. Для итоговых цифр запустите `python bench/run.py` с ключом модели."]
-    (HERE / "RESULTS.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    old = (HERE / "RESULTS.md").read_text(encoding="utf-8") if (HERE / "RESULTS.md").exists() else ""
+    keep = [old.index(h) for h in KEEP_SECTIONS if h in old]  # разделы real_eval.py и blind_eval.py не теряются
+    tail = ("\n" + old[min(keep):].rstrip() + "\n") if keep else ""
+    (HERE / "RESULTS.md").write_text("\n".join(lines) + "\n" + tail, encoding="utf-8")
 
     from req_review.ui import env
 
