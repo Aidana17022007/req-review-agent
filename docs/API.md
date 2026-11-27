@@ -26,6 +26,7 @@
 | 409 | `finished` | отмена уже завершённого прогона |
 | 409 | `not_ready` | вопрос ассистенту, пока отчёта нет |
 | 413 | `too_large` | файл больше 10 МБ |
+| 429 | `limit` | v9: исчерпан дневной лимит загрузок демо-сервера (см. «Лимиты демо») |
 | 415 | `unsupported` | содержимое не соответствует расширению (например, .exe переименован в .md) |
 | 422 | `invalid` | тело запроса не JSON / не тот тип |
 | 503 | `offline` | только из service worker: нет сети (см. «PWA») |
@@ -165,6 +166,56 @@ severity, problem, quote}`; `rows` — статус каждого требов�
 - `stream: true` — `text/event-stream`: `event: sources` (`{sources}`), затем несколько `event: answer` (`{text}` —
   куски ответа по предложениям), в конце `event: done` (остальные поля).
 
+### Ответы аналитика (v9)
+
+`POST /api/v1/runs/{rid}/answers` — ответы на вопросы прогона `rid` → **новый прогон** того же документа с учётом
+ответов (как `python review.py … --answers answers.md`) и сравнение с исходным. Тело — `multipart/form-data` с полем
+`file` (`.md` / `.txt`, ≤ 1 МБ) **или** JSON `{"text": "### Q-01\nПорог — 2 с для 95 % запросов…"}`.
+
+Формат ответов — шаблон `<имя>_answers_template.md` из `artifacts` прогона: заголовок `### Q-xx`, под ним текст
+ответа; вопросы без ответа можно удалить или оставить пустыми.
+
+```json
+// 202 — прогон с ответами поставлен в очередь (как POST /projects/{pid}/runs)
+{"run": { …Прогон, status: "queued"… }, "job": "7c1d…", "answers_of": "4f0c2a9e81b7",
+ "events": "/api/v1/jobs/7c1d…/events", "matched": 10, "unknown_qids": []}
+```
+
+- `matched` — сколько ответов сопоставлено с вопросами; `unknown_qids` — заголовки `Q-xx`, которых нет в прогоне.
+- Готовый прогон получает в `report.json` поле `answers` (SCHEMA 2.4), в `compare` — сравнение с исходным прогоном.
+- Ошибки: **400** `empty` (нет ни одного ответа), **400** `bad_request` (нет заголовков `### Q-xx`), **404**
+  `not_found`, **409** `not_ready` (исходный прогон не завершён), **429** `limit`.
+
+### Готовый пример (v9)
+
+Отчёт по документу организаторов без прогона и без расхода квоты — из `reports/requirements-report.json` сервера.
+
+| Метод и путь | Ответ |
+|---|---|
+| `GET /api/v1/example` | `{"document","model","started","agent_version","summary":{score, readiness, critical, major, reqs, verdict}, "report": {…report.json…}, "files": {"Интерактивный отчёт (HTML)": "/api/v1/example/files/report.html", "Отчёт (Markdown)": "/api/v1/example/files/report.md", "Данные (JSON)": "/api/v1/example/files/report.json"}}`; **404** `not_found`, если отчёта на сервере нет |
+| `GET /api/v1/example/files/{name}` | файл примера (`report.html` открывается в браузере) |
+| `GET /?example=1` | Studio сразу открывает экран результата примера (данные — `GET /api/v1/example`) |
+
+Пример в лимиты демо не входит.
+
+### Лимиты демо (v9)
+
+Публичный сервер ограничивает загрузки, которые тратят квоту модели: `POST /api/v1/projects/{pid}/runs`,
+`POST /api/v1/runs/{rid}/answers` и старый `POST /api/review`. Режим «Только правила» (`mode=rules`) и «Демо» не
+ограничены.
+
+| Переменная | По умолчанию | |
+|---|---|---|
+| `DEMO_UPLOADS_PER_IP` | `5` | загрузок с одного IP в сутки (UTC) |
+| `DEMO_UPLOADS_TOTAL` | `20` | загрузок всего в сутки |
+| | `0` | лимит выключен (локальный запуск) |
+
+```json
+// 429, заголовок Retry-After: <секунд до 00:00 UTC>
+{"error": {"code": "limit", "message": "Дневной лимит проверок на демо-сервере исчерпан (5 с одного адреса). Откройте готовый пример по документу организаторов или запустите ReqLens локально.",
+           "scope": "ip" | "total", "retry_after": 41230, "example": "/?example=1"}}
+```
+
 ## PWA
 
 | Путь | |
@@ -193,3 +244,9 @@ severity, problem, quote}`; `rows` — статус каждого требов�
 | До / После | поле `compare` прогона; «Проверить исправленный агентом» загружает `*_requirements_fixed.md` прогона новой версией |
 
 Режим «Демо» (`--demo`) по-прежнему идёт через старые эндпоинты Studio и в историю не попадает.
+
+| Экран v9 | Эндпоинты |
+|---|---|
+| Ответы аналитика: скачать шаблон → загрузить ответы → «было → стало» | шаблон — `files[*_answers_template.md]`, загрузка — `POST /runs/{rid}/answers`, итог — `answers` и `compare` нового прогона |
+| Решения для владельца продукта | `decisions[]` в `report.json`, файл `*_decisions.md` |
+| Готовый пример | `GET /?example=1`, `GET /example`; при **429** `limit` — кнопка «Открыть пример» (`error.example`) |
