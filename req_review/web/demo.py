@@ -57,7 +57,8 @@ class DemoRun:
     def describe(self) -> dict:
         d = self.data
         return {"available": True, "document": d.get("passport", {}).get("document", ""), "model": d.get("passport", {}).get("model", ""),
-                "reqs": len(d.get("requirements", [])), "started": d.get("passport", {}).get("started", ""), "has_after": bool(self.after)}
+                "reqs": sum(1 for r in d.get("requirements", []) if r.get("kind", "requirement") == "requirement"),  # v8: без строк API и приёмки
+                "started": d.get("passport", {}).get("started", ""), "has_after": bool(self.after)}
 
 
 def _rows(data: dict) -> list[dict]:
@@ -73,7 +74,7 @@ def _summary(data: dict, has_fixed: bool) -> dict:
     sc = data["scores"]
     crit = sum(1 for r in data["requirements"] for f in r["findings"] if f["severity"] == "critical") + \
         sum(1 for f in data.get("set_findings", []) if f["severity"] == "critical")
-    return {"score": sc["document"], "readiness": sc["readiness"], "reqs": len(data["requirements"]), "calls": data["passport"].get("calls", 0),
+    return {"score": sc["document"], "readiness": sc["readiness"], "reqs": sum(1 for r in data["requirements"] if r.get("kind", "requirement") == "requirement"), "calls": data["passport"].get("calls", 0),
             "critical": crit, "tests_ok": sc["tests"]["ok"], "tests_total": sc["tests"]["total"], "rows": _rows(data),
             "has_fixed": has_fixed, "document": data["passport"].get("document", ""), "demo": True}
 

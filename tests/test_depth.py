@@ -1037,3 +1037,15 @@ def test_calibration_drops_non_russian_model_findings_and_keeps_rule_severity(tm
     calibrate_severity(rv)
     assert rv.set_findings == [rule] and rule.severity == "major"
     assert any("не на русском" in r["reason"] for r in rv.rejected)
+
+
+def test_requirement_count_excludes_api_rows_and_acceptance(tmp_path):
+    """v8: «N требований» в Studio «Демо», сравнении версий и HTML-отчёте — без строк таблиц API и критериев приёмки."""
+    from req_review.web.demo import DemoRun
+
+    src = ROOT / "reports" / "requirements-report.json"
+    d = json.loads(src.read_text(encoding="utf-8"))
+    n_req = sum(1 for r in d["requirements"] if r.get("kind", "requirement") == "requirement")
+    assert DemoRun(src).describe()["reqs"] == n_req
+    js = (ROOT / "req_review" / "ui" / "assets" / "report.js").read_text(encoding="utf-8")
+    assert 'count: N_REQ' in js and '"kind": r.kind' in (ROOT / "req_review" / "html_report.py").read_text(encoding="utf-8")

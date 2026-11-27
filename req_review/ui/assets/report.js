@@ -39,6 +39,8 @@
   const COV_OK = D.coverage ? D.coverage.steps.filter((s) => s.rids.length).length : 0;
   const CATS = [...new Set(D.reqs.map((r) => r.category).filter(Boolean))];
   const BIG_DOC = D.lines.length > 1200, BIG_TABLE = D.reqs.length > 300;
+  // v8: требования без строк таблиц API, критериев приёмки и заглушек (поле kind); в старых отчётах kind нет — считаем все
+  const N_REQ = D.reqs.filter((r) => (r.kind || "requirement") === "requirement").length || D.reqs.length, N_OTHER = D.reqs.length - N_REQ;
 
   // ------------------------------------------------------------ тема, печать, тосты
   function currentTheme() { return document.documentElement.dataset.theme || "dark"; }
@@ -188,7 +190,7 @@
   // ------------------------------------------------------------ навигация (сайдбар)
   const VIEWS = [
     { id: "overview", label: "Обзор", icon: "grid" },
-    { id: "reqs", label: "Требования", icon: "list", count: D.reqs.length },
+    { id: "reqs", label: "Требования", icon: "list", count: N_REQ },
     { id: "doc", label: "Документ", icon: "file", count: totalMarks || "" },
     { id: "graph", label: "Граф", icon: "cube", count: D.graph.edges.length || "" },
     { id: "set", label: "Проверка набора", icon: "layers", count: D.set.length || "" },
@@ -331,7 +333,7 @@
         if (ca) return { html: `<p>Каждая цитата замечаний сверена с документом кодом: подтверждено <b>${ca.verified} из ${ca.total}</b> (дословно ${ca.exact}, с пропусками «…» ${ca.fuzzy}). Замечаний модели с выдуманными цитатами отброшено: <b>${ca.dropped}</b> — в отчёт они не попали.</p>`, src: [] };
       }
       if (has(q, "сколько", "сводк", "статист", "кратко", "обзор")) {
-        return { html: `<p>Требований: <b>${D.reqs.length}</b>. Замечаний: <b>${totalFindings}</b> — критичных ${D.counts.critical}, существенных ${D.counts.major}, незначительных ${D.counts.minor}. Балл документа ${D.scores.doc}/100, готовность ${D.scores.readiness}%.</p>`, src: [] };
+        return { html: `<p>Требований: <b>${N_REQ}</b>${N_OTHER ? ` (и ещё ${N_OTHER} строк API и критериев приёмки)` : ""}. Замечаний: <b>${totalFindings}</b> — критичных ${D.counts.critical}, существенных ${D.counts.major}, незначительных ${D.counts.minor}. Балл документа ${D.scores.doc}/100, готовность ${D.scores.readiness}%.</p>`, src: [] };
       }
       const hits = search(q, 6), fids = hits.filter((d) => d.kind === "f").map((d) => d.id).slice(0, 4), lns = hits.filter((d) => d.kind === "l").map((d) => d.id).slice(0, 3);
       if (!fids.length && !lns.length) return { html: "<p>В отчёте и документе ничего не нашлось по этому вопросу. Попробуйте ID требования (R-006, Ф-2) или слова из документа.</p>", src: [] };
@@ -505,7 +507,7 @@
     const crit = D.counts.critical;
     el.innerHTML = `${errorBanner()}${trustHTML()}${summary30HTML() ? `<div style="margin-bottom:16px">${summary30HTML()}</div>` : ""}
       <div class="grid g-4">
-        ${kpi("Всего требований", num(D.reqs.length), `<b>${D.split_method === "ids" ? "ID" : "R"}</b>нарезка ${D.split_method === "ids" ? "по ID документа" : "с номерами агента"}`, true, "reqs")}
+        ${kpi("Всего требований", num(N_REQ), N_OTHER ? `<b>+${N_OTHER}</b>строк API и критериев приёмки проверены отдельно` : `<b>${D.split_method === "ids" ? "ID" : "R"}</b>нарезка ${D.split_method === "ids" ? "по ID документа" : "с номерами агента"}`, true, "reqs")}
         ${kpi("Нарушений", num(totalFindings), `<b>${reqFindings}</b>по требованиям · <b>${D.set.length}</b>по набору`, false, "doc")}
         ${kpi("Критичных", num(crit), `${ic("alert", 14)}непроверяемые, противоречивые, неполные`, false, "reqs", crit ? "var(--critical)" : "var(--ok)")}
         ${kpi("Без замечаний", num(cleanReqs), `<b>${Math.round((100 * cleanReqs) / Math.max(1, D.reqs.length))}%</b>из ${D.reqs.length} требований`, false, "reqs", "var(--ok)")}

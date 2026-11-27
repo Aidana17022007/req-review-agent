@@ -71,7 +71,10 @@ def check(report_md: Path) -> list[dict]:
         f"`req_review/reader.py`: {', '.join(sorted(SUPPORTED))}; тесты PDF/DOCX — `tests/test_depth.py`")
     reqs = data.get("requirements") or []
     add("§3", "Агент выделяет отдельные требования и проверяет каждое", len(reqs) > 0 and SECTIONS[2] in md,
-        f"{len(reqs)} требований; раздел «3. Проверка каждого требования» (строка {_line(md, SECTIONS[2])})")
+        f"{sum(1 for r in reqs if r.get('kind', 'requirement') == 'requirement') or len(reqs)} требований"
+        + (f" (и ещё {sum(1 for r in reqs if r.get('kind', 'requirement') != 'requirement')} строк API и критериев приёмки)"
+           if any(r.get("kind", "requirement") != "requirement" for r in reqs) else "")
+        + f"; раздел «3. Проверка каждого требования» (строка {_line(md, SECTIONS[2])})")
     add("§3", "Агент проверяет набор требований целиком", SECTIONS[3] in md and data.get("set_findings") is not None,
         f"{len(data.get('set_findings') or [])} замечаний к набору; раздел «4» (строка {_line(md, SECTIONS[3])})")
     add("§3", "Агент записывает отчёт в файл", report_md.exists(), f"`{rel}` (+ .json, .html, .pdf)")

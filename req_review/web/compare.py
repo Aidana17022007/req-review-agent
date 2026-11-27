@@ -44,7 +44,7 @@ def match_requirements(old: list[dict], new: list[dict]) -> dict[str, str]:
 def _summary(d: dict) -> dict:
     fs = [f for r in d["requirements"] for f in r["findings"]] + list(d.get("set_findings", []))
     sc = d["scores"]
-    return {"score": sc["document"], "readiness": sc["readiness"], "set": sc["set"], "reqs": len(d["requirements"]),
+    return {"score": sc["document"], "readiness": sc["readiness"], "set": sc["set"], "reqs": sum(1 for r in d["requirements"] if r.get("kind", "requirement") == "requirement"),
             "tests_ok": sc["tests"]["ok"], "tests_total": sc["tests"]["total"], "findings": len(fs),
             "counts": {s: sum(1 for f in fs if f["severity"] == s) for s in ORDER},
             "document": d.get("passport", {}).get("document", "")}
