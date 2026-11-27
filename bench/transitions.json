@@ -1,0 +1,113 @@
+{
+ "total": {
+  "fixed": 24,
+  "was_found": 24,
+  "gone": 24,
+  "gone_of_found": 24,
+  "kept": 70,
+  "kept_found": 53,
+  "new_false": 10,
+  "new_on_fixed": 0,
+  "docs": 8
+ },
+ "per_doc": {
+  "payments": {
+   "fixed": 3,
+   "was_found": 3,
+   "gone": 3,
+   "gone_of_found": 3,
+   "new_false": [
+    "PAY-12",
+    "PAY-14"
+   ],
+   "new_on_fixed": [],
+   "kept": 8,
+   "kept_found": 8
+  },
+  "credit": {
+   "fixed": 3,
+   "was_found": 3,
+   "gone": 3,
+   "gone_of_found": 3,
+   "new_false": [
+    "CR-15"
+   ],
+   "new_on_fixed": [],
+   "kept": 9,
+   "kept_found": 8
+  },
+  "onboarding": {
+   "fixed": 3,
+   "was_found": 3,
+   "gone": 3,
+   "gone_of_found": 3,
+   "new_false": [
+    "ON-11"
+   ],
+   "new_on_fixed": [],
+   "kept": 9,
+   "kept_found": 6
+  },
+  "deposit_kk": {
+   "fixed": 3,
+   "was_found": 3,
+   "gone": 3,
+   "gone_of_found": 3,
+   "new_false": [
+    "DEP-13",
+    "DNF-02"
+   ],
+   "new_on_fixed": [],
+   "kept": 8,
+   "kept_found": 7
+  },
+  "cashback": {
+   "fixed": 3,
+   "was_found": 3,
+   "gone": 3,
+   "gone_of_found": 3,
+   "new_false": [
+    "CB-05"
+   ],
+   "new_on_fixed": [],
+   "kept": 9,
+   "kept_found": 7
+  },
+  "refinance": {
+   "fixed": 3,
+   "was_found": 3,
+   "gone": 3,
+   "gone_of_found": 3,
+   "new_false": [
+    "RF-01"
+   ],
+   "new_on_fixed": [],
+   "kept": 9,
+   "kept_found": 5
+  },
+  "qr": {
+   "fixed": 3,
+   "was_found": 3,
+   "gone": 3,
+   "gone_of_found": 3,
+   "new_false": [
+    "QR-12",
+    "QNF-03"
+   ],
+   "new_on_fixed": [],
+   "kept": 9,
+   "kept_found": 7
+  },
+  "fx": {
+   "fixed": 3,
+   "was_found": 3,
+   "gone": 3,
+   "gone_of_found": 3,
+   "new_false": [],
+   "new_on_fixed": [],
+   "kept": 9,
+   "kept_found": 5
+  }
+ },
+ "model": "gemini / gemini-3.5-flash-lite"
+}
