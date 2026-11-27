@@ -767,3 +767,27 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
 .ov-seg button{flex:1;border:0;background:none;padding:5px;border-radius:7px;color:var(--text-2);font:600 12px/16px var(--font-sans);cursor:pointer}
 .ov-seg button[aria-pressed=true]{background:var(--surface);color:var(--text);box-shadow:var(--shadow-sm)}
 @media print{.dcard,.box{break-inside:avoid}}
+/* v15: «Кратко», исправленное ТЗ, разрывы трассировки, чек-лист банка (отчёт и Studio) */
+.brief{border-color:color-mix(in srgb,var(--brand) 35%,var(--border))}
+.brief-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:12px}
+.brief-item{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:14px;background:var(--surface-2);min-width:0}
+.brief-num{display:flex;align-items:center;gap:8px;font:700 22px/28px var(--font-sans)}
+.brief-list{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:8px}
+.brief-list li{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface)}
+.brief-list .chip{flex:none}
+.q-in{font-style:italic;color:var(--text-2);overflow-wrap:anywhere}
+.gap-card{padding:12px 14px;border-radius:14px;border:1px solid color-mix(in srgb,var(--critical) 35%,var(--border));border-left:3px solid var(--critical-accent);background:color-mix(in srgb,var(--critical-soft) 35%,var(--surface))}
+.tbl tr.tr-gap td{background:color-mix(in srgb,var(--critical-soft) 40%,transparent)}
+.tbl tr.tr-gap td:first-child{box-shadow:inset 3px 0 0 var(--critical-accent)}
+.rev-open{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.rev-open li+li{border-top:1px dashed var(--border);padding-top:12px}
+mark.ph{background:var(--major-soft);color:inherit;border-radius:4px;padding:1px 4px;box-shadow:inset 0 -2px 0 var(--major);overflow-wrap:anywhere}
+ins.rev-ins{background:var(--ok-soft);color:inherit;text-decoration:none;border-radius:4px;padding:1px 4px}
+.rev-card .diff .side,.rev-new p{overflow-wrap:anywhere}
+.chk-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.chk-list li{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px dashed var(--border)}
+.chk-list li:first-child{border-top:0}
+.chk-list .doc-ref{min-width:0;color:var(--text);text-decoration:none}
+.chk-list .doc-ref:hover .q-in{color:var(--brand)}
+.bank-f{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;padding:10px 0;border-top:1px dashed var(--border);cursor:pointer}
+@media print{.brief,.gap-card,.rev-card,.rev-new{break-inside:avoid}}

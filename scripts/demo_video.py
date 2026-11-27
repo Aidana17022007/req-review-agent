@@ -1,11 +1,12 @@
 """Видео-демо ReqLens на ~60 секунд (MP4) — по настоящему прогону, без сети и без обращений к модели.
 
     pip install playwright imageio-ffmpeg && playwright install chromium
-    python review.py docs/requirements.md reports/video/report.md --fix-loop      # настоящий прогон (нужен ключ)
+    python review.py bench/real/notifications.md reports/video/report.md --answers examples/answers/organizers_answers.md         --rules fintech                                                          # настоящий прогон (нужен ключ)
     python scripts/demo_video.py reports/video/report.json docs/assets/demo-60s.mp4
 
-Сцены: титул → Studio «Демо» (живой прогон из записи) → «Итог за 30 секунд» и аудит цитат → документ с подсветкой
-и карточкой замечания → матрица «требование × критерий» → «До / После» (--fix-loop) → финальная карточка с цифрами.
+Сцены (v15): титул → Studio «Открыть готовый пример» → «Кратко» после ответов аналитика → «Исправленное ТЗ»
+(было → стало) → трассировка «требование ↔ API» → «Чек-лист банка» → документ с подсветкой → финальная карточка.
+Сцена показывается, только если поле есть в отчёте (прогон с --answers и --rules fintech).
 Подписи накладываются поверх экрана; все цифры берутся из report.json и *_before_after.md — ничего не рисуется вручную.
 """
 from __future__ import annotations
@@ -80,21 +81,40 @@ def main(argv: list[str]) -> int:
 
     rj = Path(argv[0] if argv else ROOT / "reports" / "video" / "report.json").resolve()
     out = Path(argv[1] if len(argv) > 1 else ROOT / "docs" / "assets" / "demo-60s.mp4").resolve()
-    html, ba = rj.with_suffix(".html"), rj.with_name(rj.stem + "_before_after.md")
+    html = rj.with_suffix(".html")
     data = json.loads(rj.read_text(encoding="utf-8"))
     pp, ca = data["passport"], data.get("citation_audit") or {}
     fs = sum(len(r["findings"]) for r in data["requirements"]) + len(data["set_findings"])
     crit = sum(1 for r in data["requirements"] for f in r["findings"] if f["severity"] == "critical") + \
         sum(1 for f in data["set_findings"] if f["severity"] == "critical")
     n_req = sum(1 for r in data["requirements"] if r.get("kind", "requirement") == "requirement")  # без строк API и приёмки
+    ans = data.get("answers") or {}
+    rs, rev = ans.get("summary") or {}, ans.get("revised") or (data.get("revised") or {})
     port = free_port()
     env = {**os.environ, "LLM_PROVIDER": "mock", "PYTHONIOENCODING": "utf-8", "STUDIO_PORT": str(port),
            "REQLENS_DATA": tempfile.mkdtemp(prefix="reqlens-video-")}
     provider, _, model = pp.get("model", "").partition(" / ")
-    if provider == "gemini":  # Studio показывает модель настоящего прогона; в «Демо» модель не вызывается, ключ не нужен
+    # Studio показывает модель настоящего прогона (без плашки mock); готовый пример модель не вызывает, ключ не нужен
+    if provider == "gemini":
         env.update(LLM_PROVIDER="gemini", GEMINI_MODEL=model, GEMINI_API_KEY="demo-replay-no-calls")
+    elif provider.startswith("openai"):
+        env.update(LLM_PROVIDER="openai", OPENAI_MODEL=model, OPENAI_API_KEY="demo-replay-no-calls",
+                   OPENAI_BASE_URL=os.getenv("OPENAI_BASE_URL", "https://api.deepseek.com"))
     srv = subprocess.Popen([sys.executable, "-m", "req_review.web", "--demo", str(rj)], cwd=ROOT, env=env)
     vids = Path(tempfile.mkdtemp(prefix="reqlens-video-raw-"))
+    # отчёт — по http, как из Studio и с сайта: тогда он дочитывает соседний report.json (правила банка целиком,
+    # граф трассировки, закрытые блокеры); из file:// показывается только компактный data.engine
+    import functools
+    import http.server
+    import threading
+
+    class Quiet(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, *a):  # noqa: D102
+            pass
+
+    files = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Quiet, directory=str(rj.parent)))
+    threading.Thread(target=files.serve_forever, daemon=True).start()
+    report_url = f"http://127.0.0.1:{files.server_port}/{html.name}"
     try:
         for _ in range(150):
             try:
@@ -112,46 +132,57 @@ def main(argv: list[str]) -> int:
                                 "ИИ-агент проверяет ТЗ банка по ISO/IEC/IEEE 29148 и IEEE 830",
                                 f"Документ организаторов · {esc(pp.get('document', ''))}"))
             pg.wait_for_timeout(3500)
-            # 2. Studio «Демо»: живой прогон из записи настоящего прогона
+            # 2. Studio: «Открыть готовый пример» — отчёт по документу организаторов без загрузки и квоты
             pg.goto(f"http://127.0.0.1:{port}/")
-            pg.wait_for_selector("#demo:not([hidden])", timeout=15000)
-            cap("Перетащили документ — агент проверяет его вживую")
-            pg.wait_for_timeout(1200)
-            pg.click("#demo")
-            t0 = time.time()
-            while time.time() - t0 < 22 and not pg.evaluate("document.getElementById('s-result').classList.contains('active')"):
+            pg.wait_for_selector("#example", timeout=15000)
+            cap("Studio: жюри открывает готовый пример — без загрузки файла и без квоты")
+            pg.wait_for_timeout(2600)
+            pg.click("#example")
+            pg.wait_for_selector("#s-result.active", timeout=15000)
+            cap("Отчёт по документу организаторов открыт сразу: вердикт, балл, файлы для скачивания")
+            pg.wait_for_timeout(5000)
+
+            def view(h: str):  # раздел отчёта с начала страницы (смена #hash не перезагружает документ)
+                pg.goto(report_url + h)
+                pg.wait_for_timeout(700)
+                pg.evaluate("window.scrollTo(0, 0)")
                 pg.wait_for_timeout(300)
-                if time.time() - t0 > 6:
-                    cap("Нарезка → каждое требование → набор целиком → критик → отчёт")
-            pg.wait_for_timeout(800)
-            # 3. отчёт: итог за 30 секунд и аудит цитат
-            pg.goto(html.as_uri())
-            pg.wait_for_timeout(900)
-            cap(f"Итог за 30 секунд: {crit} критичных, что исправить первым — с примером формулировки")
-            pg.wait_for_timeout(4200)
-            cap(f"Аудит цитат: {ca.get('verified', '—')} из {ca.get('total', '—')} подтверждены кодом · выдуманных в отчёте 0")
-            pg.wait_for_timeout(3600)
-            # 4. документ с подсветкой и карточкой замечания
-            pg.goto(html.as_uri() + "#doc")
-            pg.wait_for_timeout(1000)
-            cap("Каждое замечание — дословная цитата и строка документа")
+            if ans:  # 3. «Кратко»: ответы аналитика → перепроверка
+                view("")
+                pg.evaluate("(() => { const b = document.getElementById('brief'); if (b) b.scrollIntoView({block:'start'}); })()")
+                cap(f"Аналитик ответил на вопросы → перепроверка: закрыто блокеров {rs.get('blockers_closed', '—')} из "
+                    f"{rs.get('blockers_total', '—')}, открытых замечаний {rs.get('open_before', '—')} → {rs.get('open_after', '—')}")
+                pg.wait_for_timeout(6500)
+            if rev:  # 4. «Было → Стало»
+                view("#revised")
+                cap(f"Исправленное ТЗ: было → стало ({len(rev.get('changed') or [])}), новые требования ({len(rev.get('added') or [])}), "
+                    f"осталось уточнить ({len(rev.get('open') or [])})")
+                pg.wait_for_timeout(3000)
+                pg.mouse.wheel(0, 520)
+                pg.wait_for_timeout(3500)
+            if data.get("traceability"):  # 5. трассировка «требование ↔ API»
+                view("#trace")
+                gaps = (data["traceability"].get("stats") or {}).get("gaps", "—")
+                cap(f"Трассировка: требование ↔ поле экрана ↔ параметр API ↔ HTTP-код · разрывов {gaps} — красным")
+                pg.wait_for_timeout(7500)
+            if data.get("bank_rules"):  # 6. чек-лист банка
+                view("#bank")
+                br = data["bank_rules"]
+                cap(f"Чек-лист банка проверяет код, без модели: сработало {br.get('fired', 0)} · выполнено {br.get('passed', 0)}"
+                    f" · не применимо {br.get('not_applicable', 0)}")
+                pg.wait_for_timeout(4500)
+                pg.mouse.wheel(0, 420)
+                pg.wait_for_timeout(3500)
+            # 7. документ с подсветкой и карточкой замечания
+            view("#doc")
+            cap(f"Каждое замечание — дословная цитата: {ca.get('verified', '—')} из {ca.get('total', '—')} подтверждены кодом")
             pg.evaluate("(() => { const m = document.querySelector('mark.hl.sev-critical, mark.hl'); if (m) { m.scrollIntoView({block:'center'}); m.click(); } })()")
-            pg.wait_for_timeout(4800)
+            pg.wait_for_timeout(5000)
             pg.keyboard.press("Escape")
-            # 5. матрица и покрытие приёмкой
-            pg.goto(html.as_uri())
-            pg.wait_for_timeout(700)
-            pg.evaluate("(() => { const d = document.getElementById('matrix'); if (d) { d.open = true; d.scrollIntoView({block:'start'}); } })()")
-            cap("Матрица «требование × критерий» и покрытие правил примерами приёмки")
-            pg.wait_for_timeout(4200)
-            # 6. «До / После»
-            if ba.exists():
-                pg.set_content(md_table_html(ba.read_text(encoding="utf-8")))
-                cap("Агент сам исправил формулировки и проверил документ заново")
-                pg.wait_for_timeout(5200)
-            # 7. финал
+            # 8. финал
             pg.set_content(card(f"{fs} замечаний · {crit} критичных",
-                                f"Каждая цитата проверена кодом · {n_req} требований · 6 разделов ТЗ",
+                                f"Каждая цитата проверена кодом · {n_req} требований"
+                                + (f" · закрыто блокеров {rs.get('blockers_closed')} из {rs.get('blockers_total')}" if rs else ""),
                                 f"{esc(pp.get('model', ''))} · {esc(pp.get('agent_version', ''))}"))
             pg.wait_for_timeout(4000)
             video = pg.video.path()
@@ -173,6 +204,7 @@ def main(argv: list[str]) -> int:
             print("MP4 не собран: pip install imageio-ffmpeg (WebM готов)")
         return 0
     finally:
+        files.shutdown()
         srv.terminate()
         srv.wait(timeout=10)
         shutil.rmtree(vids, ignore_errors=True)

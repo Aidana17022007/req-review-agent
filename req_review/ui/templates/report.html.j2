@@ -8,7 +8,8 @@
 <title>ReqLens · {{ title }}</title>
 <link rel="icon" href="{{ favicon_href() }}">
 <style>
-{{ fonts_css()|safe }}
+{# Inter не встраивается: офлайн-отчёт должен быть < 1 МБ, шрифт (+42 КБ) — только в Studio, слайдах и на сайте;
+   здесь — системный шрифт из --font-sans (Segoe UI / SF / Roboto) #}
 {{ tokens_css()|safe }}
 {{ asset_min("base.css")|safe }}
 </style>
