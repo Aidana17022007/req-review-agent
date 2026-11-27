@@ -20,8 +20,18 @@ router = APIRouter(prefix="/api/v1", tags=["ReqLens App v1"])
 FILE_RE = re.compile(r"^[\w.-]{1,120}$")
 
 
-def err(status: int, code: str, message: str, **extra) -> HTTPException:
-    return HTTPException(status, {"code": code, "message": message, **extra})
+def err(status: int, code: str, message: str, headers: dict | None = None, **extra) -> HTTPException:
+    return HTTPException(status, {"code": code, "message": message, **extra}, headers=headers)
+
+
+def enforce_limit(request) -> None:
+    """v9: лимит загрузок демо-сервера (DEMO_UPLOADS_PER_IP / DEMO_UPLOADS_TOTAL) → 429 со ссылкой на готовый пример."""
+    from .limits import check_and_count, client_ip, message
+
+    hit = check_and_count(client_ip(request))
+    if hit:
+        raise err(429, "limit", message(hit), headers={"Retry-After": str(hit["retry_after"])}, scope=hit["scope"],
+                  retry_after=hit["retry_after"], example="/?example=1")
 
 
 def _app():
@@ -126,8 +136,8 @@ def project_runs(pid: str):
 
 
 @router.post("/projects/{pid}/runs", summary="Проверить новую версию документа")
-async def create_run(pid: str, file: UploadFile = File(...), profile: str = Form("fast"), domain: str = Form("fintech"),
-                     mode: str = Form("llm"), force: bool = Form(False)):
+async def create_run(pid: str, request: Request, file: UploadFile = File(...), profile: str = Form("fast"),
+                     domain: str = Form("fintech"), mode: str = Form("llm"), force: bool = Form(False)):
     """Загрузить документ в проект. Тот же файл (SHA-256) уже проверен — вернётся прошлый результат
     (`duplicate: true`), квота модели не тратится; `force=true` — проверить заново.
     Если в проекте есть прошлый готовый прогон, новый автоматически сравнивается с ним."""
@@ -145,6 +155,8 @@ async def create_run(pid: str, file: UploadFile = File(...), profile: str = Form
     if not force and (same := st.find_same(pid, sha)):
         return {"duplicate": True, "run": same,
                 "message": "Этот файл уже проверялся — открыт прошлый результат. Чтобы проверить заново, передайте force=true."}
+    if mode == "llm":  # «Только правила» модель не тратит и в лимит не входит
+        enforce_limit(request)
     name = Path(file.filename or "документ").name[:200]
     prev = st.previous_done(pid)
     doc_id = st.document(pid, name, sha, len(data))
@@ -164,6 +176,65 @@ async def create_run(pid: str, file: UploadFile = File(...), profile: str = Form
     webapp._start(job, src, compare_with=compare_with)
     return {"duplicate": False, "run": _live(run), "job": rid, "compare_with": prev["id"] if compare_with else None,
             "events": f"/api/v1/jobs/{rid}/events"}
+
+
+# ----------------------------------------------------------------------------------- готовый пример (v9)
+
+EXAMPLE_FILES = {"report.json": "Данные (JSON)", "report.md": "Отчёт (Markdown)", "report.html": "Интерактивный отчёт (HTML)"}
+
+
+def _example_dir() -> Path:
+    from ..pipeline import ROOT
+
+    return ROOT / "reports"
+
+
+def _example_bytes(name: str) -> bytes | None:
+    import gzip
+
+    d = _example_dir()
+    p = {"report.json": d / "requirements-report.json", "report.md": d / "requirements-report.md"}.get(name)
+    if p is not None:
+        return p.read_bytes() if p.exists() else None
+    if name == "report.html":
+        if (d / "requirements-report.html").exists():
+            return (d / "requirements-report.html").read_bytes()
+        gz = d / "requirements-report.html.gz"
+        return gzip.decompress(gz.read_bytes()) if gz.exists() else None
+    return None
+
+
+@router.get("/example", summary="Готовый отчёт по документу организаторов — без прогона и без квоты")
+def example():
+    raw = _example_bytes("report.json")
+    if raw is None:
+        raise err(404, "not_found", "Готового примера на сервере нет")
+    data = json.loads(raw.decode("utf-8"))
+    pp = data.get("passport", {})
+    fs = [f for r in data.get("requirements", []) for f in r.get("findings", [])] + list(data.get("set_findings", []))
+    counts = {s: sum(1 for f in fs if f.get("severity") == s) for s in ("critical", "major", "minor")}
+    sc = data.get("scores", {})
+    return {"document": pp.get("document", ""), "model": pp.get("model", ""), "started": pp.get("started", ""),
+            "agent_version": pp.get("agent_version", ""),
+            "summary": {"score": sc.get("document"), "readiness": sc.get("readiness"), "critical": counts["critical"],
+                        "major": counts["major"],
+                        "reqs": sum(1 for r in data.get("requirements", []) if r.get("kind", "requirement") == "requirement"),
+                        "verdict": data.get("verdict") or {}},
+            "report": data,
+            "files": {label: f"/api/v1/example/files/{n}" for n, label in EXAMPLE_FILES.items() if _example_bytes(n) is not None}}
+
+
+@router.get("/example/files/{name}", summary="Файл готового примера")
+def example_file(name: str):
+    from fastapi.responses import Response
+
+    raw = _example_bytes(name) if name in EXAMPLE_FILES else None
+    if raw is None:
+        raise err(404, "not_found", "Файл не найден")
+    media = {"report.json": "application/json", "report.md": "text/markdown; charset=utf-8",
+             "report.html": "text/html; charset=utf-8"}[name]
+    headers = {} if name == "report.html" else {"Content-Disposition": f'attachment; filename="{name}"'}
+    return Response(raw, media_type=media, headers=headers)
 
 
 ANSWERS_MAX = 1024 * 1024
@@ -206,6 +277,8 @@ async def run_answers(rid: str, request: Request):
     inputs = sorted(src_dir.glob("input.*"))
     if not src_json.exists() or not inputs:
         raise err(404, "not_found", "Файлы исходного прогона не найдены")
+    if src_run.get("mode", "llm") == "llm":
+        enforce_limit(request)
     qs = json.loads(src_json.read_text(encoding="utf-8")).get("questions", [])
     keys = {(q.get("rid") or q.get("ref"), q.get("criterion")) for q in qs}
     qids = {q.get("qid") for q in qs}

@@ -142,7 +142,7 @@ async def _http_error(request: Request, exc: StarletteHTTPException):
     detail = exc.detail if isinstance(exc.detail, dict) else {"message": str(exc.detail or "Ошибка")}
     body = {"code": detail.get("code") or ERROR_CODES.get(exc.status_code, "error"), "message": detail.get("message", "")}
     body.update({k: v for k, v in detail.items() if k not in body})
-    return JSONResponse({"error": body}, status_code=exc.status_code)
+    return JSONResponse({"error": body}, status_code=exc.status_code, headers=getattr(exc, "headers", None))
 
 
 @app.exception_handler(RequestValidationError)
@@ -392,12 +392,22 @@ async def _save_upload(file: UploadFile, d: Path) -> Path:
     return src
 
 
+def _legacy_limit(request: Request) -> None:
+    """v9: лимит демо-сервера и для старых эндпоинтов Studio (формат ошибки — {"detail"})."""
+    from .limits import check_and_count, client_ip, message
+
+    hit = check_and_count(client_ip(request))
+    if hit:
+        raise HTTPException(429, message(hit), headers={"Retry-After": str(hit["retry_after"])})
+
+
 @app.post("/api/review")
-async def start(file: UploadFile = File(...), profile: str = Form("fast"), domain: str = Form("fintech")):
+async def start(request: Request, file: UploadFile = File(...), profile: str = Form("fast"), domain: str = Form("fintech")):
     if profile not in PROFILES:
         raise HTTPException(400, "Неизвестный профиль")
     if domain not in ("fintech", "none"):
         raise HTTPException(400, "Неизвестный домен")
+    _legacy_limit(request)
     job = Job(uuid.uuid4().hex[:12], Path(file.filename or "документ").name, profile=profile, domain=domain)
     src = await _save_upload(file, job.dir)
     _start(job, src)
@@ -405,7 +415,7 @@ async def start(file: UploadFile = File(...), profile: str = Form("fast"), domai
 
 
 @app.post("/api/jobs/{job_id}/compare")
-async def compare_version(job_id: str, file: UploadFile | None = File(None), use_fixed: bool = Form(False)):
+async def compare_version(job_id: str, request: Request, file: UploadFile | None = File(None), use_fixed: bool = Form(False)):
     """Проверить новую версию документа и сравнить с отчётом задачи job_id (экран «До / После»)."""
     parent = JOBS.get(job_id)
     if not parent or not parent.done or parent.error or not parent.json_path.exists():
@@ -434,6 +444,7 @@ async def compare_version(job_id: str, file: UploadFile | None = File(None), use
         job.name = Path(file.filename).name
     else:
         raise HTTPException(400, "Загрузите файл новой версии документа")
+    _legacy_limit(request)
     _start(job, src, compare_with=parent.json_path)
     return {"job": job.id}
 
