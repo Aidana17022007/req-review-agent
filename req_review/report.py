@@ -17,7 +17,7 @@ EARS = {"ubiquitous": "постоянное", "event": "по событию", "s
 ICON = {"critical": "🔴", "major": "🟠", "minor": "🟡"}
 KIND = {
     "contradiction": "Противоречие", "duplicate": "Дублирование", "terminology": "Терминология",
-    "gap": "Пропуск", "dependency": "Зависимость/ссылка", "structure": "Структура/трассируемость", "other": "Прочее",
+    "gap": "Пропуск", "dependency": "Зависимость/ссылка", "structure": "Структура/трассируемость", "other": "Прочее", "bank_rule": "Чек-лист банка",
 }
 CRITICAL_CRITERIA = {"verifiable", "complete", "set_consistent", "set_complete"}
 
@@ -95,6 +95,8 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
             w(f"| Контекст запросов | {cx['mode']} · ≈{cx['avg_prompt_tokens']} токенов на запрос (документ {cx['doc_chars']} симв.) |")
         if rg.get("kb_chunks"):
             w(f"| База знаний (RAG) | {rg['kb_chunks']} фрагментов · поиск: {rg['search']} · основания у {rg['basis']} замечаний |")
+        if te := ctx.passport.get("time_estimate"):
+            w(f"| Экономия времени (оценка) | {_time_est(te)} |")
         w(f"| Критик-агент | {'включён' if rv.critic_used else 'выключен (профиль fast)'} |")
         w(f"| **Балл документа** | **{sc.doc_score} / 100** `{bar(sc.doc_score)}` |")
         w(f"| **Готовность к разработке** | **{sc.readiness} %** `{bar(sc.readiness)}` |")
@@ -280,6 +282,8 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
         for a in d.areas:
             w(f"| {a.title} | {st[a.status]} | {'; '.join(_q(q) for q in a.quotes) or '—'} |")
         w("")
+    if getattr(rv, "bank_rules", None):
+        _bank_rules(w, rv.bank_rules, by_rid)
     if rv.glossary and (rv.glossary.terms or rv.glossary.synonyms):
         w("### Глоссарий и согласованность терминов")
         w("")
@@ -309,6 +313,8 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
         w(f"| **Балл документа** | **{sc.doc_score} / 100** (балл набора — {sc.set_score}) |")
         w(f"| **Готовность к разработке** | **{sc.readiness} %** ({len(sc.ready_ids)} из {n_req} требований без критичных и существенных замечаний, "
           "в том числе к набору) |")
+        if ctx is not None and (te := ctx.passport.get("time_estimate")):
+            w(f"| Экономия времени (оценка) | {_time_est(te)} |")
         if sc.tests_total:
             w(f"| Покрыто тест-пробой | {sc.tests_ok} из {sc.tests_total} требований ({round(100 * sc.tests_ok / sc.tests_total)} %) |")
         acc = (getattr(rv, "depth", None) or {}).get("acceptance_coverage") or {}
@@ -487,8 +493,52 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
         w("")
         w(METHOD_MD)
         w("")
+        if te := ctx.passport.get("time_estimate"):
+            w(f"**Экономия времени (оценка, не замер):** ручное ревью ≈ строки документа ÷ норма = {te['doc_lines']} ÷ "
+              f"{te['lines_per_hour']} ≈ {_hours(te['manual_hours'])} аналитика. Время агента — фактическая длительность "
+              f"этого прогона ({_minutes(te['agent_minutes'])}). Норма {te['lines_per_hour']} строк/ч "
+              f"({te['norm_source']}) соответствует ориентиру инспекций документов «около 1 страницы в час» "
+              "(Gilb, Graham. Software Inspection, 1993); банк задаёт свою норму в .env: REVIEW_LINES_PER_HOUR. "
+              "Время на исправление дефектов и обсуждение с заказчиком в оценку не входит.")
+            w("")
     w(f"*Отчёт сформирован автоматически агентом ReqLens / req-review ({_cell(agent_version)}).*")
     return "\n".join(L) + "\n"
+
+
+def _hours(h: float) -> str:
+    return f"{h:g} ч".replace(".", ",")
+
+
+def _minutes(m: float) -> str:
+    return (f"{m:g} мин" if m >= 1 else "< 1 мин").replace(".", ",")
+
+
+def _time_est(te: dict) -> str:
+    return (f"ручное ревью ≈ {_hours(te['manual_hours'])} аналитика (строк в документе — {te['doc_lines']}, норма — "
+            f"{te['lines_per_hour']} строк/ч), агент — {_minutes(te['agent_minutes'])}; формула — в «Методике»")
+
+
+def _bank_rules(w, br: dict, by_rid) -> None:
+    """v10: подраздел «Чек-лист банка» — что проверено правилами банка из YAML (--rules)."""
+    w(f"### Чек-лист банка: {_cell(br['name'])}")
+    w("")
+    w(f"Файл правил `{_cell(br['file'])}`: правил {br['total']}, сработало {br['fired']}, выполнено {br['passed']}, "
+      f"не применимо {br['not_applicable']}" + (f", выключено {br['disabled']}" if br.get("disabled") else "")
+      + f". Замечаний по правилам: {br['findings']} (источник «правило банка: <id>», цитаты дословные).")
+    if br.get("disclaimer"):
+        w("")
+        w(f"*{_cell(br['disclaimer'])}*")
+    w("")
+    w("| Правило | Серьёзность | Критерий | Статус | Где |")
+    w("|---|---|---|---|---|")
+    st = {"fired": "🔴 сработало", "passed": "✅ выполнено", "not_applicable": "— не применимо", "disabled": "⏸ выключено"}
+    for r in br["rules"]:
+        where = ", ".join(_label(x, by_rid) for x in r["where"][:6]) + (" …" if len(r["where"]) > 6 else "")
+        if r["status"] == "disabled":
+            where = _cell(r.get("reason", ""))[:160]
+        w(f"| {r['id']}. {_cell(r['title'])} | {ICON[r['severity']]} {SEVERITY[r['severity']].lower()} | "
+          f"{_cell(r['criterion_name'])} | {st[r['status']]} | {where or '—'} |")
+    w("")
 
 
 def _authenticity(llm_stats, ctx, model_label: str) -> str:

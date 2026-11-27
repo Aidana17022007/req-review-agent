@@ -1,6 +1,26 @@
 # Формат report.json (контракт backend ↔ UI)
 
-Версия схемы: **2.4**. Правило: изменения только добавляющие — поля 2.0 не переименовываются и не удаляются.
+Версия схемы: **2.5**. Правило: изменения только добавляющие — поля 2.0 не переименовываются и не удаляются.
+
+## Что добавлено в 2.5 (v10: чек-лист банка)
+
+`bank_rules` — есть только при прогоне с `--rules ФАЙЛ` (или `REQLENS_RULES`); без флага поля нет.
+
+| Поле | Тип | Смысл |
+|---|---|---|
+| `name`, `file`, `disclaimer` | строка | название набора, имя файла правил, оговорка из файла |
+| `total`, `enabled`, `disabled` | число | правил всего / включено / выключено (`enabled: false` с причиной) |
+| `fired`, `passed`, `not_applicable` | число | правил сработало / выполнено / не применимо (нет подходящих требований) |
+| `findings` | число | замечаний, добавленных правилами |
+| `rules[]` | объект | `id`, `title`, `severity`, `criterion`, `criterion_name`, `scope` (`requirement` \| `document`), `reference`, `applicable`, `hits`, `status` (`fired` \| `passed` \| `not_applicable` \| `disabled`), `where` (R-xxx), `reason` (для выключенных) |
+
+Замечания правил лежат в обычных местах: `requirements[].findings[]` (scope `requirement`) и `set_findings[]` с
+`kind: "bank_rule"` (scope `document`). Их `source` — «правило банка: <id>». Если замечание совпало с уже найденным
+(тот же критерий и цитата), к его `source` добавляется « + правило банка: <id>». Цитаты дословные (`verify.quote_in`).
+
+`passport.time_estimate` (v10, есть в каждом прогоне) — **оценка**, не замер: `doc_lines` (непустые строки документа),
+`lines_per_hour` (норма из `REVIEW_LINES_PER_HOUR`, по умолчанию 40), `norm_source`, `manual_hours` = doc_lines ÷
+lines_per_hour (1 знак), `agent_minutes` (фактическая длительность прогона агента), `estimate: true`.
 
 ## Что добавлено в 2.4 (v9: ответы аналитика, решения, журнал)
 

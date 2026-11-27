@@ -47,6 +47,7 @@ class Options:
     fix_loop: bool = False  # v7: «исправил → проверил заново» — блок «До / После» и файл <отчёт>_before_after.md
     cascade: str = ""  # v9: «быстрая,сильная» — быстрая проверяет всё, сильная — подозрительные требования и набор
     decisions_llm: bool = False  # v9: модель перефразирует повестку решений на бизнес-язык (иначе — формулировки кода)
+    rules: str = ""  # v10: чек-лист банка в YAML (--rules fintech | путь к .rules.yaml | REQLENS_RULES)
     answers: str = ""  # v9: файл ответов аналитика (шаблон <отчёт>_answers_template.md) — перепроверка с учётом ответов
 
 
@@ -210,6 +211,12 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
     if any(rv.calibration.values()):
         log(f"  калибровка серьёзности: тест-проб снято {rv.calibration['test_probe_dropped']}, понижено "
             f"{rv.calibration['capped']}, дублей S-xx свёрнуто {rv.calibration['folded']}")
+    from .bank_rules import rules_spec
+
+    if spec := rules_spec(opts.rules):  # v10: чек-лист банка — после критика и калибровки, чтобы правила не снимались
+        from .bank_rules import apply_rules, load_rules
+
+        rv.bank_rules = apply_rules(rv, load_rules(spec), log=log)
     default_confidence(rv)
     rv.depth = depth_summary(rv, acc)
     rv.depth["review_stats"]["calibration"] = rv.calibration  # v8: калибровка серьёзности
@@ -293,6 +300,23 @@ def before_after_md(ctx) -> str:
     return "\n".join(L) + "\n"
 
 
+LINES_PER_HOUR = 40  # норма ручного ревью по умолчанию: ≈ 1 страница (≈ 40 строк) в час
+
+
+def time_estimate(doc, duration_s: float) -> dict:
+    """v10: оценка экономии времени — строки документа ÷ норма ручного ревью против фактического времени агента.
+
+    Норма — REVIEW_LINES_PER_HOUR из .env (по умолчанию 40 строк/ч). Это оценка, а не замер: в отчёте подписана так."""
+    try:
+        rate = max(1, int(os.getenv("REVIEW_LINES_PER_HOUR", "") or LINES_PER_HOUR))
+        src = "REVIEW_LINES_PER_HOUR" if os.getenv("REVIEW_LINES_PER_HOUR") else "по умолчанию"
+    except ValueError:
+        rate, src = LINES_PER_HOUR, "по умолчанию (REVIEW_LINES_PER_HOUR не число)"
+    lines = sum(1 for line in doc.lines if line.text.strip())
+    return {"doc_lines": lines, "lines_per_hour": rate, "norm_source": src, "manual_hours": round(lines / rate, 1),
+            "agent_minutes": max(0.1, round(duration_s / 60, 1)), "estimate": True}
+
+
 def _ctx_info(doc) -> dict:
     st = getattr(doc, "_ctx_stats", None) or {}
     pc = st.get("prompt_chars") or []
@@ -326,6 +350,7 @@ def build_context(rv, llm, opts: Options, started: datetime, t0: float, input_pa
         "model_switches": list(getattr(llm.stats, "switches", [])),
         "rag": getattr(rv, "rag", None) or {"enabled": False},
         "context": _ctx_info(rv.doc),
+        "time_estimate": time_estimate(rv.doc, time.monotonic() - t0),  # v10: оценка, не замер
         "split_method": rv.split.method, "dropped": len(rv.dropped), "rejected": len(rv.rejected),
         "critic": rv.critic_used, "domain": opts.domain,
     }

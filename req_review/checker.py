@@ -92,6 +92,7 @@ class ReviewResult:
     rag: dict = field(default_factory=dict)  # статистика базы знаний: число оснований, режим поиска
     categories: dict = field(default_factory=dict)  # {категория: число требований}
     coverage: list = field(default_factory=list)  # карта покрытия шагов процесса домена
+    bank_rules: dict = field(default_factory=dict)  # v10: чек-лист банка (--rules): сводка по правилам
     depth: dict = field(default_factory=dict)  # v5: учёт строк, матрица критериев, покрытие приёмкой, вердикты, план
 
 
