@@ -125,7 +125,7 @@ def evidence(root: Path | None = None) -> list[dict]:
     ext = root / "examples" / "answers" / "external" / "RESULTS.md"
     er = _row(md_rows(ext.read_text(encoding="utf-8")), "Тип ответа определён верно") if ext.exists() else None
     add("answers", "Чужие ответы аналитика: тип ответа определён верно", er[1] if er and len(er) > 1 else None,
-        "ответы написал человек вне команды" if er else "", "examples/answers/external/RESULTS.md", "python bench/answers_eval.py")
+        "ответы написал отдельный ИИ в роли владельца ТЗ, не видевший код" if er else "", "examples/answers/external/RESULTS.md", "python bench/answers_eval.py")
 
     rep = _load(root, "reports/requirements-report.json")
     pp = (rep or {}).get("passport") or {}

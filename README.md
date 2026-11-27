@@ -65,7 +65,7 @@ ReqLens читает готовый документ требований (PDF, 
 
 <table>
 <tr>
-<td width="50%"><img src="docs/assets/screenshot-studio-upload.png" alt="Studio: загрузка документа"><br><sub><b>Studio</b> — перетащите файл, проверка начнётся сразу</sub></td>
+<td width="50%"><img src="docs/assets/v15/studio-overview-ru.webp" alt="Studio: стартовый экран"><br><sub><b>Studio</b> — готовый пример без прогона или своё ТЗ; цифры на экране — из файлов результатов</sub></td>
 <td width="50%"><img src="docs/assets/screenshot-overview-board-dark.png" alt="Что исправить в первую очередь"><br><sub><b>Что исправить в первую очередь</b> — противоречия и пропуски из плана исправлений</sub></td>
 </tr>
 <tr>
@@ -138,9 +138,9 @@ LLM_BACKUP_PROVIDER=gemini      # DeepSeek отказал (баланс, клю�
 <p align="center"><img src="docs/assets/screenshot-site-dark.png" alt="Сайт ReqLens, тёмная тема" width="100%"></p>
 
 **Дизайн — v3 «Ecliptic Dawn».** Сайт, Studio, HTML-отчёт, слайды и витрина компонентов собраны на одних токенах
-`design/tokens.json`. Тёмная тема — по умолчанию, светлая — переключателем. Один шрифт везде — Inter Variable, лежит
-локально (латиница, кириллица и расширенная кириллица для казахского; SIL OFL 1.1), поэтому офлайн-отчёт выглядит так
-же, как сайт. Подробно — [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md); витрина — `python -m req_review.ui.styleguide`
+`design/tokens.json`. Тёмная тема — по умолчанию, светлая — переключателем. Шрифт — Inter Variable, лежит локально
+(латиница, кириллица и расширенная кириллица для казахского; SIL OFL 1.1): на сайте, в Studio и слайдах. Офлайн-отчёт
+шрифт не встраивает (+42 КБ) — он должен оставаться меньше 1 МБ — и берёт системный (Segoe UI / SF / Roboto). Подробно — [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md); витрина — `python -m req_review.ui.styleguide`
 → `design/styleguide.html`.
 
 **Studio и API — Render** ([reqlens-studio.onrender.com](https://reqlens-studio.onrender.com)). Сервис описан в
@@ -172,21 +172,23 @@ LLM_BACKUP_PROVIDER=gemini      # DeepSeek отказал (баланс, клю�
 | **Скорость** (v14): 4 запроса к модели одновременно, без пауз 6 с между стартами (окно `LLM_RPM_WINDOW`), при первом 429 «quota» — сразу резервная модель, профиль `fast` — пакеты по 10 | короткий прогон уходит без ожидания | раздел «Настройки (`.env`)» |
 | **Честная точность** (v15): «проверено N из M» и диапазон, пока проверены не все замечания | вместо «точность 99 %» — **от 50 % до 99 %**: проверено 157 из 313 существенных замечаний, верны 156 | таблица «Доказательства», `bench/score.json` |
 | **Лист ручной разметки** (v15): `bench/label_sheet.html` — настоящий / ложное / спорно, клавиши 1–3, перенос вердиктов людей по ключу | точность пересчитывается из разметки | раздел «Как проверить точность (3 шага)» |
-| **Интерфейс v15** — в ветке `v15-ui`, ещё дорабатывается: отчёт и Studio показывают всё, что уже считает движок — «Кратко» после ответов, «Исправленное ТЗ», трассировка «требование ↔ API», «Чек-лист банка» | ниже — скриншоты | ветка `v15-ui` |
+| **Интерфейс v15**: отчёт и Studio показывают всё, что уже считает движок — «Кратко» после ответов, «Исправленное ТЗ», трассировка «требование ↔ API», «Чек-лист банка»; на сайте и в Studio — раздел «Доказательства» из файлов репозитория; русский и казахский | ниже — скриншоты; проверка интерфейса — `python scripts/ui_check.py` (1440 / 768 / 390, обе темы, ru / kk) | `tests/test_ui_v15.py` |
 
 <table>
 <tr>
-<td width="50%"><img src="docs/assets/screenshot-v15-brief-dark.png" alt="Блок «Кратко»"><br><sub><b>v15-ui: «Кратко»</b> — вердикты до и после ответов аналитика, закрытые блокеры</sub></td>
-<td width="50%"><img src="docs/assets/screenshot-v15-revised-dark.png" alt="Исправленное ТЗ"><br><sub><b>v15-ui: «Исправленное ТЗ»</b> — было → стало по ответам, что осталось уточнить</sub></td>
+<td width="50%"><img src="docs/assets/v15/report-overview-ru.webp" alt="Блок «Кратко»"><br><sub><b>«Кратко»</b> — вердикты до и после ответов аналитика: закрыто блокеров 3 из 10</sub></td>
+<td width="50%"><img src="docs/assets/v15/report-revised-ru.webp" alt="Исправленное ТЗ"><br><sub><b>«Исправленное ТЗ»</b> — было → стало по ответам, что осталось уточнить</sub></td>
 </tr>
 <tr>
-<td><img src="docs/assets/screenshot-v15-bank-dark.png" alt="Чек-лист банка"><br><sub><b>v15-ui: «Чек-лист банка»</b> — сработавшие правила банка и комплаенс, без модели</sub></td>
+<td><img src="docs/assets/v15/report-bank-ru.webp" alt="Чек-лист банка"><br><sub><b>«Чек-лист банка»</b> — правила банка и комплаенс, без модели</sub></td>
 <td><img src="docs/assets/screenshot-v15-label-sheet.png" alt="Лист разметки точности"><br><sub><b>Лист разметки точности</b> — замечание, строки документа вокруг и вердикт человека</sub></td>
 </tr>
 </table>
 
-Скриншоты v15-ui сняты на тестовом прогоне без модели (`LLM_PROVIDER=mock`, отсюда жёлтая плашка) с ответами аналитика
-и правилами банка: `python scripts/ui_check.py --report <report.html> --shots <папка>` в ветке `v15-ui`.
+Скриншоты v15 сняты на настоящем прогоне документа организаторов (DeepSeek `deepseek-chat`, профиль fast) с ответами
+аналитика (`examples/answers/organizers_answers.md`) и чек-листом банка (`--rules fintech`):
+`python scripts/ui_check.py --report <report.html> --shots docs/assets/v15`. Ещё — на казахском и «Доказательства» на сайте:
+[`docs/assets/v15/`](docs/assets/v15/).
 
 ---
 
