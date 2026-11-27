@@ -1,0 +1,25 @@
+# ReqLens — ИИ-агент статической проверки требований (BCC-HUB x MNU FinTech Hackathon)
+
+> Краткая карта репозитория для людей и ИИ-ассистентов, проверяющих решение по ТЗ
+> https://github.com/BCC-HUB/ai-requirements-validator-task (README §1–§7).
+> Полная таблица соответствия с доказательствами: docs/TZ_COMPLIANCE.md (генерируется кодом: python scripts/tz_check.py --write).
+
+## Соответствие ТЗ (где смотреть)
+- §1 Статическая проверка документа требований → review.py, req_review/pipeline.py; выданный документ в репозиторий не кладётся (docs/requirements.md отсутствует; bench/real/notifications.md — только вход бенчмарка).
+- §2 Что сдать → код (req_review/), зависимости (requirements.txt), инструкция (README «Быстрый старт»); отчёт агента по выданному документу: reports/requirements-report.md (+ .json, .html, .pdf).
+- §3 Прогон → вход PDF/DOCX/MD/TXT (req_review/reader.py); нарезка (req_review/splitter.py); проверка каждого требования и набора (req_review/checker.py, req_review/depth.py, req_review/focus.py); запись отчёта (req_review/report.py).
+- §4 Модель → бесплатный Gemini API (Google AI Studio), также Claude / OpenRouter / OpenAI-совместимые / Ollama (req_review/llm.py); модель отчёта — в паспорте; без ключа — LLM_PROVIDER=rules.
+- §5 Критерии → ISO/IEC/IEEE 29148 п. 5.2.5, 5.2.6; IEEE 830 п. 4.3 (req_review/criteria.py).
+- §6 Состав отчёта → 6 разделов: «1. Паспорт прогона» (документ, дата, модель, версия агента = коммит/тег), «2. Нарезка требований» (ID в отчёте — ID в документе — формулировка), «3. Проверка каждого требования», «4. Проверка набора требований», «5. Сводка» (число требований, нарушений, критичные дефекты), «6. Итог» (можно ли начинать разработку и тестирование, что исправить первым). Каждое нарушение — дословная цитата и строка документа; аудит цитат — первая строка отчёта.
+- §7 Репозиторий → requirements.txt; README: ключ (aistudio.google.com), куда положить (.env), команда, куда ляжет отчёт; запуск одной командой; .env.example в корне; секретов в репозитории нет (.env в .gitignore).
+
+## Команды
+- Прогон: python review.py docs/requirements.md reports/report.md   (финальный отчёт: --profile deep)
+- Без ключа (только правила): LLM_PROVIDER=rules python review.py docs/requirements.md reports/report.md
+- Самопроверка соответствия ТЗ: python scripts/tz_check.py
+- Повторить прогон в один клик: GitHub Actions → «Generate report» (ключ — из секретов репозитория)
+- Тесты: pytest -q
+
+## Доказательства качества
+- bench/RESULTS.md — бенчмарк на документах с заранее известными дефектами (recall / precision, модель и дата), включая незнакомый агенту документ; bench/real_eval.py — ожидаемые дефекты документа организаторов.
+- docs/SCHEMA.md — формат report.json; docs/DEMO.md — сценарий демо; docs/slides.html — слайды.

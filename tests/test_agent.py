@@ -179,3 +179,13 @@ def test_api_consistency_rules(tmp_path):
     s = split_requirements(doc)
     kinds = sorted(f.kind for f in api_consistency(s.requirements, doc))
     assert kinds == ["contradiction", "contradiction", "terminology"]
+
+
+def test_vague_word_forms_are_caught():
+    """Формы размытых слов ловятся основами регулярных выражений (без морфологического словаря)."""
+    from req_review.splitter import Requirement
+
+    forms = ["быстро", "быстрее", "оперативно", "удобно", "удобнее", "простая", "простое", "проще", "легко", "легче",
+             "надёжно", "надежнее", "стабильно", "эффективнее", "оптимально", "достаточно", "понятнее", "современный"]
+    missed = [w for w in forms if not check_requirement(Requirement("R-1", None, f"Система должна работать {w} при оплате.", "", 1, 1))]
+    assert missed == []

@@ -137,6 +137,23 @@ def build_trace(ctx) -> list[dict]:
     return out
 
 
+def _depth(rv) -> dict | None:
+    """v7: поля 2.3 для HTML (итог за 30 секунд, аудит цитат, учёт строк, покрытие приёмкой, матрица); None — старый отчёт."""
+    d = getattr(rv, "depth", None) or {}
+    if not d:
+        return None
+    lc = d.get("line_coverage") or {}
+    m = d.get("criteria_matrix") or {}
+    return {
+        "verdict": d.get("verdict"), "fix_plan": d.get("fix_plan") or [], "citation_audit": d.get("citation_audit"),
+        "review_stats": d.get("review_stats"), "acceptance": d.get("acceptance_coverage"),
+        "lines": {k: lc.get(k) for k in ("total", "accounted", "percent", "requirements")} | {
+            "excluded": lc.get("excluded") or [], "uncovered": (lc.get("uncovered") or [])[:20]} if lc else None,
+        # матрица: только требования с замечаниями (компактно; пустые строки не нужны для тепловой карты)
+        "matrix": [{"rid": r["rid"], "cells": r["cells"]} for r in m.get("rows", []) if r.get("cells")] if m else [],
+    }
+
+
 def build_data(ctx) -> dict:
     rv, sc = ctx.rv, ctx.scores
     lines = rv.doc.lines
@@ -248,6 +265,7 @@ def build_data(ctx) -> dict:
         "split_method": rv.split.method,
         "trace": build_trace(ctx),
         "report_md": getattr(ctx, "report_md", ""),
+        "depth": _depth(rv),
     }
     return data
 

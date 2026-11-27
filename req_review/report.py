@@ -52,6 +52,14 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
           "Этот отчёт не является результатом проверки и не подходит для сдачи.")
         w("")
 
+    ca = (getattr(rv, "depth", None) or {}).get("citation_audit")
+    if ca:
+        lc = (getattr(rv, "depth", None) or {}).get("line_coverage") or {}
+        w(f"> 🔎 **Аудит цитат (проверено кодом):** цитат в замечаниях — {ca['total']}, подтверждено в тексте документа — "
+          f"**{ca['verified']}** (дословно {ca['exact']}, с пропусками «…» {ca['fuzzy']}), не найдено — {ca['missing']}; "
+          f"отброшено как выдуманные моделью — {ca['dropped']}."
+          + (f" Учтено строк документа: {lc['accounted']} из {lc['total']}." if lc else ""))
+        w("")
     _summary_30s(w, rv, sev_counts, by_rid)
 
     # ------------------------------------------------------------------ 1
@@ -64,6 +72,10 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     w(f"| SHA-256 файла | `{doc.sha256[:16]}…` |")
     w(f"| Дата и время прогона | {started.strftime('%Y-%m-%d %H:%M:%S %Z').strip()} |")
     w(f"| Модель | {_cell(model_label)} |")
+    ens = (ctx.passport.get("ensemble") if ctx is not None else None) or None
+    if ens:
+        w(f"| Ансамбль моделей | нашли обе — {ens['both']}, только {_cell(ens['models'][0])} — {ens['only_a']}, "
+          f"только {_cell(ens['models'][1])} — {ens['only_b']}, правила — {ens['rules']} |")
     if ctx is not None and ctx.passport.get("model_switches"):
         w(f"| Переключения модели | {_cell('; '.join(ctx.passport['model_switches']))} |")
     w(f"| Версия агента | {_cell(agent_version)} |")
@@ -91,6 +103,10 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     if dp.get("line_coverage"):
         lc = dp["line_coverage"]
         w(f"| Учтено строк документа | {lc['accounted']} из {lc['total']} ({lc['percent']} %) — в требованиях или исключены с причиной |")
+    if dp.get("citation_audit"):
+        ca = dp["citation_audit"]
+        w(f"| Аудит цитат | {ca['verified']} из {ca['total']} подтверждены в документе ({ca['percent']} %), "
+          f"отброшено выдуманных — {ca['dropped']} |")
     if dp.get("review_stats"):
         st = dp["review_stats"]
         w(f"| Самопроверка | предложено {st['proposed']}, подтверждено {st['confirmed']}, отклонено критиком {st['rejected']}, "

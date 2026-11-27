@@ -851,7 +851,186 @@
         "KNF-04"
       ],
       "file": "bench/out/cards_seeded.docx"
+    },
+    "cashback": {
+      "defects": [
+        {
+          "doc": "cashback",
+          "type": "vague",
+          "ids": [
+            "CB-04"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "cashback",
+          "type": "vague",
+          "ids": [
+            "CB-09"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "cashback",
+          "type": "missing_units",
+          "ids": [
+            "CB-10"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous",
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "cashback",
+          "type": "open_list",
+          "ids": [
+            "CB-06"
+          ],
+          "criteria": [
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "cashback",
+          "type": "tbd",
+          "ids": [
+            "CB-03"
+          ],
+          "criteria": [
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "cashback",
+          "type": "and_or",
+          "ids": [
+            "CB-11"
+          ],
+          "criteria": [
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "cashback",
+          "type": "conditional",
+          "ids": [
+            "CB-12"
+          ],
+          "criteria": [
+            "unambiguous",
+            "complete"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "cashback",
+          "type": "design",
+          "ids": [
+            "CB-05"
+          ],
+          "criteria": [
+            "appropriate"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "cashback",
+          "type": "compound",
+          "ids": [
+            "CB-13"
+          ],
+          "criteria": [
+            "singular"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "cashback",
+          "type": "subjective",
+          "ids": [
+            "CNF-06"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "cashback",
+          "type": "absolute",
+          "ids": [
+            "CNF-02"
+          ],
+          "criteria": [
+            "feasible",
+            "verifiable"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "cashback",
+          "type": "vague_goal",
+          "ids": [
+            "CNF-03"
+          ],
+          "criteria": [
+            "verifiable",
+            "unambiguous"
+          ],
+          "level": "requirement"
+        },
+        {
+          "doc": "cashback",
+          "type": "contradiction",
+          "ids": [
+            "CB-03",
+            "CB-15"
+          ],
+          "criteria": [
+            "set_consistent"
+          ],
+          "level": "set"
+        },
+        {
+          "doc": "cashback",
+          "type": "duplicate",
+          "ids": [
+            "CB-08",
+            "CB-16"
+          ],
+          "criteria": [
+            "set_consistent",
+            "necessary"
+          ],
+          "level": "set"
+        }
+      ],
+      "clean_ids": [
+        "CB-01",
+        "CB-02",
+        "CB-07",
+        "CB-14",
+        "CNF-01",
+        "CNF-04",
+        "CNF-05"
+      ],
+      "file": "bench/out/cashback_seeded.md"
     }
   },
-  "total_defects": 67
+  "total_defects": 81
 }

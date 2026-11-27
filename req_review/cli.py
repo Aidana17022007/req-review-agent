@@ -29,6 +29,13 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--no-rescore", dest="rescore", action="store_false",
                     help="не перепроверять исправленный документ (экономит запросы к модели)")
     ap.add_argument("--no-tests", action="store_true", help="не включать тест-пробу (Gherkin) в отчёт")
+    ap.add_argument("--pdf", dest="pdf", action="store_true", default=None,
+                    help="записать PDF-версию отчёта рядом с .md (в профиле deep — по умолчанию)")
+    ap.add_argument("--no-pdf", dest="pdf", action="store_false", help="не создавать PDF-версию отчёта")
+    ap.add_argument("--ensemble", default=None, metavar="M1,M2",
+                    help="ансамбль двух моделей: два прогона и объединение подтверждённых замечаний (или LLM_ENSEMBLE)")
+    ap.add_argument("--fix-loop", action="store_true",
+                    help="исправить формулировки, проверить исправленный документ заново и записать «До / После»")
     for name, what in (("html", "интерактивный HTML-отчёт"), ("fixed", "исправленный документ"), ("xlsx", "Excel-трассировку"),
                        ("jira", "CSV для Jira"), ("json", "report.json")):
         ap.add_argument(f"--no-{name}", action="store_true", help=f"не создавать {what}")
@@ -60,9 +67,11 @@ def main(argv: list[str] | None = None) -> int:
     opts = Options(
         profile=profile,
         html=not args.no_html, fixed=not args.no_fixed, xlsx=not args.no_xlsx, jira=not args.no_jira,
-        json=not args.no_json, tests=not args.no_tests, critic=args.critic, rescore=args.rescore,
+        json=not args.no_json, tests=not args.no_tests, critic=args.critic,
+        rescore=True if args.fix_loop else args.rescore, fix_loop=args.fix_loop,
+        ensemble=args.ensemble or os.getenv("LLM_ENSEMBLE", ""),
         domain=args.domain or os.getenv("REQLENS_DOMAIN", "fintech"), compare=args.compare,
-        batch_size=int(os.getenv("LLM_BATCH_SIZE", "20")),
+        batch_size=int(os.getenv("LLM_BATCH_SIZE", "20")), pdf=args.pdf,
     )
     con = Console(quiet=args.quiet)
     apply_profile_env(profile)

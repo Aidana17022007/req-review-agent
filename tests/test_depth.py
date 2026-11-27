@@ -682,3 +682,136 @@ def test_critical_rule_marker_kept_when_model_uses_other_criterion(tmp_path):
     rr = check_requirements(s.requirements, doc, Fake(), 6, [], log=lambda *a: None)[0]
     crits = {(f.criterion, f.source) for f in rr.findings}
     assert ("unambiguous", "LLM + правило") in crits and ("complete", "правило") in crits
+
+
+def test_citation_audit_counts_and_header(tmp_path, monkeypatch):
+    from req_review.cli import main
+
+    monkeypatch.setenv("LLM_PROVIDER", "mock")
+    out = tmp_path / "r.md"
+    assert main([str(ROOT / "tests" / "fixtures" / "sample_requirements.md"), str(out), "--env", str(tmp_path / "x.env"),
+                 "--quiet", "--no-xlsx", "--no-jira"]) == 0
+    d = json.loads((tmp_path / "r.json").read_text(encoding="utf-8"))
+    ca = d["citation_audit"]
+    refs = sum(1 for r in d["requirements"] for f in r["findings"] if f["quote"]) + \
+        sum(1 for f in d["set_findings"] for x in f["refs"] if x["quote"])
+    assert ca["total"] == refs and ca["verified"] == ca["exact"] + ca["fuzzy"] == ca["total"] and ca["missing"] == 0
+    assert ca["dropped"] == len(d["dropped"]) >= 1  # выдуманная цитата mock-модели отброшена
+    head = out.read_text(encoding="utf-8").split("## 1. Паспорт прогона")[0]
+    assert "Аудит цитат" in head and f"**{ca['verified']}**" in head
+
+
+def test_pdf_report_is_readable(tmp_path, monkeypatch):
+    pytest.importorskip("reportlab")
+    from req_review.cli import main
+    from req_review.pdf_report import PdfFontError, find_font
+
+    try:
+        find_font()
+    except PdfFontError:
+        pytest.skip("нет шрифта с кириллицей")
+    import pdfplumber
+
+    monkeypatch.setenv("LLM_PROVIDER", "rules")
+    out = tmp_path / "r.md"
+    assert main([str(ROOT / "bench" / "real" / "notifications.md"), str(out), "--env", str(tmp_path / "x.env"),
+                 "--quiet", "--no-xlsx", "--no-jira", "--pdf"]) == 0
+    pdf = out.with_suffix(".pdf")
+    assert pdf.exists() and pdf.stat().st_size < 1024 * 1024
+    with pdfplumber.open(pdf) as p:
+        text = "".join(pg.extract_text() or "" for pg in p.pages)
+    for marker in ("Паспорт прогона", "Нарезка требований", "Проверка каждого требования", "Сводка", "Итог", "Аудит цитат"):
+        assert marker in text, marker
+    assert "reqlens:summary" not in text and r"\|" not in text
+    assert main([str(ROOT / "tests" / "fixtures" / "sample_requirements.md"), str(tmp_path / "n.md"),
+                 "--env", str(tmp_path / "x.env"), "--quiet", "--no-xlsx", "--no-jira"]) == 0
+    assert not (tmp_path / "n.pdf").exists()  # профиль fast без --pdf — PDF не создаётся
+
+
+def test_fix_loop_writes_before_after(tmp_path, monkeypatch):
+    from req_review.cli import main
+
+    monkeypatch.setenv("LLM_PROVIDER", "mock")
+    out = tmp_path / "r.md"
+    assert main([str(ROOT / "tests" / "fixtures" / "sample_requirements.md"), str(out), "--env", str(tmp_path / "x.env"),
+                 "--quiet", "--no-xlsx", "--no-jira", "--fix-loop"]) == 0
+    ba = (tmp_path / "r_before_after.md").read_text(encoding="utf-8")
+    assert "| Балл документа |" in ba and "| Критичных |" in ba and "По требованиям" in ba
+    d = json.loads((tmp_path / "r.json").read_text(encoding="utf-8"))
+    rs = d["rescore"]
+    assert rs["counts_after"]["critical"] <= rs["counts_before"]["critical"] and rs["after"] >= rs["before"]
+    assert rs["compare"]["counts"]["fixed"] >= 1
+    assert len(rs["remaining"]) == rs["counts_after"]["critical"] or len(rs["remaining"]) == 15
+
+
+def test_ensemble_merge_unions_without_duplicates(monkeypatch):
+    from req_review.ensemble import merge, refresh_depth
+    from req_review.mock_llm import MockLLM
+    from req_review.pipeline import Options, review_document
+
+    monkeypatch.setenv("REQLENS_GAPS", "1")
+    fix = ROOT / "tests" / "fixtures" / "sample_requirements.md"
+    rv_a = review_document(fix, MockLLM(), Options(), log=lambda m: None)
+    rv_b = review_document(fix, MockLLM(), Options(), log=lambda m: None)
+    llm_b_only = [(rr.req.rid, f.criterion) for rr in rv_a.req_results for f in rr.findings if "LLM" in f.source][:3]
+    assert llm_b_only, "в mock-прогоне должны быть замечания модели"
+    for rr in rv_a.req_results:  # модель A «пропустила» три замечания, которые нашла модель B
+        rr.findings = [f for f in rr.findings if (rr.req.rid, f.criterion) not in llm_b_only or "LLM" not in f.source]
+    total_b = sum(len(rr.findings) for rr in rv_b.req_results) + len(rv_b.set_findings)
+    st = merge(rv_a, rv_b)
+    refresh_depth(rv_a)
+    assert st["b_added"] >= len(llm_b_only) and st["both"] >= 1
+    total = sum(len(rr.findings) for rr in rv_a.req_results) + len(rv_a.set_findings)
+    assert total == total_b  # одинаковые модели: после объединения — тот же набор, без дублей
+    labels = {f.ensemble for rr in rv_a.req_results for f in rr.findings} | {f.ensemble for f in rv_a.set_findings}
+    assert labels <= {"обе", "модель A", "модель B", "правило"} and "модель B" in labels and "" not in labels
+    by = {rr.req.rid: rr.req.text for rr in rv_a.req_results}
+    assert all(quote_in(f.quote, by[rr.req.rid]) for rr in rv_a.req_results for f in rr.findings if f.quote)
+    assert rv_a.depth["review_stats"]["confirmed"] == total and rv_a.depth["citation_audit"]["missing"] == 0
+
+
+def test_ensemble_cli_passport(tmp_path, monkeypatch):
+    from req_review.cli import main
+
+    monkeypatch.setenv("LLM_PROVIDER", "mock")
+    out = tmp_path / "r.md"
+    assert main([str(ROOT / "tests" / "fixtures" / "sample_requirements.md"), str(out), "--env", str(tmp_path / "x.env"),
+                 "--quiet", "--no-xlsx", "--no-jira", "--ensemble", "m-one,m-two"]) == 0
+    d = json.loads((tmp_path / "r.json").read_text(encoding="utf-8"))
+    ens = d["passport"]["ensemble"]
+    assert len(ens["models"]) == 2 and ens["both"] >= 1 and ens["only_b"] == 0  # одинаковые mock-модели
+    assert "Ансамбль моделей" in out.read_text(encoding="utf-8") and "ансамбль" in d["passport"]["model"]
+    assert all(f.get("ensemble") for r in d["requirements"] for f in r["findings"])
+
+
+def test_html_report_has_v7_blocks_and_hides_them_for_old_reports(tmp_path, monkeypatch):
+    from req_review.html_report import build_data
+    from req_review.pipeline import Options, run
+
+    monkeypatch.setenv("LLM_PROVIDER", "rules")
+    ctx = run(str(ROOT / "bench" / "real" / "notifications.md"), str(tmp_path / "r.md"),
+              Options(xlsx=False, jira=False), log=lambda m: None)
+    html = (tmp_path / "r.html").read_text(encoding="utf-8")
+    assert html.encode("utf-8").__len__() < 1024 * 1024
+    for marker in ("summary30HTML", "trustHTML", "acceptanceHTML", "matrixHTML", "Итог за 30 секунд", "30 секундтағы қорытынды",
+                   "REQLENS_ASK", "Спроси отчёт", "Есептен сұра"):
+        assert marker in html, marker
+    d = build_data(ctx)["depth"]
+    assert d["verdict"]["development"] and d["fix_plan"] and d["citation_audit"]["total"] > 0
+    assert d["lines"]["accounted"] == d["lines"]["total"] and d["matrix"] and d["acceptance"]["percent"] is not None
+    ctx.rv.depth = {}  # отчёт 2.2 без полей глубины — блоки не рисуются (D.depth = null)
+    assert build_data(ctx)["depth"] is None
+
+
+def test_tz_self_check_passes_on_submission_report():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("tz_check", ROOT / "scripts" / "tz_check.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    rows = mod.check(ROOT / "reports" / "requirements-report.md")
+    clauses = {r["clause"] for r in rows}
+    assert {"§1", "§2", "§3", "§4", "§5", "§6", "§7"} <= clauses
+    failed = [r["what"] for r in rows if r["required"] and not r["ok"]]
+    assert failed == [], failed
+    assert all(r["evidence"] for r in rows)

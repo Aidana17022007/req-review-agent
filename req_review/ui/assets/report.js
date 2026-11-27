@@ -243,18 +243,117 @@
       openDrawer(run);
     };
   }
-  // AI-ассистент живёт в Studio (нужен сервер с моделью); в статическом отчёте — подсказка
+  // «Спроси отчёт» (v7): ассистент прямо в HTML — офлайн, без сервера и без модели. Ответ собирается из данных этого
+  // отчёта (замечания, требования, строки документа, вердикт, план), у каждого ответа — источники-ссылки.
   if (EMBED) $("#btn-ai").hidden = true;
-  $("#btn-ai").onclick = () => {
-    $("#drawer-title").textContent = "AI-ассистент";
+  const ASK = (() => {
+    const low = (s) => String(s || "").toLowerCase().replace(/ё/g, "е");
+    const toks = (s) => (low(s).match(/[a-zа-я0-9]{3,}/g) || []).map((w) => w.slice(0, 6));
+    const STOP = new Set(["что", "как", "где", "это", "для", "почему", "какие", "какой", "какая", "есть", "ли", "по", "при", "или", "все", "нет"].map((w) => w.slice(0, 6)));
+    const docs = [];
+    Object.values(D.findings).forEach((f) => docs.push({ kind: "f", id: f.fid, text: [f.cname, f.problem, f.quote, f.fix, (f.refs || []).map((r) => r.quote).join(" ")].join(" ") }));
+    D.lines.forEach((l) => { if (String(l.t || "").trim().length > 15) docs.push({ kind: "l", id: l.n, text: l.t }); });
+    const df = {}, toksOf = docs.map((d) => { const t = toks(d.text); new Set(t).forEach((w) => { df[w] = (df[w] || 0) + 1; }); return t; });
+    const avg = toksOf.reduce((a, t) => a + t.length, 0) / Math.max(1, toksOf.length);
+    function search(q, k) {
+      const qt = [...new Set(toks(q))].filter((w) => !STOP.has(w));
+      return docs.map((d, i) => {
+        const t = toksOf[i], n = t.length; let s = 0;
+        for (const w of qt) { const tf = t.filter((x) => x === w).length; if (!tf) continue;
+          const idf = Math.log(1 + (docs.length - df[w] + 0.5) / (df[w] + 0.5)); s += idf * (tf * 2.2) / (tf + 1.2 * (0.25 + 0.75 * n / avg)); }
+        return [s, d];
+      }).filter((x) => x[0] > 0).sort((a, b) => b[0] - a[0]).slice(0, k).map((x) => x[1]);
+    }
+    const byDoc = Object.fromEntries(D.reqs.filter((r) => r.doc_id).map((r) => [low(r.doc_id), r]));
+    function refsIn(q) {
+      const out = [];
+      for (const m of q.matchAll(/\b[RrРр]-?\s?(\d{1,4})\b/g)) { const id = "R-" + String(+m[1]).padStart(3, "0"); if (reqById[id] && !out.includes(id)) out.push(id); }
+      for (const m of q.matchAll(/\b[SsЅ]-?(\d{1,3})\b/g)) { const id = "S-" + String(+m[1]).padStart(2, "0"); if (D.findings[id] && !out.includes(id)) out.push(id); }
+      const lq = low(q);
+      for (const [d, r] of Object.entries(byDoc)) if (new RegExp("(^|[^\\wа-я-])" + d.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?![\\wа-я-])").test(lq) && !out.includes(r.rid)) out.push(r.rid);
+      return out;
+    }
+    const srcF = (fid) => { const f = D.findings[fid]; return f ? `<a href="#" class="chip chip-outline" data-open="${esc(fid)}">${ic(SEV[f.severity].icon, 12)}${esc(f.kind === "set" ? fid : label(reqById[f.rid]))}</a>` : ""; };
+    const srcL = (n) => `<a href="#L${n}" class="chip chip-outline" data-go-line="${n}">${ic("file", 12)}строка ${n}</a>`;
+    const srcR = (rid) => `<a href="#" class="chip chip-outline" data-go-req="${esc(rid)}">${ic("list", 12)}${esc(label(reqById[rid]))}</a>`;
+    const fline = (fid) => { const f = D.findings[fid]; return `<li><a href="#" data-open="${esc(fid)}"><b>${esc(f.kind === "set" ? fid : label(reqById[f.rid]))}</b></a> · ${esc(SEV[f.severity].label.toLowerCase())} · ${esc(f.cname)}: ${esc(short(f.problem, 180))}</li>`; };
+    const list = (fids, n = 8) => fids.length ? `<ul class="ask-list">${fids.slice(0, n).map(fline).join("")}</ul>${fids.length > n ? `<div class="small faint">и ещё ${fids.length - n}</div>` : ""}` : "<p>Не найдено.</p>";
+    const all = () => Object.keys(D.findings);
+    const has = (q, ...ws) => ws.some((w) => low(q).includes(w));
+    function explainReq(rid) {
+      const r = reqById[rid], own = r.findings;
+      // плюс замечания к набору, которые ссылаются на это требование (противоречия, дубли, пропуски)
+      const setF = D.set.filter((sid) => (D.findings[sid].refs || []).some((x) => x.rid === rid));
+      const fs = [...own, ...setF];
+      const head = `<p><b>${esc(label(r))}</b> — ${esc(r.location)}. «${esc(short(r.text, 200))}»</p>`;
+      return { html: head + (fs.length ? list(fs) : "<p>Замечаний к этому требованию нет.</p>"), src: [srcR(rid), r.line ? srcL(r.line) : "", ...fs.slice(0, 4).map(srcF)] };
+    }
+    function answer(q) {
+      q = String(q || "").trim();
+      const refs = refsIn(q);
+      if (!q || has(q, "помощ", "что ты умеешь", "привет", "help")) return { html: "<p>Спросите про требование (R-006, Ф-2), замечание набора (S-03) или в целом: что исправить первым, противоречия, критичные, вердикт, тесты, покрытие приёмкой, аудит цитат. Любой другой вопрос — поиск по замечаниям и тексту документа.</p>", src: [] };
+      if (refs.length && has(q, "норм", "основан", "стандарт", "пункт", "закон")) {
+        const fids = refs.flatMap((x) => (D.findings[x] ? [x] : reqById[x].findings));
+        const lines = fids.flatMap((fid) => (D.findings[fid].basis || []).map((b) => `<li><a href="#" data-open="${esc(fid)}"><b>${esc(fid.startsWith("S-") ? fid : label(reqById[D.findings[fid].rid]))}</b></a>: ${esc(b.source)}${b.clause ? " · " + esc(b.clause) : ""} — «${esc(short(b.quote, 160))}»${b.paraphrase ? " <span class=\"faint\">(пересказ, не текст закона)</span>" : ""}</li>`));
+        return { html: lines.length ? `<ul class="ask-list">${lines.join("")}</ul>` : "<p>У этих замечаний нет основания из базы знаний — критерий стандарта указан в самом замечании.</p>", src: fids.slice(0, 4).map(srcF) };
+      }
+      if (refs.length) {
+        const parts = refs.slice(0, 3).map((x) => (D.findings[x] ? { html: `<p><b>${esc(x)}</b>: ${esc(D.findings[x].problem)}</p><p class="small"><b>Как исправить:</b> ${esc(D.findings[x].fix)}</p>`, src: [srcF(x), ...(D.findings[x].refs || []).filter((r) => r.line).slice(0, 3).map((r) => srcL(r.line))] } : explainReq(x)));
+        return { html: parts.map((p) => p.html).join(""), src: parts.flatMap((p) => p.src) };
+      }
+      if (has(q, "первым", "первую очередь", "приоритет", "с чего начать", "важн")) {
+        const plan = (DP && DP.fix_plan) || [];
+        if (plan.length) return { html: `<ol class="ask-list">${plan.slice(0, 8).map((p) => { const f = fidFor((p.ids || [])[0], p.severity); return `<li>${f ? `<a href="#" data-open="${esc(f)}"><b>${esc((p.ids || []).slice(0, 3).join(", "))}</b></a>` : ""} ${esc(short(p.title || "", 160))}${p.example ? `<div class="faint">Пример: «${esc(short(p.example, 160))}»</div>` : ""}</li>`; }).join("")}</ol>`, src: plan.slice(0, 4).map((p) => srcF(fidFor((p.ids || [])[0], p.severity))) };
+        const pr = priorities(8).map(([, f]) => f.fid);
+        return { html: list(pr), src: pr.slice(0, 4).map(srcF) };
+      }
+      if (has(q, "противореч", "конфликт")) { const x = all().filter((id) => D.findings[id].set_kind === "contradiction"); return { html: list(x), src: x.slice(0, 4).map(srcF) }; }
+      if (has(q, "дубл")) { const x = all().filter((id) => D.findings[id].set_kind === "duplicate"); return { html: list(x), src: x.slice(0, 4).map(srcF) }; }
+      if (has(q, "готов", "можно ли", "вердикт", "итог", "начинать")) {
+        const v = DP && DP.verdict;
+        return { html: `<p><b>${esc(D.verdict.title)}.</b> ${esc(D.verdict.text)}</p>${v ? `<p>Разработка: <b>${esc(v.development)}</b> · Тестирование: <b>${esc(v.testing)}</b></p><p class="small faint">${esc(v.rule)}</p>` : ""}`, src: [] };
+      }
+      if (has(q, "критич", "худш", "самое плох")) { const x = all().filter((id) => D.findings[id].severity === "critical"); return { html: list(x, 10), src: x.slice(0, 4).map(srcF) }; }
+      if (has(q, "тест", "gherkin", "проверяем")) {
+        const bad = D.reqs.filter((r) => r.test && r.test.possible === false);
+        if (!D.scores.tests_total) return { html: "<p>Тест-проба в этом прогоне не проводилась (режим без модели). Непроверяемые формулировки — в замечаниях по критерию «Проверяемость».</p>", src: [] };
+        return { html: `<p>Тест можно составить для <b>${D.scores.tests_ok} из ${D.scores.tests_total}</b> требований.</p>${bad.length ? `<p>Нельзя — мешают формулировки:</p><ul class="ask-list">${bad.slice(0, 8).map((r) => `<li><a href="#" data-go-req="${esc(r.rid)}"><b>${esc(label(r))}</b></a>: ${esc(short(r.test.reason || "", 150))}</li>`).join("")}</ul>` : ""}`, src: bad.slice(0, 4).map((r) => srcR(r.rid)) };
+      }
+      if (has(q, "покрыт", "приемк")) {
+        const a = DP && DP.acceptance;
+        if (a && a.percent != null) return { html: `<p>Критерии приёмки покрывают <b>${a.percent}%</b> правил. Без примеров: ${(a.uncovered || []).map((u) => `<a href="#" data-go-req="${esc(u.rid)}">${esc(u.doc_id || u.rid)}</a>`).join(", ") || "нет"}.</p>`, src: (a.uncovered || []).slice(0, 4).map((u) => srcR(u.rid)) };
+      }
+      if (has(q, "цитат", "аудит", "выдума", "галлюц", "довер")) {
+        const ca = DP && DP.citation_audit;
+        if (ca) return { html: `<p>Каждая цитата замечаний сверена с документом кодом: подтверждено <b>${ca.verified} из ${ca.total}</b> (дословно ${ca.exact}, с пропусками «…» ${ca.fuzzy}). Замечаний модели с выдуманными цитатами отброшено: <b>${ca.dropped}</b> — в отчёт они не попали.</p>`, src: [] };
+      }
+      if (has(q, "сколько", "сводк", "статист", "кратко", "обзор")) {
+        return { html: `<p>Требований: <b>${D.reqs.length}</b>. Замечаний: <b>${totalFindings}</b> — критичных ${D.counts.critical}, существенных ${D.counts.major}, незначительных ${D.counts.minor}. Балл документа ${D.scores.doc}/100, готовность ${D.scores.readiness}%.</p>`, src: [] };
+      }
+      const hits = search(q, 6), fids = hits.filter((d) => d.kind === "f").map((d) => d.id).slice(0, 4), lns = hits.filter((d) => d.kind === "l").map((d) => d.id).slice(0, 3);
+      if (!fids.length && !lns.length) return { html: "<p>В отчёте и документе ничего не нашлось по этому вопросу. Попробуйте ID требования (R-006, Ф-2) или слова из документа.</p>", src: [] };
+      const lineOf = (n) => (D.lines.find((l) => l.n === n) || {}).t || "";
+      return { html: `${fids.length ? `<p>Замечания по теме:</p>${list(fids, 4)}` : ""}${lns.length ? `<p>В документе:</p><ul class="ask-list">${lns.map((n) => `<li><a href="#L${n}" data-go-line="${n}"><b>строка ${n}</b></a>: «${esc(short(lineOf(n), 160))}»</li>`).join("")}</ul>` : ""}<p class="small faint">Ответ найден поиском по данным отчёта, без модели.</p>`, src: [...fids.map(srcF), ...lns.map(srcL)] };
+    }
+    return { answer };
+  })();
+  const askLog = [];
+  const askSuggest = () => [`Почему ${worstReq() ? worstReq().rid : "R-001"} критичное?`, "Что исправить первым?", "Какие есть противоречия?",
+    "Можно ли начинать разработку?", "Сколько требований тестируемо?", "Насколько можно доверять цитатам?"];
+  function askRender() {
+    $("#drawer-title").textContent = "Спроси отчёт";
     $("#drawer-body").innerHTML = `<div class="ai-teaser"><span class="logo-mark">${ic("bot", 20)}</span>
-        <div><div class="h3">Доступно в ReqLens Studio</div><p class="small muted" style="margin-top:4px">Ассистенту нужен сервер: он отвечает по данным этого отчёта и при необходимости спрашивает модель. Статический HTML работает офлайн и вопросов не отправляет.</p></div></div>
-      <div><div class="caption" style="margin-bottom:8px">Примеры вопросов</div><div class="row wrap">
-        ${["Почему " + (worstReq() ? worstReq().rid : "R-001") + " критичное?", "Что исправить первым?", "Какие есть противоречия?", "Сколько требований тестируемо?"].map((q) => `<span class="chip chip-outline">${esc(q)}</span>`).join("")}</div></div>
-      <div><div class="caption" style="margin-bottom:8px">Запуск</div><pre class="code">python -m req_review.web</pre>
-        <a class="btn btn-sm btn-primary" style="margin-top:8px" href="http://localhost:8000/" target="_blank" rel="noopener">${ic("arrow-up-right", 14)}Открыть Studio</a></div>`;
-    openDrawer($("#btn-ai"));
-  };
+        <div><div class="h3">Работает офлайн</div><p class="small muted" style="margin-top:4px">Ответы — по данным этого отчёта, без модели и без сети. У каждого ответа — ссылки на замечания, требования и строки документа.</p></div></div>
+      <div id="ask-log" class="stack">${askLog.map((m) => `<div class="ask-q"><b>${esc(m.q)}</b></div><div class="ask-a">${m.a.html}${m.a.src.filter(Boolean).length ? `<div class="row wrap" style="gap:6px;margin-top:6px">${m.a.src.filter(Boolean).join("")}</div>` : ""}</div>`).join("")}</div>
+      <form id="ask-form" class="row" style="gap:8px"><input id="ask-q" class="input grow" type="text" placeholder="Например: что не так с Ф-2?" aria-label="Вопрос по отчёту" autocomplete="off">
+        <button class="btn btn-sm btn-primary" type="submit">Спросить</button></form>
+      <div class="row wrap" style="gap:6px">${askSuggest().map((q) => `<button type="button" class="chip chip-outline" data-ask="${esc(q)}">${esc(q)}</button>`).join("")}</div>`;
+    const go = (q) => { if (!q.trim()) return; askLog.push({ q, a: ASK.answer(q) }); askRender(); const l = $("#ask-log"); if (l && l.lastElementChild) l.lastElementChild.scrollIntoView({ block: "nearest" }); $("#ask-q").focus(); };
+    $("#ask-form").onsubmit = (e) => { e.preventDefault(); go($("#ask-q").value); };
+    $$("[data-ask]", $("#drawer-body")).forEach((b) => { b.onclick = () => go(b.dataset.ask); });
+  }
+  window.REQLENS_ASK = (q) => ASK.answer(q);  // для тестов и консоли
+  $("#btn-ai").onclick = () => { askRender(); openDrawer($("#btn-ai")); setTimeout(() => { const i = $("#ask-q"); if (i) i.focus(); }, 50); };
   const BKIND = { standard: ["Стандарт", "book"], law: ["Норма РК · пересказ", "shield"], template: ["Шаблон", "file"] };
   function basisHTML(f, compact) {
     const bs = f.basis || []; if (!bs.length) return "";
@@ -340,6 +439,60 @@
       ${errSteps.map((s) => esc(s.title) + ": " + esc(s.detail)).join(" · ")}
       <div class="small" style="margin-top:4px">Частые причины: исчерпан лимит API (429) или не задан ключ в .env. Повторный прогон возьмёт готовые ответы из кэша и дозапросит остальные.</div></div></div>`;
   }
+  // ------------------------------------------------------------ v7: поля 2.3 — итог за 30 секунд, доверие, приёмка, матрица
+  const DP = D.depth || null;
+  const VERD = { "нельзя": ["sev-critical", "x"], "с оговорками": ["sev-major", "alert"], "можно": ["sev-ok", "check"] };
+  function fidFor(id, sev) {  // S-xx — замечание набора; R-xxx — первое (самое серьёзное) замечание требования
+    if (D.findings[id]) return id;
+    const r = reqById[id]; if (!r || !r.findings.length) return "";
+    return r.findings.find((x) => D.findings[x].severity === sev) || r.findings[0];
+  }
+  function summary30HTML() {
+    if (!DP || !DP.verdict) return "";
+    const v = DP.verdict, vc = (x) => VERD[x] || VERD["с оговорками"];
+    const plan = (DP.fix_plan || []).slice(0, 8);
+    return `<div class="card" id="summary30" data-block="summary30"><div class="card-title">${ic("check")}<span class="h2 grow">Итог за 30 секунд</span></div>
+      <div class="row wrap" style="gap:10px">
+        <span class="chip ${vc(v.development)[0]}">${ic(vc(v.development)[1], 13)}Разработка: ${esc(v.development)}</span>
+        <span class="chip ${vc(v.testing)[0]}">${ic(vc(v.testing)[1], 13)}Тестирование: ${esc(v.testing)}</span>
+        ${["critical", "major", "minor"].map((s) => (D.counts[s] ? chip(s, `${SEV[s].label}: ${D.counts[s]}`) : "")).join("")}</div>
+      ${plan.length ? `<div class="caption" style="margin:16px 0 6px">Что исправить первым</div>
+        <ol class="small" style="margin:0;padding-left:20px">${plan.map((p) => { const f = fidFor((p.ids || [])[0], p.severity);
+          return `<li style="margin:8px 0">${chip(p.severity === "critical" ? "critical" : "major", (p.ids || []).slice(0, 4).join(", "))}
+            ${f ? `<a href="#" data-open="${esc(f)}"><b>${esc(short(p.title || "", 160))}</b></a>` : `<b>${esc(short(p.title || "", 160))}</b>`}
+            ${p.example ? `<div class="faint" style="margin-top:3px">Пример: «${esc(short(p.example, 220))}»</div>` : ""}</li>`; }).join("")}</ol>` : ""}
+      <p class="small faint" style="margin-top:10px">${esc(v.rule || "")}</p></div>`;
+  }
+  function trustHTML() {
+    if (!DP) return "";
+    const ca = DP.citation_audit, ln = DP.lines, st = DP.review_stats, ens = P.ensemble;
+    const items = [];
+    if (ca) items.push(`<span class="chip chip-outline" title="Цитаты подтверждённых замечаний сверены с текстом документа кодом">${ic("shield", 13)}Аудит цитат: ${ca.verified} из ${ca.total} подтверждены · отброшено выдуманных: ${ca.dropped}</span>`);
+    if (ln && ln.total) items.push(`<span class="chip chip-outline">${ic("file", 13)}Учтено строк документа: ${ln.accounted} из ${ln.total}</span>`);
+    if (st) items.push(`<span class="chip chip-outline">${ic("layers", 13)}Предложено ${st.proposed} · подтверждено ${st.confirmed} · отклонено критиком ${st.rejected}</span>`);
+    if (ens) items.push(`<span class="chip chip-outline">${ic("cpu", 13)}Ансамбль моделей: обе — ${ens.both}, только A — ${ens.only_a}, только B — ${ens.only_b}</span>`);
+    return items.length ? `<div class="row wrap" id="trust" data-block="trust" style="gap:8px;margin:0 0 16px">${items.join("")}</div>` : "";
+  }
+  function acceptanceHTML() {
+    const a = DP && DP.acceptance; if (!a || a.percent == null) return "";
+    const unc = a.uncovered || [];
+    return `<div class="card" id="acceptance" data-block="acceptance"><div class="card-title">${ic("flask")}<span class="h2 grow">Покрытие правил критериями приёмки</span>
+        <span class="chip ${a.percent >= 80 ? "sev-ok" : a.percent >= 50 ? "sev-major" : "sev-critical"}">${a.percent}%</span></div>
+      <div style="height:8px;border-radius:8px;background:var(--neutral-bar);overflow:hidden"><i style="display:block;height:100%;width:${Math.max(0, Math.min(100, a.percent))}%;background:${a.percent >= 80 ? "var(--ok)" : a.percent >= 50 ? SEV.major.color : SEV.critical.color}"></i></div>
+      <p class="small muted" style="margin-top:8px">${(a.covered || []).length} из ${(a.covered || []).length + unc.length} правил имеют пример «условия → действие → результат».</p>
+      ${unc.length ? `<div class="caption" style="margin:10px 0 6px">Без примеров приёмки</div><div class="row wrap" style="gap:6px">${unc.slice(0, 20).map((u) => `<a href="#" class="chip chip-outline" data-go-req="${esc(u.rid)}">${esc(u.doc_id || u.rid)}</a>`).join("")}</div>` : ""}</div>`;
+  }
+  function matrixHTML() {
+    const rows = DP && DP.matrix; if (!rows || !rows.length) return "";
+    const cs = D.criteria;
+    const cell = (r, c) => { const s = r.cells[c.key]; if (!s) return `<td><i class="mx" style="background:var(--neutral-bar)"></i></td>`;
+      const f = (reqById[r.rid] ? reqById[r.rid].findings : []).find((x) => D.findings[x].criterion === c.key) || "";
+      return `<td><a href="#" class="mx-a" data-open="${esc(f)}" title="${esc(r.rid)} · ${esc(c.name)}: ${esc(SEV[s].label)}"><i class="mx" style="background:${SEV[s].color}"></i></a></td>`; };
+    return `<details class="card" id="matrix" data-block="matrix"><summary class="card-title" style="cursor:pointer">${ic("layers")}<span class="h2 grow">Матрица «требование × критерий»</span><span class="chip chip-outline">${rows.length} треб.</span></summary>
+      <div class="table-wrap"><table class="tbl" style="font-size:12px"><thead><tr><th scope="col">Требование</th>${cs.map((c, i) => `<th scope="col" title="${esc(c.name)}">${i + 1}</th>`).join("")}</tr></thead>
+      <tbody>${rows.map((r) => `<tr><td><a href="#" data-go-req="${esc(r.rid)}">${esc(reqById[r.rid] ? label(reqById[r.rid]) : r.rid)}</a></td>${cs.map((c) => cell(r, c)).join("")}</tr>`).join("")}</tbody></table></div>
+      <p class="small faint" style="margin-top:8px">${cs.map((c, i) => `${i + 1}. ${esc(c.name.replace(/\s*\(.*\)/, ""))}`).join(" · ")}. Клик по клетке — замечание.</p></details>`;
+  }
   function renderOverview(el) {
     const s = D.scores;
     const failedSteps = D.trace.filter((t) => t.status === "err").length;
@@ -347,7 +500,7 @@
     const setCrit = D.set.filter((f) => D.findings[f].severity === "critical").length;
     const tPct = s.tests_total ? Math.round((100 * s.tests_ok) / s.tests_total) : 0;
     const crit = D.counts.critical;
-    el.innerHTML = `${errorBanner()}
+    el.innerHTML = `${errorBanner()}${trustHTML()}${summary30HTML() ? `<div style="margin-bottom:16px">${summary30HTML()}</div>` : ""}
       <div class="grid g-4">
         ${kpi("Всего требований", num(D.reqs.length), `<b>${D.split_method === "ids" ? "ID" : "R"}</b>нарезка ${D.split_method === "ids" ? "по ID документа" : "с номерами агента"}`, true, "reqs")}
         ${kpi("Нарушений", num(totalFindings), `<b>${reqFindings}</b>по требованиям · <b>${D.set.length}</b>по набору`, false, "doc")}
@@ -397,7 +550,8 @@
       <div class="section-title"><h2 class="h1">Требования</h2><div class="row"><span class="small muted hide-sm">${D.reqs.length} шт.</span>
         <button class="btn btn-sm btn-outline" data-go-view="reqs">Все фильтры ${ic("arrow-right", 14)}</button></div></div>
       ${D.reqs.length > 50 ? `<p class="small muted" style="margin-bottom:8px">Показаны 20 требований с наименьшим баллом из ${D.reqs.length} — полный список в разделе «Требования».</p>${reqTable(D.reqs.slice().sort((a, b) => a.score - b.score).slice(0, 20), "ov")}` : reqTable(D.reqs, "ov")}
-      <div style="margin-top:16px">${verdictHTML(true)}</div>`;
+      <div style="margin-top:16px">${verdictHTML(true)}</div>
+      ${acceptanceHTML() || matrixHTML() ? `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px;margin-top:16px;align-items:start">${acceptanceHTML()}${matrixHTML()}</div>` : ""}`;
     wireTable(el);
   }
 

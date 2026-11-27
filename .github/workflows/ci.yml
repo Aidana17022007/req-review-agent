@@ -25,6 +25,8 @@ jobs:
         run: ruff check .
       - name: Tests
         run: pytest -q
+      - name: Соответствие ТЗ (самопроверка)
+        run: python scripts/tz_check.py
       - name: Mock run (all artifacts)
         env:
           LLM_PROVIDER: mock
