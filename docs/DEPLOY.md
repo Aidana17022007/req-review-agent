@@ -9,6 +9,11 @@ Render пересобирает Studio, Cloudflare пересобирает са
 2. Render прочитает `render.yaml` и создаст сервис `reqlens-studio`. Попросит значение `GEMINI_API_KEY` — вставить ключ Gemini.
 3. После сборки адрес будет вида `https://reqlens-studio.onrender.com` (проверка: `/api/health`).
 
+Кнопка **«Демо»** в Studio проигрывает настоящий прогон по документу организаторов без обращений к модели — квота не
+тратится (`--demo reports/requirements-report.json` в `render.yaml`). При ручной настройке Web Service:
+Build Command `pip install -r requirements.txt && gunzip -kf reports/requirements-report.html.gz`,
+Start Command `python -m req_review.web --demo reports/requirements-report.json`.
+
 Бесплатный тариф засыпает без запросов, первый заход после паузы — около минуты. История прогонов на бесплатном
 тарифе не переживает передеплой (`REQLENS_DATA=/tmp/reqlens`).
 

@@ -8,8 +8,9 @@ services:
     plan: free
     branch: main
     autoDeploy: true
-    buildCommand: pip install -r requirements.txt
-    startCommand: python -m req_review.web
+    # отчёт для сдачи распаковывается рядом с report.json — для режима «Демо» (проигрывание настоящего прогона без квоты)
+    buildCommand: pip install -r requirements.txt && gunzip -kf reports/requirements-report.html.gz
+    startCommand: python -m req_review.web --demo reports/requirements-report.json
     healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION
