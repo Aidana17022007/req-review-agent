@@ -5,7 +5,7 @@
 
 Сначала нужен один прогон бенчмарка с моделью (python bench/run.py) — он наполняет кэш. Вариант, которому для ответа
 нужен запрос, которого нет в кэше (например «без правил»: меняется промпт), помечается «нет в кэше: N запросов» —
-его цифры неполные, и это видно в таблице. «Один промпт в модель» — из bench/baseline/results.json (baseline_eval.py).
+его цифры неполные, и это видно в таблице. `--fill` один раз дозапрашивает недостающее у модели. «Один промпт в модель» — из bench/baseline/results.json (baseline_eval.py).
 Полнота — по внедрённым дефектам; точность — как в bench/run.py (существенные замечания к заведомо чистым требованиям —
 ложные). Интервалы — бутстреп по дефектам (bench/gold_score.py::bootstrap).
 """
@@ -42,14 +42,14 @@ def env(over: dict):
             os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
 
 
-def run_variant(truth: dict, over: dict, profile: str = "fast") -> dict:
+def run_variant(truth: dict, over: dict, profile: str = "fast", fill: bool = False) -> dict:
     from gold_score import bootstrap
     from run import evaluate, summarize
 
     from req_review.llm import build_llm_from_env
     from req_review.pipeline import Options, review_document
 
-    with env({"LLM_CACHE": "only", **over}):
+    with env({"LLM_CACHE": "1" if fill else "only", **over}):
         llm = build_llm_from_env()
         parts = []
         for name, t in truth["documents"].items():
@@ -93,9 +93,14 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python bench/ablation.py")
     ap.add_argument("--write", action="store_true")
     ap.add_argument("--profile", default="fast")
+    ap.add_argument("--fill", action="store_true",
+                    help="дозапросить у модели ответы, которых нет в кэше (тратит квоту один раз; потом снова из кэша)")
     a = ap.parse_args(argv)
     load_dotenv(HERE.parent / ".env")
     truth = json.loads((HERE / "ground_truth.json").read_text(encoding="utf-8"))
+    if a.fill:
+        for name, over in VARIANTS:
+            run_variant(truth, over, a.profile, fill=True)
     rows = [(name, run_variant(truth, over, a.profile)) for name, over in VARIANTS]
     if b := baseline_row():
         rows.append(("Один промпт в ту же модель (v11, 5 документов)", b))
