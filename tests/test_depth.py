@@ -977,6 +977,7 @@ def test_site_build_uses_project_design_and_readme_features(tmp_path):
     assert "onrender.com" not in home and "data-studio" not in home and "github.com" not in home
     assert 'href="report/"' in home and 'href="#start"' in home and "Открыть отчёт по документу организаторов" in home
     assert home.count('class="card reveal"') == 6 and "Тест-проба" in home and "Спроси отчёт" in home
+    assert 'href="report/#graph"' in home  # скриншоты ведут в живой 3D/2D-граф и разделы отчёта
     d = json.loads((ROOT / "reports" / "requirements-report.json").read_text(encoding="utf-8"))
     n_req = sum(1 for x in d["requirements"] if x.get("kind", "requirement") == "requirement")
     assert f'data-k="n-req">{n_req}<' in home  # цифры подставлены из отчёта для сдачи
@@ -995,7 +996,8 @@ def test_site_build_uses_project_design_and_readme_features(tmp_path):
         if ref.startswith("#"):
             assert ref[1:] in ids, ref
         elif (ROOT / "docs" / "assets" / "demo-60s.mp4").exists() or ref != "demo-60s.mp4":
-            assert (out / ref).exists() or (out / ref / "index.html").exists(), ref
+            path = ref.split("#")[0]  # report/#graph — раздел интерактивного отчёта
+            assert (out / path).exists() or (out / path / "index.html").exists(), ref
     # Studio явно включена (--studio-force) → кнопки ведут на неё, запасных кнопок нет
     forced = build(tmp_path / "forced", "--studio", "https://studio.example", "--studio-force")
     assert 'href="https://studio.example"' in forced and "data-nostudio" not in forced

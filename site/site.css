@@ -152,9 +152,11 @@ a{color:var(--accent)}
 .tabs input:checked+label{background:#fff;color:#02030C;border-color:#fff}
 .tabs input:focus-visible+label{outline:2px solid var(--accent);outline-offset:3px}
 .stage{flex-basis:100%;margin-top:20px;perspective:1600px;position:relative}
-.stage img{display:none;width:100%;aspect-ratio:16/10;object-fit:cover;object-position:top left;border-radius:18px;border:1px solid var(--border-strong);box-shadow:0 40px 120px rgba(2,3,12,.5);
+.stage a{display:none}.stage img{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;object-position:top left;border-radius:18px;border:1px solid var(--border-strong);box-shadow:0 40px 120px rgba(2,3,12,.5);
   transform:rotateX(8deg);transform-origin:50% 100%;animation:tab-in .5s var(--ease)}
 #t1:checked~.stage .p1,#t2:checked~.stage .p2,#t3:checked~.stage .p3,#t4:checked~.stage .p4,#t5:checked~.stage .p5{display:block}
+.stage a:hover img{border-color:rgba(142,155,255,.6)}
+.stage-cta{flex-basis:100%;margin:24px 0 0;text-align:center}
 @keyframes tab-in{from{opacity:0;transform:rotateX(16deg) translateY(16px)}}
 
 /* бенчмарк */
