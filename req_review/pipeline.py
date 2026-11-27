@@ -45,6 +45,7 @@ class Options:
     pdf: bool | None = None  # PDF-версия отчёта; None — по профилю (deep — да)
     ensemble: str = ""  # v7: «модель1,модель2» — два прогона и объединение подтверждённых замечаний
     fix_loop: bool = False  # v7: «исправил → проверил заново» — блок «До / После» и файл <отчёт>_before_after.md
+    decisions_llm: bool = False  # v9: модель перефразирует повестку решений на бизнес-язык (иначе — формулировки кода)
     answers: str = ""  # v9: файл ответов аналитика (шаблон <отчёт>_answers_template.md) — перепроверка с учётом ответов
 
 
@@ -408,6 +409,12 @@ def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda
                                    summary_state(rv, ctx.scores))
         ctx.passport["answers"] = {"file": Path(opts.answers).name, "items": len(ctx.answers["items"]),
                                    "closed": ans_state["result"]["closed"]}
+    from .decisions import build_decisions, rephrase
+    from .exports import to_json as _to_json
+
+    ctx.decisions = build_decisions(_to_json(ctx))  # v9: повестка решений — код из подтверждённых замечаний
+    if opts.decisions_llm:
+        ctx.decisions = rephrase(ctx.decisions, llm, log)
     if ens_info:
         ctx.passport["ensemble"] = ens_info
         ctx.passport["model"] = " + ".join(ens_info["models"]) + " (ансамбль)"
@@ -476,6 +483,12 @@ def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda
         p = out.parent / f"{stem.name}_fixed.diff"
         p.write_text(document_diff(rv, ctx.fixed_text), encoding="utf-8")
         ctx.artifacts["Исправления (unified diff)"] = p
+    if ctx.decisions:  # v9: повестка решений для владельца продукта
+        from .decisions import decisions_file
+
+        p = out.parent / f"{stem.name}_decisions.md"
+        p.write_text(decisions_file(ctx.decisions, rv.doc.title), encoding="utf-8")
+        ctx.artifacts["Решения для владельца продукта"] = p
     if ctx.questions:  # v9: шаблон ответов аналитика — вписать ответы и запустить --answers
         from .answers import template_md
 

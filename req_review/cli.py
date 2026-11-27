@@ -38,6 +38,8 @@ def build_parser() -> argparse.ArgumentParser:
                     help="ансамбль двух моделей: два прогона и объединение подтверждённых замечаний (или LLM_ENSEMBLE)")
     ap.add_argument("--answers", default=None, metavar="ОТВЕТЫ.md",
                     help="ответы аналитика (шаблон <отчёт>_answers_template.md): перепроверка, конкретные ответы закрывают замечания")
+    ap.add_argument("--decisions-llm", action="store_true",
+                    help="модель перефразирует «Решения для владельца продукта» на бизнес-язык (иначе — формулировки кода)")
     ap.add_argument("--fix-loop", action="store_true",
                     help="исправить формулировки, проверить исправленный документ заново и записать «До / После»")
     for name, what in (("html", "интерактивный HTML-отчёт"), ("fixed", "исправленный документ"), ("xlsx", "Excel-трассировку"),
@@ -74,7 +76,7 @@ def main(argv: list[str] | None = None) -> int:
         profile=profile,
         html=not args.no_html, fixed=not args.no_fixed, xlsx=not args.no_xlsx, jira=not args.no_jira,
         json=not args.no_json, tests=not args.no_tests, critic=args.critic,
-        rescore=True if args.fix_loop else args.rescore, fix_loop=args.fix_loop, answers=args.answers or "",
+        rescore=True if args.fix_loop else args.rescore, fix_loop=args.fix_loop, answers=args.answers or "", decisions_llm=args.decisions_llm,
         ensemble=args.ensemble or os.getenv("LLM_ENSEMBLE", ""),
         domain=args.domain or os.getenv("REQLENS_DOMAIN", "fintech"), compare=args.compare,
         batch_size=int(os.getenv("LLM_BATCH_SIZE", "20")), pdf=args.pdf,

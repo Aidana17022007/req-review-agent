@@ -390,6 +390,11 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
         w("")
         w(f"*Правило:* {vd['rule']}")
         w("")
+    if ctx is not None and getattr(ctx, "decisions", None):  # v9: повестка решений для владельца продукта
+        from .decisions import decisions_md
+
+        for line in decisions_md(ctx.decisions):
+            w(line)
     if ctx is not None and getattr(ctx, "answers", None):  # v9: --answers — ответы аналитика и «было → стало»
         from .answers import answers_md
 
