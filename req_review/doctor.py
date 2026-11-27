@@ -28,6 +28,8 @@ def run(live: bool = False, out=print) -> int:
         out(f"❌ настройка модели: {str(e)[:300]}")
         return 2
     out(f"модель: {llm.label}" + (f" · резервные: {', '.join(llm.fallback_models)}" if getattr(llm, "fallback_models", None) else ""))
+    if getattr(llm, "backup", None) is not None:
+        out(f"резервный провайдер: {llm.backup.label} (LLM_BACKUP_PROVIDER) — включается, если основной отказал")
     out("ключ: не нужен" if not keys else f"ключ: {'задан' if has_key else 'НЕ задан'} ({' / '.join(keys)})")
     out(f"кэш ответов: {os.getenv('LLM_CACHE', '1')} · параллельно запросов: {concurrency()} · пауза между стартами: "
         f"{getattr(llm, 'min_interval', 0)} с")
@@ -40,6 +42,8 @@ def run(live: bool = False, out=print) -> int:
     llm.timeout = 10
     if hasattr(llm, "fallback_models"):
         llm.fallback_models = []
+    if hasattr(llm, "backup"):
+        llm.backup = None  # живая проверка — именно основного провайдера
     old = os.environ.get("LLM_CACHE")
     os.environ["LLM_CACHE"] = "0"
     t = time.monotonic()
