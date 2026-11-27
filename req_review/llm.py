@@ -48,6 +48,9 @@ class BaseLLM:
         self.stats = LLMStats()
         self._last_call = 0.0
         self.fallback_models: list[str] = []
+        # резервный провайдер (LLM_BACKUP_PROVIDER, например DeepSeek → Gemini): берёт работу, когда основной отказал
+        self.backup: BaseLLM | None = None
+        self._on_backup = False
         # v12: параллельные вызовы — общий ограничитель частоты и числа одновременных запросов (LLM_CONCURRENCY)
         from .parallel import concurrency
 
@@ -56,6 +59,32 @@ class BaseLLM:
 
     # --- публичный метод ---
     def generate_json(self, system: str, prompt: str, *, task: str = "", context: dict | None = None) -> dict:
+        if self._on_backup:
+            return self.backup.generate_json(system, prompt, task=task, context=context)
+        try:
+            return self._generate_json(system, prompt, task=task, context=context)
+        except LLMError as e:
+            # основной провайдер отказал (баланс, ключ, квота, повторы кончились) — тот же запрос резервному
+            if self.backup is None or "LLM_CACHE=only" in str(e):
+                raise
+            if self._to_backup(str(e)):
+                print(f"  [llm] {str(e)[:200]} — продолжаю на резервном провайдере {self.backup.label}", flush=True)
+            return self.backup.generate_json(system, prompt, task=task, context=context)
+
+    def _to_backup(self, why: str) -> bool:
+        """Переход на резервного провайдера — один раз; остальные потоки увидят _on_backup и пойдут туда же."""
+        with self._lock:
+            if self._on_backup or self.backup is None:
+                return False
+            self._on_backup = True
+            self.stats.switches.append(f"{self.provider} / {self.model} → {self.backup.label} ({why[:160]})")
+            return True
+
+    def _quick_switch(self) -> bool:
+        """Есть куда переключиться без ожиданий: резервная модель того же провайдера или резервный провайдер."""
+        return bool(self.fallback_models) or self.backup is not None
+
+    def _generate_json(self, system: str, prompt: str, *, task: str = "", context: dict | None = None) -> dict:
         cache = self._cache_path(system, prompt)
         # LLM_CACHE=refresh (--no-cache): свежие ответы модели, кэш только пополняется — следующий прогон
         # (например, --answers по тому же документу) не тратит квоту повторно
@@ -96,14 +125,18 @@ class BaseLLM:
                 with self._lock:
                     self.stats.retries += 1
                 # модель перегружена (503) или не отвечает — после LLM_FALLBACK_AFTER повторов переходим на резервную
-                if attempt >= int(os.getenv("LLM_FALLBACK_AFTER", "3")) and self.fallback_models and ("503" in str(e) or "сетев" in str(e)):
+                if attempt >= int(os.getenv("LLM_FALLBACK_AFTER", "3")) and self._quick_switch() and ("503" in str(e) or "сетев" in str(e)):
+                    if not self.fallback_models:
+                        raise LLMError(f"{self.provider} не отвечает: {e}")
                     if self._switch(f"{e}"):
                         print(f"  [llm] модель перегружена — переключаюсь на резервную {self.model}", flush=True)
                     continue
                 wait = e.retry_after if e.retry_after else min(60.0, 2.0 * (2 ** attempt))
                 max_wait = float(os.getenv("LLM_MAX_WAIT", "180"))
                 # квота модели исчерпана (429 с долгой задержкой или 429 подряд) — сразу на резервную модель
-                if self.fallback_models and "429" in str(e) and (wait > max_wait or attempt >= 2):
+                if self._quick_switch() and "429" in str(e) and (wait > max_wait or attempt >= 2):
+                    if not self.fallback_models:
+                        raise LLMError(f"квота {self.provider} исчерпана: {e}")
                     if self._switch(f"квота: {e}"):
                         print(f"  [llm] квота исчерпана — переключаюсь на резервную модель {self.model}", flush=True)
                     continue
@@ -159,6 +192,8 @@ class BaseLLM:
 
     @property
     def label(self) -> str:
+        if self._on_backup and self.backup is not None:  # паспорт отчёта называет модель, которая отвечала в конце
+            return self.backup.label
         return f"{self.provider} / {self.model}"
 
 
@@ -406,7 +441,20 @@ def default_provider() -> str:
 
 
 def build_llm_from_env() -> BaseLLM:
-    provider = default_provider()
+    llm = _build(default_provider())
+    backup = os.getenv("LLM_BACKUP_PROVIDER", "").strip().lower()
+    if backup and backup != llm.provider and llm.provider not in ("mock", "rules"):
+        try:
+            b = _build(backup)
+        except LLMError as e:  # нет ключа резервного провайдера — работаем без резерва, как раньше
+            print(f"  [llm] резервный провайдер {backup} не подключён: {e}", flush=True)
+        else:
+            b.stats = llm.stats  # вызовы, токены и переключения резерва — в тех же счётчиках прогона
+            llm.backup = b
+    return llm
+
+
+def _build(provider: str) -> BaseLLM:
     common = dict(
         min_interval=_min_interval(),
         max_retries=int(os.getenv("LLM_MAX_RETRIES", "6")),

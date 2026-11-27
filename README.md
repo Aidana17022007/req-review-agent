@@ -87,6 +87,7 @@ LLM_PROVIDER=openai
 OPENAI_BASE_URL=https://api.deepseek.com/v1
 OPENAI_MODEL=deepseek-chat
 OPENAI_API_KEY=...              # ключ только в .env / панели Render, не в git
+LLM_BACKUP_PROVIDER=gemini      # DeepSeek отказал (баланс, ключ, квота) — продолжить на Gemini (нужен GEMINI_API_KEY)
 ```
 
 Без ключа: `LLM_PROVIDER=rules` — только детерминированные правила. Офлайн для банковского контура — Ollama.
