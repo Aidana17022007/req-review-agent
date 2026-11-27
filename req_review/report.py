@@ -390,6 +390,11 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
         w("")
         w(f"*Правило:* {vd['rule']}")
         w("")
+    if ctx is not None and getattr(ctx, "answers", None):  # v9: --answers — ответы аналитика и «было → стало»
+        from .answers import answers_md
+
+        for line in answers_md(ctx.answers):
+            w(line)
     if ready and n_crit:
         w(f"Без критичных и существенных замечаний (можно брать в работу уже сейчас): {', '.join(ready)}.")
         w("")
@@ -635,7 +640,7 @@ def _extras_tail(w, ctx) -> None:
         w(f"### Вопросы заказчику ({len(ctx.questions)})")
         w("")
         for i, q in enumerate(ctx.questions[:30], 1):
-            w(f"{i}. {ICON.get(q.severity, '')} **{_cell(q.ref)}** — {_cell(q.text)}")
+            w(f"{i}. {ICON.get(q.severity, '')} **{q.qid or i}. {_cell(q.ref)}** — {_cell(q.text)}")
         w("")
     if ctx.changes:
         w("### Исправленный документ")

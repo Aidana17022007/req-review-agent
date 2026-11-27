@@ -43,6 +43,9 @@ class MockLLM(BaseLLM):
                  "problem": f"[mock] {task}: поведение не определено.", "severity": "major", "fix": "[mock] Дописать."},
                 {"check": task, "type": "gap", "refs": [{"id": "DOC", "quote": "такой фразы в документе нет"}],
                  "problem": "[mock] выдуманный пропуск", "severity": "major", "fix": "—"}]}, ensure_ascii=False)
+        if task == "answers":  # v9: «модель» считает все ответы конкретными и выдумывает цитату — правила обязаны это поправить
+            return json.dumps({"items": [{"qid": q.qid, "type": "concrete", "quote": "[mock] цитаты нет в ответе",
+                                          "note": "[mock] закрыто"} for q, _a in context["items"]]}, ensure_ascii=False)
         if task == "crosscheck":
             return json.dumps({"findings": []}, ensure_ascii=False)
         if task == "critic":

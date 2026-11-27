@@ -24,8 +24,10 @@ class Change:
 def collect_changes(rv: ReviewResult) -> list[Change]:
     out = []
     for rr in rv.req_results:
-        if rr.rewrite and rr.findings and rr.rewrite.strip() != rr.req.text.strip():
+        answered = getattr(rr, "answered", [])
+        if rr.rewrite and (rr.findings or answered) and rr.rewrite.strip() != rr.req.text.strip():
             crit = list(dict.fromkeys(criterion_name(f.criterion) for f in rr.findings))
+            crit += [f"ответ аналитика {q}" for q in answered]
             ud = "\n".join(difflib.unified_diff([rr.req.text], [rr.rewrite], fromfile=f"{rr.req.doc_id or rr.req.rid} (было)",
                                                 tofile=f"{rr.req.doc_id or rr.req.rid} (стало)", lineterm="", n=0))
             out.append(Change(rr.req.rid, rr.req.doc_id, rr.req.text, rr.rewrite, crit, ud))

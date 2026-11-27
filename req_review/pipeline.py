@@ -45,6 +45,7 @@ class Options:
     pdf: bool | None = None  # PDF-версия отчёта; None — по профилю (deep — да)
     ensemble: str = ""  # v7: «модель1,модель2» — два прогона и объединение подтверждённых замечаний
     fix_loop: bool = False  # v7: «исправил → проверил заново» — блок «До / После» и файл <отчёт>_before_after.md
+    answers: str = ""  # v9: файл ответов аналитика (шаблон <отчёт>_answers_template.md) — перепроверка с учётом ответов
 
 
 @dataclass
@@ -63,6 +64,8 @@ class Context:
     model_label: str = ""
     trace: list = field(default_factory=list)  # [{"i": шаг, "t": секунды от начала}] — таймлайн «Трассировка агента»
     report_md: str = ""
+    answers: dict | None = None  # v9: --answers — {"source","items","before","after"} (SCHEMA 2.4)
+    decisions: list = field(default_factory=list)  # v9: повестка решений для владельца продукта
 
 
 def agent_version() -> str:
@@ -322,6 +325,27 @@ def build_context(rv, llm, opts: Options, started: datetime, t0: float, input_pa
     return ctx
 
 
+def _apply_answers(rv, llm, path: str, log) -> dict:
+    """Учесть ответы аналитика в результате проверки; вопросы и срез «до» — по прогону без ответов."""
+    from .answers import apply_answers, parse_answers, summary_state
+    from .ensemble import refresh_depth
+    from .questions import build_questions
+    from .scoring import compute
+
+    p = Path(path)
+    if not p.exists():
+        raise FileNotFoundError(f"Файл ответов не найден: {path}")
+    parsed = parse_answers(p.read_text(encoding="utf-8"))
+    if not parsed:
+        raise ValueError(f"В файле ответов {p.name} нет ни одного ответа под заголовком «### Q-xx». "
+                         "Возьмите шаблон <отчёт>_answers_template.md и впишите ответы под вопросами.")
+    questions = build_questions(rv)
+    before = summary_state(rv, compute(rv))
+    result = apply_answers(rv, questions, parsed, llm=llm, log=log)
+    refresh_depth(rv)
+    return {"questions": questions, "before": before, "result": result}
+
+
 def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda i, label="": None, llm_wrap=None,
         make_llm=None) -> Context:
     """llm_wrap — необязательная обёртка над моделью (Studio наблюдает за пакетами для живой таблицы); логику не меняет.
@@ -371,8 +395,19 @@ def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda
     if rv.dropped:  # лог трассировки: замечания модели с цитатами, которых нет в документе
         log(f"отброшено замечаний с неподтверждёнными цитатами: {len(rv.dropped)} "
             + "; ".join(f"{d['where']}: «{str(d['quote'])[:40]}»" for d in rv.dropped[:3]))
+    ans_state = None
+    if opts.answers:  # v9: ответы аналитика — до построения отчёта, чтобы закрытые замечания не попали в разделы 3–6
+        ans_state = _apply_answers(rv, llm, opts.answers, log)
     ctx = build_context(rv, llm, opts, started, t0, input_path, started_code, started_version)
     ctx.trace = timeline
+    if ans_state:
+        from .answers import answers_json, summary_state
+
+        ctx.questions = ans_state["questions"]  # исходные вопросы: Q-xx и closes — по нумерации до ответов
+        ctx.answers = answers_json(Path(opts.answers).name, ans_state["result"], ans_state["before"],
+                                   summary_state(rv, ctx.scores))
+        ctx.passport["answers"] = {"file": Path(opts.answers).name, "items": len(ctx.answers["items"]),
+                                   "closed": ans_state["result"]["closed"]}
     if ens_info:
         ctx.passport["ensemble"] = ens_info
         ctx.passport["model"] = " + ".join(ens_info["models"]) + " (ансамбль)"
@@ -441,6 +476,12 @@ def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda
         p = out.parent / f"{stem.name}_fixed.diff"
         p.write_text(document_diff(rv, ctx.fixed_text), encoding="utf-8")
         ctx.artifacts["Исправления (unified diff)"] = p
+    if ctx.questions:  # v9: шаблон ответов аналитика — вписать ответы и запустить --answers
+        from .answers import template_md
+
+        p = out.parent / f"{stem.name}_answers_template.md"
+        p.write_text(template_md(ctx.questions, rv.doc.title), encoding="utf-8")
+        ctx.artifacts["Шаблон ответов аналитика"] = p
     if opts.tests and any(rr.test_possible for rr in rv.req_results):
         from .exports import feature_text
 

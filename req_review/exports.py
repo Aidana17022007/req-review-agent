@@ -10,7 +10,7 @@ from pathlib import Path
 from .criteria import INDIVIDUAL, SEVERITY, criterion_name, criterion_ref
 from .verify import norm
 
-SCHEMA_VERSION = "2.3"  # 2.3: line_coverage, criteria_matrix, acceptance_coverage, review_stats, verdict, fix_plan; 2.1: span, confidence_score, char_start, tests[], values, unified (только добавления)
+SCHEMA_VERSION = "2.4"  # 2.4: questions[].qid/closes, answers, decisions, passport.log; 2.3: line_coverage, criteria_matrix, acceptance_coverage, review_stats, verdict, fix_plan; 2.1: span, confidence_score, char_start, tests[], values, unified (только добавления)
 
 
 # ---------------------------------------------------------------- report.json
@@ -91,6 +91,8 @@ def to_json(ctx) -> dict:
         "rejected": rv.rejected,
         "compare": ctx.compare,
         "rescore": ctx.rescore,
+        **({"answers": ctx.answers} if getattr(ctx, "answers", None) else {}),
+        "decisions": list(getattr(ctx, "decisions", []) or []),
     }
 
 
