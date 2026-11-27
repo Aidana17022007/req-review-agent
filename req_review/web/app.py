@@ -314,8 +314,13 @@ def _start(job: Job, src: Path, compare_with: Path | None = None) -> None:
             _finish(job)
             job.push("cancelled", msg=job.error)
         except Exception as e:  # ошибка показывается пользователю, ключ в сообщения не попадает
+            from ..errors import DocumentError
+
             job.status, job.error = "error", str(e)[:500]
             _finish(job)
+            if isinstance(e, DocumentError):  # v9: «сломанный» файл — сообщение и что сделать (OCR, сохранить как PDF…)
+                job.push("error", msg=e.message, code=e.kind, hint=e.hint[:1].upper() + e.hint[1:])
+                return
             code = classify_error(job.error)
             extra = {"fallback": "rules", "hint": "Квота модели исчерпана — можно запустить проверку без модели "
                      "(только правила): размытые формулировки, плейсхолдеры, числа, правила API."} if code == "quota" else {}

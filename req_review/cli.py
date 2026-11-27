@@ -68,6 +68,7 @@ def main(argv: list[str] | None = None) -> int:
         os.environ["LLM_CACHE"] = "0"
 
     from .console import Console
+    from .errors import DocumentError
     from .llm import LLMError
     from .pipeline import apply_profile_env, run
 
@@ -93,6 +94,9 @@ def main(argv: list[str] | None = None) -> int:
     con.banner(args.input, label, profile)
     try:
         ctx = run(args.input, args.output, opts, log=con.log, step=con.step)
+    except DocumentError as e:  # v9: «сломанный» входной файл — что случилось и что сделать, без трейсбека
+        con.error(f"Ошибка: {e.message}\nЧто сделать: {e.hint[:1].upper()}{e.hint[1:]}")
+        return e.code
     except (FileNotFoundError, ValueError) as e:
         con.error(f"Ошибка: {e}")
         return 2 if isinstance(e, FileNotFoundError) or "не поддерживается" in str(e) or "Домен" in str(e) else 3

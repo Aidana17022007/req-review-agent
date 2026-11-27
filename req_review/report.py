@@ -101,6 +101,8 @@ def build_report(rv: ReviewResult, *, model_label: str, agent_version: str, star
     if llm_stats.prompt_tokens:
         w(f"| Токены (вход / выход) | {llm_stats.prompt_tokens} / {llm_stats.output_tokens} |")
     w(f"| Длительность | {duration_s:.0f} с |")
+    if ctx is not None and ctx.passport.get("log"):
+        w(f"| Журнал прогона | `{ctx.passport['log']}` — этапы, обращения к модели, кэш, повторы, отброшенные цитаты |")
     method = {"ids": "по идентификаторам документа", "modal": "по модальным формулировкам (номера присвоены агентом)",
               "llm": "моделью (номера присвоены агентом)"}[split.method]
     w(f"| Способ нарезки | {method} |")

@@ -128,7 +128,12 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
         split.requirements = llm_split(doc, llm)
         split.method = "llm"
     if not split.requirements:
-        raise ValueError("В документе не найдено ни одного требования.")
+        from .errors import DocumentError
+
+        raise DocumentError("В документе не найдено ни одного требования.",
+                            "проверьте, что это документ требований: агент ищет пункты с ID (FR-01, Ф-2), нумерованные "
+                            "пункты и формулировки «должен / должна»; в режиме «только правила» модель не помогает с "
+                            "нарезкой — запустите с ключом модели.", kind="noreqs")
     log(f"выделено требований: {len(split.requirements)} (способ: {split.method})")
     from .depth import recover_uncovered  # v5: «дорезка» строк, не вошедших в нарезку
 
@@ -350,7 +355,34 @@ def _apply_answers(rv, llm, path: str, log) -> dict:
 def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda i, label="": None, llm_wrap=None,
         make_llm=None) -> Context:
     """llm_wrap — необязательная обёртка над моделью (Studio наблюдает за пакетами для живой таблицы); логику не меняет.
-    make_llm — своя фабрика модели вместо .env (ReqLens App: режим «только правила» для одного прогона)."""
+    make_llm — своя фабрика модели вместо .env (ReqLens App: режим «только правила» для одного прогона).
+    v9: рядом с отчётом пишется журнал прогона <отчёт>.log (и при ошибке — до места, где она случилась)."""
+    from .runlog import RunLog
+
+    rl = RunLog()
+
+    def log_(m):
+        rl.add(m)
+        log(m)
+
+    def step_(i, label=""):
+        rl.stage(STEPS[i] if 0 <= i < len(STEPS) else (label or f"этап {i}"))
+        step(i, label)
+
+    log_path = Path(output_path).with_suffix(".log")
+    try:
+        ctx = _run(input_path, output_path, opts, log_, step_, llm_wrap, make_llm, log_path)
+    except Exception as e:
+        try:
+            rl.write(log_path, error=str(e))
+        except OSError:
+            pass
+        raise
+    rl.write(log_path, ctx)
+    return ctx
+
+
+def _run(input_path, output_path, opts: Options, log, step, llm_wrap, make_llm, log_path: Path) -> Context:
     from .exports import compare, summarize_for_compare, to_json, write_jira_csv, write_json, write_xlsx
     from .llm import build_llm_from_env
     from .report import build_report
@@ -401,6 +433,8 @@ def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda
         ans_state = _apply_answers(rv, llm, opts.answers, log)
     ctx = build_context(rv, llm, opts, started, t0, input_path, started_code, started_version)
     ctx.trace = timeline
+    ctx.passport["log"] = log_path.name  # v9: журнал прогона рядом с отчётом
+    ctx.artifacts["Журнал прогона"] = log_path
     if ans_state:
         from .answers import answers_json, summary_state
 
