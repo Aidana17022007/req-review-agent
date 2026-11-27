@@ -213,6 +213,45 @@ def _unit_conflict(q, answer: str, rv) -> str:
     return ""
 
 
+# Противоречие без чисел: одному и тому же случаю ответ назначает два разных HTTP-кода или метода из спорных вариантов
+# вопроса («для чужой карты — 403» и «запрос чужой карты возвращает 404»). Разные случаи («403 — чужая карта,
+# 404 — карта не найдена») противоречием не считаются: у частей ответа должна совпасть основа слов.
+_METHOD_RE = re.compile(r"\b(GET|POST|PUT|PATCH|DELETE)\b")
+_STATUS_RE = re.compile(r"(?<![\d.,])([1-5]\d\d)(?![\d%]|[.,]\d|\s*(?:₸|тенге|тг|мс|сек|мин|час|%|событ|запрос|символ))")
+_STOP = {"толь", "если", "когд", "тако", "этот", "этого", "всег", "долж", "може", "можн", "тольк", "также", "либо",
+         "дале", "пото", "сист", "серв", "отве", "возв", "метод", "мето", "кодо", "код", "стат", "http"}
+
+
+def _stems(text: str) -> set[str]:
+    words = re.findall(r"[a-zA-Zа-яА-ЯёЁ]{4,}", text.lower().replace("ё", "е"))
+    return {w[:4] for w in words} - _STOP
+
+
+def _token_conflict(q, answer: str) -> str:
+    """Для вопросов «что верно»: два предложения ответа об одном случае с разными кодами/методами из вопроса."""
+    if getattr(q, "criterion", "") not in NUMERIC_CHECK:
+        return ""
+    qtext = getattr(q, "text", "") or ""
+    q_status = set(_STATUS_RE.findall(qtext))
+    parts = [x.strip() for x in re.split(r"(?<=[.!?;])\s+|\n+", answer) if x.strip()]
+    tagged = []
+    for x in parts:
+        toks = {("метод", m) for m in _METHOD_RE.findall(x)} | {("код", c) for c in _STATUS_RE.findall(x) if c in q_status}
+        if toks:
+            tagged.append((x, toks, _stems(_METHOD_RE.sub(" ", _STATUS_RE.sub(" ", x)))))
+    for i, (a, ta, sa) in enumerate(tagged):
+        for b, tb, sb in tagged[i + 1:]:
+            common = sa & sb
+            if len(common) < 2 or len(common) < 0.6 * min(len(sa), len(sb)):
+                continue
+            for kind in ("код", "метод"):
+                va, vb = {v for k, v in ta if k == kind}, {v for k, v in tb if k == kind}
+                if va and vb and not va & vb:
+                    return (f"Для одного и того же случая в ответе два разных {('HTTP-кода' if kind == 'код' else 'метода')}: "
+                            f"{', '.join(sorted(va))} и {', '.join(sorted(vb))}")
+    return ""
+
+
 def classify_rules(q, answer: str, rv) -> tuple[str, str, str]:
     """(type, quote, note) по правилам; quote — дословная подстрока ответа."""
     nums = _numbers(answer)
@@ -224,6 +263,9 @@ def classify_rules(q, answer: str, rv) -> tuple[str, str, str]:
     why = _unit_conflict(q, answer, rv)
     if why:
         return "contradictory", _sentence(answer, re.compile(r"\d")), why
+    why = _token_conflict(q, answer)
+    if why:
+        return "contradictory", _sentence(answer, re.compile(r"\b(?:GET|POST|PUT|PATCH|DELETE|[1-5]\d\d)\b")), why
     if EVASIVE_RE.search(answer) and not nums:
         return "evasive", _sentence(answer, EVASIVE_RE), "Остаётся открытым: значение не названо"
     if len(answer) >= 8 and (nums or CONCRETE_RE.search(answer)):
