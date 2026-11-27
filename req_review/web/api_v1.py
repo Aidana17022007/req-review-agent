@@ -136,8 +136,9 @@ def project_runs(pid: str):
 
 
 @router.post("/projects/{pid}/runs", summary="Проверить новую версию документа")
-async def create_run(pid: str, request: Request, file: UploadFile = File(...), profile: str = Form("fast"),
-                     domain: str = Form("fintech"), mode: str = Form("llm"), force: bool = Form(False)):
+async def create_run(pid: str, request: Request, file: UploadFile | None = File(None), profile: str = Form("fast"),
+                     domain: str = Form("fintech"), mode: str = Form("llm"), force: bool = Form(False),
+                     file_b64: UploadFile | None = File(None), filename: str = Form("")):
     """Загрузить документ в проект. Тот же файл (SHA-256) уже проверен — вернётся прошлый результат
     (`duplicate: true`), квота модели не тратится; `force=true` — проверить заново.
     Если в проекте есть прошлый готовый прогон, новый автоматически сравнивается с ним."""
@@ -149,6 +150,7 @@ async def create_run(pid: str, request: Request, file: UploadFile = File(...), p
         raise err(400, "bad_request", "Неизвестный домен", allowed=["fintech", "none"])
     if mode not in ("llm", "rules"):
         raise err(400, "bad_request", "Режим: llm (модель) или rules (только правила)")
+    file = await webapp.pick_upload(file, file_b64, filename)  # файл или его base64-копия (Studio, обход фильтра хостинга)
     ext, data = await webapp.read_upload(file)
     sha = hashlib.sha256(data).hexdigest()
     st = _store()

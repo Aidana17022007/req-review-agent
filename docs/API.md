@@ -91,6 +91,7 @@ severity, problem, quote}`; `rows` — статус каждого требов�
 | Поле | По умолчанию | |
 |---|---|---|
 | `file` | — | PDF / DOCX / MD / TXT, ≤ 10 МБ, содержимое проверяется |
+| `file_b64` + `filename` | — | вместо `file`: тот же файл в base64 (часть multipart) и его имя. Так отправляет Studio: защита хостинга (Cloudflare перед Render) блокирует запросы, в тексте которых есть, например, `curl … -H "Authorization: Bearer …"` — обычное содержимое ТЗ на API. Проверки те же, что для `file`; повреждённый base64 — 400 |
 | `profile` | `fast` | `fast` \| `full` \| `offline` |
 | `domain` | `fintech` | `fintech` \| `none` |
 | `mode` | `llm` | `llm` \| `rules` (без модели — предложить при ошибке квоты) |
