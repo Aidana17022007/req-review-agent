@@ -82,7 +82,9 @@ def run_critic(rv: ReviewResult, llm: BaseLLM, log=print, only_critical: bool = 
     by_rid = {r.rid: r for r in rv.split.requirements}
     verdicts: dict[int, dict] = {}
     batches = [items[i:i + CRITIC_BATCH] for i in range(0, len(items), CRITIC_BATCH)]
-    for bi, batch in enumerate(batches):
+
+    def call(job):  # v12: пакеты критика независимы — параллельно; вердикты собираются в порядке пакетов
+        bi, batch = job
         log(f"  критик: пакет {bi + 1}/{len(batches)} ({len(batch)} замечаний)")
         payload = []
         for k, (kind, f, rr) in enumerate(batch):
@@ -96,12 +98,18 @@ def run_critic(rv: ReviewResult, llm: BaseLLM, log=print, only_critical: bool = 
             payload.append({"n": n, "criterion": criterion_name(f.criterion), "severity": f.severity,
                             "requirement_text": ctx, "quote": quote, "problem": f.problem})
         try:
-            data = llm.generate_json(SYSTEM_CRITIC, "ЗАМЕЧАНИЯ (JSON):\n" + json.dumps(payload, ensure_ascii=False, indent=1),
+            return llm.generate_json(SYSTEM_CRITIC, "ЗАМЕЧАНИЯ (JSON):\n" + json.dumps(payload, ensure_ascii=False, indent=1),
                                      task="critic", context={"items": payload})
         except LLMFatalError:
             raise
         except LLMError as e:
-            rv.notes.append(f"Критик не ответил ({e}); уверенность части замечаний не оценена.")
+            return e
+
+    from .parallel import pmap
+
+    for data in pmap(call, list(enumerate(batches))):
+        if isinstance(data, Exception):
+            rv.notes.append(f"Критик не ответил ({data}); уверенность части замечаний не оценена.")
             continue
         for v in data.get("verdicts", []) or []:
             if not isinstance(v, dict):  # ответ модели не по схеме — пропускаем элемент

@@ -54,6 +54,12 @@ def _set_json(f, doc, by_rid, offsets) -> dict:
     return d
 
 
+def _trace(rv) -> dict:
+    from .traceability import to_json as trace_json
+
+    return trace_json(rv)
+
+
 def to_json(ctx) -> dict:
     rv, sc = ctx.rv, ctx.scores
     offsets = _line_offsets(rv.doc)
@@ -94,6 +100,7 @@ def to_json(ctx) -> dict:
         **({"answers": ctx.answers} if getattr(ctx, "answers", None) else {}),
         "decisions": list(getattr(ctx, "decisions", []) or []),
         **({"bank_rules": rv.bank_rules} if getattr(rv, "bank_rules", None) else {}),
+        **({"traceability": _trace(rv)} if getattr(rv, "traceability", None) else {}),
     }
 
 

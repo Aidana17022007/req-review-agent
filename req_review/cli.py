@@ -50,6 +50,9 @@ def build_parser() -> argparse.ArgumentParser:
     for name, what in (("html", "интерактивный HTML-отчёт"), ("fixed", "исправленный документ"), ("xlsx", "Excel-трассировку"),
                        ("jira", "CSV для Jira"), ("json", "report.json")):
         ap.add_argument(f"--no-{name}", action="store_true", help=f"не создавать {what}")
+    ap.add_argument("--gate", action="store_true",
+                    help="гейт для CI: код выхода 1, если разработку начинать нельзя (есть критичные замечания); "
+                         "0 — можно или с оговорками. Без флага — 0 при любом вердикте")
     ap.add_argument("--open", action="store_true", help="открыть HTML-отчёт в браузере после прогона")
     ap.add_argument("--quiet", action="store_true", help="минимальный вывод")
     ap.add_argument("--json", dest="json_out", default=None, help=argparse.SUPPRESS)  # совместимость с v1
@@ -127,7 +130,25 @@ def main(argv: list[str] | None = None) -> int:
     con.summary(ctx)
     if args.open and "Интерактивный отчёт (HTML)" in ctx.artifacts:
         webbrowser.open(ctx.artifacts["Интерактивный отчёт (HTML)"].resolve().as_uri())
-    return 0
+    return gate_code(ctx, args.gate, con)
+
+
+def gate_code(ctx, gate: bool, con=None) -> int:
+    """v12: коды выхода для CI. 0 — можно / с оговорками; 1 — нельзя (есть критичные замечания), только с --gate.
+    Остальные коды — до отчёта: 2 — файл не найден или формат не поддерживается (и ошибка настройки модели),
+    3 — файл не читается или в нём нет требований, 4 — ошибка обращения к модели."""
+    v = ((ctx.rv.depth or {}).get("verdict") or {}).get("development", "")
+    crit = sum(f.severity == "critical" for rr in ctx.rv.req_results for f in rr.findings) + \
+        sum(f.severity == "critical" for f in ctx.rv.set_findings)
+    if not gate:
+        return 0
+    verdict = "NO-GO" if v == "нельзя" else "GO"
+    msg = f"Гейт: {verdict} — разработку начинать {v or 'можно'} (критичных замечаний: {crit})"
+    if con is not None and verdict == "NO-GO":
+        con.error(msg)
+    else:
+        print(msg, flush=True)
+    return 1 if verdict == "NO-GO" else 0
 
 
 def _rules_hint(args) -> str:

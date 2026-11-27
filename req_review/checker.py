@@ -93,6 +93,8 @@ class ReviewResult:
     categories: dict = field(default_factory=dict)  # {категория: число требований}
     coverage: list = field(default_factory=list)  # карта покрытия шагов процесса домена
     bank_rules: dict = field(default_factory=dict)  # v10: чек-лист банка (--rules): сводка по правилам
+    stage_times: dict = field(default_factory=dict)  # v12: {этап: (начало, конец)} по time.monotonic()
+    traceability: dict = field(default_factory=dict)  # v12: граф трассировки {nodes, edges, gaps}
     depth: dict = field(default_factory=dict)  # v5: учёт строк, матрица критериев, покрытие приёмкой, вердикты, план
 
 
@@ -268,7 +270,9 @@ def check_requirements(reqs: list[Requirement], doc: Document, llm: BaseLLM, bat
         log(f"  длинный документ ({len(doc.text)} символов): контекст запросов собирается RAG-выборкой")
 
     batches = [reqs[i:i + batch_size] for i in range(0, len(reqs), batch_size)]
-    for bi, batch in enumerate(batches, start=1):
+
+    def one(job):  # v12: пакеты независимы — параллельно (LLM_CONCURRENCY); сборка ниже — в порядке пакетов
+        bi, batch = job
         log(f"  проверка требований: пакет {bi}/{len(batches)} ({batch[0].rid}–{batch[-1].rid})")
         payload = [_req_payload(r, hints_by_req[r.rid]) for r in batch]
         ctx = full_ctx if mode == "full" else context_for(doc, [r.text for r in batch])
@@ -277,16 +281,23 @@ def check_requirements(reqs: list[Requirement], doc: Document, llm: BaseLLM, bat
                   f"ТРЕБОВАНИЯ ДЛЯ ПРОВЕРКИ (JSON):\n{json.dumps(payload, ensure_ascii=False, indent=1)}")
         record(doc, mode, len(SYSTEM_REQ) + len(prompt))
         try:
-            data = llm.generate_json(SYSTEM_REQ, prompt, task="check", context={"reqs": batch, "hints": hints_by_req})
-            for item in data.get("results", []) or []:
-                if isinstance(item, dict):  # ответ модели не по схеме — пропускаем элемент
-                    llm_out[str(item.get("id", "")).strip()] = item
+            return batch, llm.generate_json(SYSTEM_REQ, prompt, task="check", context={"reqs": batch, "hints": hints_by_req})
         except LLMFatalError:
             raise
         except LLMError as e:
+            return batch, e
+
+    from .parallel import pmap
+
+    for batch, data in pmap(one, list(enumerate(batches, start=1))):
+        if isinstance(data, Exception):
             for r in batch:
                 results[r.rid].llm_checked = False
-                results[r.rid].note = f"Модель не ответила ({e}); показаны только срабатывания правил."
+                results[r.rid].note = f"Модель не ответила ({data}); показаны только срабатывания правил."
+            continue
+        for item in data.get("results", []) or []:
+            if isinstance(item, dict):  # ответ модели не по схеме — пропускаем элемент
+                llm_out[str(item.get("id", "")).strip()] = item
 
     for r in reqs:
         res = results[r.rid]
@@ -553,12 +564,31 @@ def add_numeric_conflicts(found: list[SetFinding], reqs: list[Requirement], log=
 
 def run_review(doc: Document, split: SplitResult, llm: BaseLLM, batch_size: int = 8, log=print,
                on_set=lambda: None) -> ReviewResult:
-    dropped: list[dict] = []
-    req_results = check_requirements(split.requirements, doc, llm, batch_size, dropped, log=log)
-    on_set()
-    set_findings, set_ok = check_set(split, doc, llm, dropped, log=log)
-    return ReviewResult(doc=doc, split=split, req_results=req_results, set_findings=set_findings,
-                        dropped=dropped, set_llm_checked=set_ok)
+    """v12: проверка требований и проверка набора независимы — идут параллельно (общий ограничитель LLM_CONCURRENCY).
+    У каждой ветки свой список отброшенных цитат; склейка — в прежнем порядке (требования, затем набор)."""
+    import time
+
+    from .parallel import concurrency, pmap
+
+    d_req: list[dict] = []
+    d_set: list[dict] = []
+    times: dict[str, tuple[float, float]] = {}
+
+    def branch(name):
+        t = time.monotonic()
+        try:
+            if name == "req":
+                return check_requirements(split.requirements, doc, llm, batch_size, d_req, log=log)
+            on_set()
+            return check_set(split, doc, llm, d_set, log=log)
+        finally:
+            times[name] = (t, time.monotonic())
+
+    req_results, (set_findings, set_ok) = pmap(branch, ["req", "set"], n=2 if concurrency() > 1 else 1)
+    rv = ReviewResult(doc=doc, split=split, req_results=req_results, set_findings=set_findings,
+                      dropped=d_req + d_set, set_llm_checked=set_ok)
+    rv.stage_times = {"Проверка требований": times["req"], "Проверка набора": times["set"]}
+    return rv
 
 
 def _ctx(text: str, frag: str, width: int = 30) -> str:
@@ -612,15 +642,20 @@ def crosscheck(split: SplitResult, doc: Document, llm: BaseLLM, dropped: list[di
                                                                        for r in examples]}))
     if len(rules) >= 2:
         tasks.append((SYSTEM_RULES, {"ПРАВИЛА": rule_payload}))
-    results = []
-    for system, payload in tasks:
+    def one(t):
+        system, payload = t
         try:
-            results.append(llm.generate_json(system, json.dumps(payload, ensure_ascii=False, indent=1), task="crosscheck",
-                                             context={"rules": rules, "examples": examples}))
+            return llm.generate_json(system, json.dumps(payload, ensure_ascii=False, indent=1), task="crosscheck",
+                                     context={"rules": rules, "examples": examples})
         except LLMFatalError:
             raise
         except LLMError as e:
             log(f"  перекрёстная проверка: часть пропущена ({e})")
+            return None
+
+    from .parallel import pmap
+
+    results = [d for d in pmap(one, tasks) if d is not None]
     data = {"findings": [f for d in results for f in (d.get("findings") or [])]}
     have = {frozenset(r.req_id for r in f.refs) for f in found if f.kind == "contradiction"}
     for f in data.get("findings", []) or []:

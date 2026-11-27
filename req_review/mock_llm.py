@@ -6,7 +6,9 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+import time
 
 from .llm import BaseLLM
 from .splitter import MODAL_RE
@@ -23,6 +25,8 @@ class MockLLM(BaseLLM):
         super().__init__(min_interval=0, max_retries=0)
 
     def _call(self, system, prompt, *, task, context):
+        if lat := float(os.getenv("MOCK_LATENCY", "0") or 0):  # v12: имитация задержки модели (замер параллельности)
+            time.sleep(lat)
         if task == "check":
             return json.dumps(self._check(context), ensure_ascii=False)
         if task == "set":

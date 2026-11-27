@@ -940,7 +940,7 @@ def completeness_pass(split, doc: Document, llm, dropped: list[dict], found: lis
 
 
 def llm_set_pass(split, doc: Document, llm, dropped: list[dict], found: list[SetFinding], log=print, *, system: str, task: str,
-                 label: str, source: str, focus: dict | None = None) -> int:
+                 label: str, source: str, focus: dict | None = None, prefetched: dict | None = None) -> int:
     """Один запрос к модели по чек-листу → замечания к набору. Цитаты проверяются quote_in (выдуманные — в dropped),
     повторы уже найденного (тот же критерий и цитата) не добавляются. Возвращает число добавленных замечаний."""
     import json as _json
@@ -950,19 +950,22 @@ def llm_set_pass(split, doc: Document, llm, dropped: list[dict], found: list[Set
 
     reqs = split.requirements
     by_id = {r.rid: r for r in reqs}
-    known = [f.problem[:160] for f in found]
-    payload = {"ДОКУМЕНТ": _doc_context(doc)[:40000], "НАРЕЗКА": [{"id": r.rid, "doc_id": r.doc_id, "text": r.text[:300]} for r in reqs],
-               "УЖЕ НАЙДЕНО": known[:40]}
-    if focus:
-        payload["ФОКУС"] = focus
-    try:
-        data = llm.generate_json(system, _json.dumps(payload, ensure_ascii=False, indent=1), task=task,
-                                 context={"reqs": reqs, "doc": doc})
-    except LLMFatalError:
-        raise
-    except LLMError as e:
-        log(f"  {label} пропущен ({e})")
-        return 0
+    if prefetched is None:
+        known = [f.problem[:160] for f in found]
+        payload = {"ДОКУМЕНТ": _doc_context(doc)[:40000],
+                   "НАРЕЗКА": [{"id": r.rid, "doc_id": r.doc_id, "text": r.text[:300]} for r in reqs], "УЖЕ НАЙДЕНО": known[:40]}
+        if focus:
+            payload["ФОКУС"] = focus
+        try:
+            data = llm.generate_json(system, _json.dumps(payload, ensure_ascii=False, indent=1), task=task,
+                                     context={"reqs": reqs, "doc": doc})
+        except LLMFatalError:
+            raise
+        except LLMError as e:
+            log(f"  {label} пропущен ({e})")
+            return 0
+    else:  # v12: ответ модели получен заранее (узкие проходы параллельно), здесь — только проверка и слияние
+        data = prefetched
     seen = {(f.criterion, x.quote) for f in found for x in f.refs}
     added = 0
     for f in (data or {}).get("findings", []) or []:
