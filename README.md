@@ -1,22 +1,100 @@
 **▶ Оценить без установки:** [reqlens-studio.onrender.com](https://reqlens-studio.onrender.com) — загрузите свой документ или откройте готовый пример (без ключа и регистрации).  
-**⏱ Проверить за 2 минуты:** [открыть отчёт по документу организаторов](https://reqlens.pages.dev/report/) · [PDF](https://reqlens.pages.dev/report/report.pdf) · [сайт](https://reqlens.pages.dev) *(адреса — после деплоя по [docs/DEPLOY.md](docs/DEPLOY.md))*  
+**⏱ Проверить за 2 минуты:** [открыть отчёт по документу организаторов](https://reqlens-studio.onrender.com/api/v1/example/files/report.html) · [3D-граф](https://reqlens-studio.onrender.com/api/v1/example/files/report.html#graph) · [сайт](https://reqlens.pages.dev)  
 [![Studio health](https://github.com/Aidana17022007/req-review-agent/actions/workflows/studio-health.yml/badge.svg)](https://github.com/Aidana17022007/req-review-agent/actions/workflows/studio-health.yml)
 
 <p align="center"><img src="docs/assets/banner.svg" alt="ReqLens — ИИ-ревью требований по ISO/IEC/IEEE 29148" width="100%"></p>
+
+<h1 align="center">ReqLens — ИИ-агент проверки требований</h1>
+
+<p align="center">
+  <b>Загрузите ТЗ — получите список дефектов с цитатами, приёмочные тесты и исправленный документ.</b><br>
+  ISO/IEC/IEEE 29148:2018 · IEEE 830 · русский и казахский
+</p>
+
+<p align="center">
+  <a href="https://reqlens-studio.onrender.com"><b>▶ Открыть Studio</b></a> ·
+  <a href="https://reqlens-studio.onrender.com/api/v1/example/files/report.html"><b>Готовый отчёт</b></a> ·
+  <a href="https://reqlens-studio.onrender.com/api/v1/example/files/report.html#graph">3D-граф</a> ·
+  <a href="https://reqlens.pages.dev">Сайт</a> ·
+  <a href="docs/DEPLOY.md">Деплой</a>
+</p>
 
 <p align="center">
   <img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10%2B-3B4CB6?labelColor=02030C">
   <img alt="ISO/IEC/IEEE 29148" src="https://img.shields.io/badge/ISO%2FIEC%2FIEEE-29148%3A2018-4459C8?labelColor=02030C">
   <img alt="IEEE 830" src="https://img.shields.io/badge/IEEE-830--1998-8E9BFF?labelColor=02030C">
-  <img alt="LLM" src="https://img.shields.io/badge/LLM-Gemini%20%7C%20OpenAI--compatible%20%7C%20Ollama-D9C6DA?labelColor=02030C">
+  <img alt="LLM" src="https://img.shields.io/badge/LLM-DeepSeek%20%7C%20Gemini%20%7C%20Ollama-D9C6DA?labelColor=02030C">
+  <img alt="Тесты" src="https://img.shields.io/badge/тесты-360%2B-22B07D?labelColor=02030C">
 </p>
 
-# ReqLens — ИИ-агент статической проверки требований
+<p align="center"><img src="docs/assets/screenshot-overview-dark.png" alt="Интерактивный отчёт ReqLens: обзор" width="100%"></p>
+
+## В двух словах
 
 ReqLens читает готовый документ требований (PDF, DOCX, Markdown, TXT), выделяет отдельные требования, проверяет каждое
 из них и весь набор целиком по критериям **ISO/IEC/IEEE 29148:2018 (п. 5.2.5, 5.2.6)** и **IEEE Std 830-1998 (п. 4.3)**
 и записывает отчёт на русском языке. Это ревью требований **до разработки**: агент ищет дефекты формулировок
 (двусмысленность, непроверяемость, противоречия, пропуски, лишние проектные решения), а не запускает тесты программы.
+
+| | |
+|---|---|
+| 🎯 **Точность** | документ организаторов — **26 из 26** дефектов, критичных **7 из 7**; эталон из 150 дефектов — полнота 96 %, точность 99 % |
+| 🔎 **Доказательства** | каждое замечание — с дословной цитатой; код проверяет, что цитата есть в документе, выдуманные отбрасываются |
+| 🧪 **Тест-проба** | к каждому требованию агент пишет приёмочный тест Given/When/Then; не вышло — требование непроверяемо |
+| 🛠 **Исправления** | исправленный документ, diff, повестка решений для владельца продукта, ответы аналитика → перепроверка |
+| 📦 **Артефакты** | отчёт `.md`, интерактивный HTML (офлайн, < 1 МБ), JSON, Excel-трассировка, CSV для Jira, `.feature`, PDF |
+
+## Как это выглядит
+
+<table>
+<tr>
+<td width="50%"><img src="docs/assets/screenshot-studio-upload.png" alt="Studio: загрузка документа"><br><sub><b>Studio</b> — перетащите файл, проверка начнётся сразу</sub></td>
+<td width="50%"><img src="docs/assets/screenshot-overview-board-dark.png" alt="Что исправить в первую очередь"><br><sub><b>Что исправить в первую очередь</b> — противоречия и пропуски из плана исправлений</sub></td>
+</tr>
+<tr>
+<td><img src="docs/assets/screenshot-doc-dark.png" alt="Документ с подсветкой дефектов"><br><sub><b>Документ</b> — дефекты подчёркнуты прямо в тексте, клик — объяснение и правка</sub></td>
+<td><img src="docs/assets/screenshot-graph-dark.png" alt="3D-граф требований"><br><sub><b>Граф</b> — противоречия и зависимости между требованиями в 3D и 2D</sub></td>
+</tr>
+<tr>
+<td><img src="docs/assets/screenshot-requirements-dark.png" alt="Таблица требований"><br><sub><b>Требования</b> — балл и статус по 9 критериям 29148</sub></td>
+<td><img src="docs/assets/screenshot-tests-dark.png" alt="Приёмочные тесты"><br><sub><b>Тесты</b> — Gherkin-сценарии к каждому проверяемому требованию</sub></td>
+</tr>
+<tr>
+<td><img src="docs/assets/screenshot-fixes-dark.png" alt="Исправления"><br><sub><b>Исправления</b> — было → стало, построчно</sub></td>
+<td><img src="docs/assets/screenshot-set-dark.png" alt="Проверка набора"><br><sub><b>Проверка набора</b> — противоречия и пропуски между требованиями</sub></td>
+</tr>
+</table>
+
+<p align="center">
+  <img src="docs/assets/screenshot-mobile-studio.png" alt="Studio на телефоне" width="24%">
+  <img src="docs/assets/screenshot-mobile-overview.png" alt="Отчёт на телефоне" width="24%">
+  <img src="docs/assets/live-run.gif" alt="Живой прогон" width="48%">
+</p>
+
+## Быстрый старт
+
+```bash
+pip install -r requirements.txt
+cp .env.example .env            # впишите ключ модели (ниже — DeepSeek)
+python review.py bench/real/notifications.md reports/report.md   # отчёт .md + .html + .json рядом
+python -m req_review.web        # Studio на http://127.0.0.1:8000
+```
+
+Модель — любая OpenAI-совместимая. Для DeepSeek в `.env`:
+
+```env
+LLM_PROVIDER=openai
+OPENAI_BASE_URL=https://api.deepseek.com/v1
+OPENAI_MODEL=deepseek-chat
+OPENAI_API_KEY=...              # ключ только в .env / панели Render, не в git
+```
+
+Без ключа: `LLM_PROVIDER=rules` — только детерминированные правила. Офлайн для банковского контура — Ollama.
+
+**Деплой:** Studio и API — Render (`render.yaml`, передеплой на каждый push в `main`); сайт — Cloudflare Pages
+(`scripts/build_site.py`). Подробно — [`docs/DEPLOY.md`](docs/DEPLOY.md).
+
+---
 
 ## Видео: ReqLens за 60 секунд
 
