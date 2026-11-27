@@ -11,7 +11,7 @@
 <link rel="preload" href="fonts/inter-cyrillic-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="site.css">
-<script>try{var t=localStorage.getItem("reqlens-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script>try{var t=localStorage.getItem("reqlens-theme")||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");document.documentElement.dataset.theme=t}catch(e){}</script>
 </head>
 <body>
 <a class="skip" href="#main" data-i18n="skip">Перейти к содержимому</a>
@@ -25,12 +25,14 @@
       <a href="#features" data-i18n="nav.features">Возможности</a>
       <a href="#how" data-i18n="nav.how">Как работает</a>
       <a href="#bench" data-i18n="nav.bench">Бенчмарк</a>
-      <a href="https://github.com/Aidana17022007/req-review-agent" rel="noopener">GitHub</a>
+      <a href="#demo" data-i18n="nav.demo">Демо</a>
+      <a href="https://github.com/Aidana17022007/req-review-agent" rel="noopener" data-gh>GitHub</a>
     </nav>
     <div class="nav-act">
       <button class="pill-btn" id="lang" type="button" aria-label="Тілді ауыстыру / Сменить язык">ҚАЗ</button>
-      <button class="pill-btn" id="theme" type="button" aria-label="Сменить тему"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
-      <a class="btn btn-white btn-sm" data-studio href="https://reqlens-studio.onrender.com"><span data-i18n="cta.check">Проверить документ</span><i aria-hidden="true">›</i></a>
+      <button class="pill-btn" id="theme" type="button" aria-label="Светлая тема" title="Светлая / тёмная тема"><svg class="i-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="i-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+      <a class="btn btn-white btn-sm" data-studio hidden href="https://reqlens-studio.onrender.com"><span data-i18n="cta.check">Проверить документ</span><i aria-hidden="true">›</i></a>
+      <a class="btn btn-white btn-sm" data-nostudio href="report/"><span data-i18n="cta.report.s">Отчёт</span><i aria-hidden="true">›</i></a>
     </div>
   </header>
 
@@ -44,8 +46,10 @@
     <h1 class="display"><span data-i18n="hero.t1">Требования без дефектов —</span><br><span data-i18n="hero.t2">до первой строки кода.</span></h1>
     <p class="lead" data-i18n="hero.lead">ReqLens проверяет документ требований по ISO/IEC/IEEE 29148 и IEEE 830 и пишет отчёт на русском: дословная цитата, место, серьёзность и готовая формулировка исправления.</p>
     <div class="cta">
-      <a class="btn btn-white" data-studio href="https://reqlens-studio.onrender.com"><span data-i18n="cta.check">Проверить документ</span><i aria-hidden="true">›</i></a>
-      <a class="btn btn-dark" href="report/"><span data-i18n="cta.demo">Смотреть демо</span><i aria-hidden="true">›</i></a>
+      <a class="btn btn-white" data-studio hidden href="https://reqlens-studio.onrender.com"><span data-i18n="cta.check">Проверить документ</span><i aria-hidden="true">›</i></a>
+      <a class="btn btn-white" data-nostudio href="report/"><span data-i18n="cta.report">Открыть отчёт по документу организаторов</span><i aria-hidden="true">›</i></a>
+      <a class="btn btn-dark" data-nostudio href="#start"><span data-i18n="cta.own">Проверить свой документ</span><i aria-hidden="true">›</i></a>
+      <a class="btn btn-dark" href="#demo"><span data-i18n="cta.demo">Смотреть демо</span><i aria-hidden="true">›</i></a>
     </div>
   </div>
 </section>
@@ -64,10 +68,10 @@
     <h2 class="h1"><span data-i18n="kpi.t1">Создано вокруг</span><br><span class="dim" data-i18n="kpi.t2">вашего процесса ревью.</span></h2>
   </div>
   <div class="floor">
-    <div class="tile reveal"><b data-k="found">26 из 26</b><span data-i18n="kpi.found">ожидаемых дефектов документа организаторов</span></div>
-    <div class="tile reveal"><b data-k="recall">100 %</b><span data-i18n="kpi.recall">recall на бенчмарке</span></div>
-    <div class="tile reveal"><b data-k="precision">98 %</b><span data-i18n="kpi.precision">precision на бенчмарке</span></div>
-    <div class="tile reveal"><b data-k="findings">16 / 64</b><span data-i18n="kpi.findings">требований / подтверждённых замечаний</span></div>
+    <div class="tile reveal"><b data-k="found">26 из 26</b><span data-i18n="kpi.found">ожидаемых дефектов документа организаторов найдено</span></div>
+    <div class="tile reveal"><b data-k="n-req">16</b><span data-i18n="kpi.req">требований выделено в документе организаторов</span></div>
+    <div class="tile reveal"><b data-k="n-findings">64</b><span><span data-i18n="kpi.findings">замечания с дословной цитатой, из них критичных:</span> <em data-k="n-critical">6</em></span></div>
+    <div class="tile reveal"><b data-k="recall-precision">100 % / 98 %</b><span data-i18n="kpi.bench">recall / precision на бенчмарке</span></div>
   </div>
 </section>
 
@@ -76,20 +80,25 @@
   <p class="eyebrow" data-i18n="feat.eyebrow">Возможности</p>
   <h2 class="h1"><span data-i18n="feat.t1">Всё для ревью требований —</span><br><span class="dim" data-i18n="feat.t2">в одном прогоне агента.</span></h2>
   <div class="cards">
-    <article class="card reveal"><div class="crop"><img src="img/f-probe.webp" width="640" height="400" loading="lazy" alt="Экран тестов: тест-проба Given/When/Then"></div><h3 data-i18n="f1.t">Тест-проба Given/When/Then</h3><p data-i18n="f1.d">К каждому требованию агент пишет приёмочный тест. Не получилось — доказательство непроверяемости с цитатой.</p></article>
-    <article class="card reveal"><div class="crop"><img src="img/f-report.webp" width="640" height="400" loading="lazy" alt="Интерактивный отчёт: дефекты подчёркнуты в тексте"></div><h3 data-i18n="f2.t">Интерактивный отчёт</h3><p data-i18n="f2.d">Дефекты подчёркнуты прямо в тексте документа: клик — объяснение, пункт стандарта и готовая формулировка.</p></article>
-    <article class="card reveal"><div class="crop"><img src="img/f-fix.webp" width="640" height="400" loading="lazy" alt="Исправления: было и стало"></div><h3 data-i18n="f3.t">Автоисправление</h3><p data-i18n="f3.d">Исправленный документ и diff «было → стало»; повторная проверка показывает балл до и после.</p></article>
-    <article class="card reveal"><div class="crop"><img src="img/f-guard.webp" width="640" height="400" loading="lazy" alt="Трассировка агента и контроль качества"></div><h3 data-i18n="f4.t">Защита от галлюцинаций</h3><p data-i18n="f4.d">Каждая цитата проверяется кодом по тексту, выдуманное отбрасывается; критик объединяет дубли и калибрует серьёзность.</p></article>
-    <article class="card reveal"><div class="crop"><img src="img/f-fintech.webp" width="640" height="400" loading="lazy" alt="Проверка набора требований целиком"></div><h3 data-i18n="f5.t">Финтех-чек-лист</h3><p data-i18n="f5.d">Полнота для банковских продуктов: 2FA, лимиты, идемпотентность, AML, персональные данные, SLA — только с цитатами.</p></article>
-    <article class="card reveal"><div class="crop"><img src="img/f-metrics.webp" width="640" height="400" loading="lazy" alt="Обзор: балл документа и готовность"></div><h3 data-i18n="f6.t">Метрики</h3><p data-i18n="f6.d">Балл документа, готовность к разработке, радар по критериям и «цена дефекта» — считает код, а не модель.</p></article>
-    <article class="card reveal"><div class="crop"><img src="img/f-offline.webp" width="640" height="400" loading="lazy" alt="Экспорт и паспорт прогона"></div><h3 data-i18n="f7.t">Офлайн-режим</h3><p data-i18n="f7.d">Локальная модель через Ollama — документ банка не покидает контур. Без ключа работают правила.</p></article>
-    <article class="card reveal"><div class="crop"><img src="img/f-team.webp" width="640" height="400" loading="lazy" alt="Список требований с фильтрами"></div><h3 data-i18n="f8.t">Для команды</h3><p data-i18n="f8.d">Excel-трассировка, CSV для Jira, report.json, вопросы заказчику, сравнение версий, GitHub Action, Docker.</p></article>
-    <article class="card reveal"><div class="crop"><img src="img/f-graph.webp" width="640" height="400" loading="lazy" alt="3D-граф требований"></div><h3 data-i18n="f9.t">3D-граф требований</h3><p data-i18n="f9.d">Противоречия, зависимости и дубли; клик по узлу — детали и цепочка конфликта.</p></article>
-    <article class="card reveal"><div class="crop"><img src="img/f-studio.webp" width="640" height="400" loading="lazy" alt="Studio и AI-ассистент"></div><h3 data-i18n="f10.t">Studio и ассистент</h3><p data-i18n="f10.d">Перетащите файл — шаги идут вживую; ассистент отвечает на «Почему S-01 критичное?» со ссылками.</p></article>
+    <article class="card reveal"><div class="crop"><img src="img/f-probe.webp" width="960" height="600" loading="lazy" alt="Экран тестов: тест-проба Given/When/Then"></div><h3 data-i18n="f1.t">Тест-проба Given/When/Then</h3><p data-i18n="f1.d">К каждому требованию агент пишет приёмочный тест. Не получилось — доказательство непроверяемости с цитатой.</p></article>
+    <article class="card reveal"><div class="crop"><img src="img/f-report.webp" width="960" height="600" loading="lazy" alt="Интерактивный отчёт: дефекты подчёркнуты в тексте"></div><h3 data-i18n="f2.t">Интерактивный отчёт и «Спроси отчёт»</h3><p data-i18n="f2.d">Дефекты подчёркнуты прямо в тексте: клик — объяснение, пункт стандарта и формулировка. Офлайн-ассистент «Спроси отчёт» отвечает внутри HTML-файла, без сети.</p></article>
+    <article class="card reveal"><div class="crop"><img src="img/f-fix.webp" width="960" height="600" loading="lazy" alt="Исправления: было и стало"></div><h3 data-i18n="f3.t">Автоисправление</h3><p data-i18n="f3.d">Исправленный документ и diff «было → стало»; повторная проверка показывает балл до и после.</p></article>
+    <article class="card reveal"><div class="crop"><img src="img/f-guard.webp" width="960" height="600" loading="lazy" alt="Трассировка агента и аудит цитат"></div><h3 data-i18n="f4.t">Аудит цитат и защита от галлюцинаций</h3><p data-i18n="f4.d">Каждая цитата проверяется кодом по тексту документа, выдуманное отбрасывается; критик объединяет дубли и калибрует серьёзность.</p></article>
+    <article class="card reveal"><div class="crop"><img src="img/f-graph.webp" width="960" height="600" loading="lazy" alt="3D-граф требований"></div><h3 data-i18n="f9.t">3D-граф требований</h3><p data-i18n="f9.d">Противоречия, зависимости и дубли; клик по узлу — детали и цепочка конфликта.</p></article>
+    <article class="card reveal"><div class="crop"><img src="img/f-studio.webp" width="960" height="600" loading="lazy" alt="Studio и ассистент с источниками"></div><h3 data-i18n="f10.t">Studio и ассистент</h3><p data-i18n="f10.d">Перетащите файл — шаги идут вживую; ассистент отвечает на «Почему S-01 критичное?» со ссылками на требования и нормы.</p></article>
   </div>
+  <p class="more"><b data-i18n="more.t">А ещё:</b> <span data-i18n="more.d">финтех-чек-лист (2FA, лимиты, идемпотентность, AML, ПДн, SLA) · балл документа и «цена дефекта» · офлайн-режим через Ollama · Excel-трассировка, CSV для Jira, report.json · вопросы заказчику и сравнение версий · интерфейс на казахском · GitHub Action и Docker.</span></p>
 </section>
 
-<!-- 5. Как работает -->
+<!-- 5. Демо-видео -->
+<section class="panel" id="demo">
+  <p class="eyebrow" data-i18n="demo.eyebrow">Демо</p>
+  <h2 class="h1"><span data-i18n="demo.t1">ReqLens за 60 секунд.</span><br><span class="dim" data-i18n="demo.t2">Настоящий прогон по документу организаторов.</span></h2>
+  <div class="video"><video controls preload="metadata" playsinline muted width="1280" height="720" poster="img/demo-poster.webp"><source src="demo-60s.mp4" type="video/mp4"><a href="report/">Открыть отчёт</a></video></div>
+  <p class="note" data-i18n="demo.note">Живой прогон, «Итог за 30 секунд», аудит цитат, документ с подсветкой, матрица критериев и «До / После». Видео без звука.</p>
+</section>
+
+<!-- 6. Как работает -->
 <section class="panel" id="how">
   <p class="eyebrow" data-i18n="how.eyebrow">Как это работает</p>
   <h2 class="h1"><span data-i18n="how.t1">Модель предлагает —</span> <span class="dim" data-i18n="how.t2">код проверяет.</span></h2>
@@ -100,7 +109,7 @@
       <li class="reveal"><b data-i18n="s3.t">Проверка и критик</b><span data-i18n="s3.d">9 критериев к требованию и 6 к набору, тест-проба, узкие проходы; критик убирает дубли.</span></li>
       <li class="reveal"><b data-i18n="s4.t">Отчёт и исправления</b><span data-i18n="s4.d">6 разделов ТЗ, «Итог за 30 секунд», исправленный документ и вопросы аналитику.</span></li>
     </ol>
-    <div class="gif reveal"><img src="live-run.gif" width="960" height="600" loading="lazy" alt="Живой прогон в ReqLens Studio"></div>
+    <div class="gif reveal"><img src="live-run.gif" width="960" height="600" loading="lazy" alt="Живой прогон в ReqLens Studio по документу организаторов (режим «Демо»)"></div>
   </div>
 </section>
 
@@ -119,7 +128,7 @@
       <img class="p2" src="img/graph-dark.webp" width="1200" height="750" loading="lazy" alt="3D-граф требований">
       <img class="p3" src="img/tests-dark.webp" width="1200" height="750" loading="lazy" alt="Тест-кейсы Gherkin">
       <img class="p4" src="img/fixes-dark.webp" width="1200" height="750" loading="lazy" alt="Исправления: было и стало">
-      <img class="p5" src="img/studio-assistant.webp" width="1200" height="750" loading="lazy" alt="Studio и AI-ассистент">
+      <img class="p5" src="img/studio-sources.webp" width="1200" height="750" loading="lazy" alt="Studio и AI-ассистент">
     </div>
   </div>
 </section>
@@ -127,7 +136,7 @@
 <!-- 7. Бенчмарк -->
 <section class="panel" id="bench">
   <p class="eyebrow" data-i18n="bench.eyebrow">Бенчмарк</p>
-  <h2 class="h1"><span data-i18n="bench.t1">Точность, которую можно проверить.</span><br><span class="dim" data-k="bench-sub" data-i18n="bench.t2">5 документов, 67 заранее известных дефектов.</span></h2>
+  <h2 class="h1"><span data-i18n="bench.t1">Точность, которую можно проверить.</span><br><span class="dim" data-k="bench-sub">5 документов, 67 заранее известных дефектов.</span></h2>
   <div class="table">
     <table>
       <thead><tr><th scope="col" data-i18n="b.doc">Документ</th><th scope="col" data-i18n="b.found">Найдено</th><th scope="col">Recall</th><th scope="col">Precision</th></tr></thead>
@@ -161,16 +170,26 @@
   <div class="final-in">
     <h2 class="display sm"><span data-i18n="final.t1">Проверьте свой документ</span><br><span data-i18n="final.t2">за пару минут.</span></h2>
     <div class="cta center">
-      <a class="btn btn-white" data-studio href="https://reqlens-studio.onrender.com"><span data-i18n="cta.check">Проверить документ</span><i aria-hidden="true">›</i></a>
+      <a class="btn btn-white" data-studio hidden href="https://reqlens-studio.onrender.com"><span data-i18n="cta.check">Проверить документ</span><i aria-hidden="true">›</i></a>
+      <a class="btn btn-white" data-nostudio href="report/"><span data-i18n="cta.report">Открыть отчёт по документу организаторов</span><i aria-hidden="true">›</i></a>
+      <a class="btn btn-dark" data-nostudio href="#start"><span data-i18n="cta.own">Проверить свой документ</span><i aria-hidden="true">›</i></a>
       <a class="btn btn-dark" href="slides/"><span data-i18n="cta.slides">Слайды защиты</span><i aria-hidden="true">›</i></a>
     </div>
   </div>
 </section>
 
+<!-- Доверие -->
+<section class="panel trust" id="trust" aria-label="Соответствие ТЗ">
+  <div><p class="eyebrow" data-i18n="trust.eyebrow">Доверие</p>
+  <h2 class="h2"><span data-k="tz">27 из 27</span> <span data-i18n="trust.t">обязательных пунктов ТЗ выполнено</span></h2>
+  <p class="note" data-i18n="trust.d">Таблицу соответствия генерирует код (scripts/tz_check.py): для каждого пункта — где и чем подтверждено. Карта решения для ИИ-ассистентов жюри — llms.txt.</p></div>
+  <div class="cta"><a class="btn btn-dark" href="tz/"><span data-i18n="trust.tz">Соответствие ТЗ</span><i aria-hidden="true">›</i></a><a class="btn btn-dark" href="llms.txt">llms.txt<i aria-hidden="true">›</i></a></div>
+</section>
+
 <footer class="foot">
   <div class="logo"><img src="favicon.svg" width="22" height="22" alt=""><span>ReqLens</span></div>
   <p data-k="team" data-i18n="foot.team">Команда хакатона BCC-HUB × MNU</p>
-  <nav aria-label="Ссылки"><a href="report/" data-i18n="foot.report">Отчёт</a><a href="slides/" data-i18n="foot.slides">Слайды</a><a href="https://github.com/Aidana17022007/req-review-agent" rel="noopener">GitHub</a></nav>
+  <nav aria-label="Ссылки"><a href="report/" data-i18n="foot.report">Отчёт</a><a href="slides/" data-i18n="foot.slides">Слайды</a><a href="tz/" data-i18n="foot.tz">Соответствие ТЗ</a><a href="llms.txt">llms.txt</a><a href="https://github.com/Aidana17022007/req-review-agent" rel="noopener" data-gh>GitHub</a></nav>
   <p class="small" data-i18n="foot.license">Код — лицензия проекта; шрифт Inter — SIL OFL 1.1; стандарты ISO/IEC/IEEE 29148 и IEEE 830 — пересказ, не текст.</p>
 </footer>
 <script src="site.js" defer></script>
