@@ -266,8 +266,43 @@ def build_data(ctx) -> dict:
         "trace": build_trace(ctx),
         "report_md": getattr(ctx, "report_md", ""),
         "depth": _depth(rv),
+        # v9 (SCHEMA 2.4): ответы аналитика и повестка решений — только показ; без полей блоки в отчёте скрыты
+        "answers": _answers(getattr(ctx, "answers", None)),
+        "decisions": _decisions(getattr(ctx, "decisions", None)),
     }
     return data
+
+
+ANSWER_TYPES = {"concrete", "evasive", "contradictory"}
+
+
+def _answers(a) -> dict | None:
+    """answers {source, items, before, after} → вид для UI; без ответов (нет --answers) — None."""
+    if not isinstance(a, dict) or not a.get("items"):
+        return None
+    items = [{"qid": str(x.get("qid", "")), "question": str(x.get("question", "") or ""), "answer": str(x.get("answer", "") or ""),
+              "type": x.get("type") if x.get("type") in ANSWER_TYPES else "evasive",
+              "closes": [str(c) for c in x.get("closes") or []], "quote": str(x.get("quote", "") or ""),
+              "note": str(x.get("note", "") or "")} for x in a["items"] if isinstance(x, dict)]
+    return {"source": str(a.get("source", "") or ""), "items": items,
+            "before": a.get("before") or None, "after": a.get("after") or None}
+
+
+def _decisions(ds) -> list[dict]:
+    """decisions[] {id, title, where[], impact, options[], source_ids[], wording} → вид для UI; пусто — блок скрыт."""
+    out = []
+    for d in ds or []:
+        d = d if isinstance(d, dict) else getattr(d, "__dict__", {})
+        if not d.get("title"):
+            continue
+        out.append({"id": str(d.get("id", "")), "title": str(d["title"]), "impact": str(d.get("impact", "") or ""),
+                    "where": [{"rid": str(w.get("rid", "") or ""), "doc_id": str(w.get("doc_id", "") or ""),
+                               "line": w.get("line") if isinstance(w.get("line"), int) else None}
+                              for w in d.get("where") or [] if isinstance(w, dict)],
+                    "options": [str(o) for o in d.get("options") or [] if str(o).strip()],
+                    "source_ids": [str(s) for s in d.get("source_ids") or []],
+                    "wording": str(d.get("wording", "") or "")})
+    return out
 
 
 def render_html(ctx) -> str:

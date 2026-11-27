@@ -112,12 +112,51 @@ def apply_links(html: str, studio: str, repo_public: bool) -> str:
     a = r'<a\b[^>]*\b{}\b[^>]*>.*?</a>\s*'
     if studio:
         html = re.sub(a.format("data-nostudio"), "", html, flags=re.S)
+        html = re.sub(r'<p\b[^>]*\bdata-nostudio\b[^>]*>.*?</p>\s*', "", html, flags=re.S)
+        html = html.replace("data-studio-note hidden", "data-studio-note")
         html = re.sub(r'(<a\b[^>]*\bdata-studio\b)\s+hidden([^>]*\bhref=")[^"]*(")', rf"\1\g<2>{studio}\3", html)
     else:
         html = re.sub(a.format("data-studio"), "", html, flags=re.S)
+        html = re.sub(r'<p\b[^>]*\bdata-studio-note\b[^>]*>.*?</p>\s*', "", html, flags=re.S)
     if not repo_public:
         html = re.sub(a.format("data-gh"), "", html, flags=re.S)
     return html
+
+
+def blind_html() -> str:
+    """Раздел «Слепые документы» — только если он есть в bench/RESULTS.md и посчитан на модели (не mock)."""
+    from html import escape
+
+    from req_review.ui.styleguide import blind_results
+
+    b = blind_results()
+    if not b:
+        return ""
+    head = "".join(f'<th scope="col">{escape(h)}</th>' for h in b["head"])
+    rows = "".join("<tr>" + "".join(f"<td>{escape(c)}</td>" for c in r) + "</tr>" for r in b["rows"])
+    return f"""<section class="panel" id="blind">
+  <p class="eyebrow" data-i18n="blind.eyebrow">Слепая оценка</p>
+  <h2 class="h1" data-i18n="blind.t">Документы, которые агент видит впервые.</h2>
+  <div class="table"><table><thead><tr>{head}</tr></thead><tbody>{rows}</tbody></table></div>
+  <p class="note" data-i18n="blind.note">Документы написаны не командой, ключ дефектов хранился отдельно, агент на них не настраивался. Цифры — из bench/RESULTS.md.</p>
+  <p class="note">{escape(b["meta"])}</p>
+</section>
+"""
+
+
+def report_siblings(rep: str, out_dir: Path) -> str:
+    """Журнал, шаблон ответов и повестка решений лежат рядом с отчётом. Копируем те, что есть в reports/;
+    если журнала нет (reports/ в git не хранит .log), убираем passport.log из данных — ссылок на 404 в отчёте не будет."""
+    m = re.search(r'"log": "([\w.-]+)\.log"', rep)
+    if not m:
+        return rep
+    stem = m[1]
+    found = False
+    for name in (f"{stem}.log", f"{stem}_answers_template.md", f"{stem}_decisions.md"):
+        if (ROOT / "reports" / name).exists():
+            shutil.copy2(ROOT / "reports" / name, out_dir / name)
+            found = found or name.endswith(".log")
+    return rep if found else rep.replace(m[0], '"log": ""')
 
 
 def md_page(md: str, *, title: str, caption: str, download: str | None, root: str, studio: str) -> str:
@@ -176,7 +215,7 @@ def fill_numbers(html: str) -> str:
         import subprocess
 
         out = subprocess.run([sys.executable, str(ROOT / "scripts" / "tz_check.py")], capture_output=True, text=True,
-                             cwd=ROOT, timeout=120).stdout
+                             encoding="utf-8", errors="replace", cwd=ROOT, timeout=120).stdout
         m = re.search(r"(\d+)\s*/\s*(\d+)\s+обязательных", out)
         if m:
             vals["tz"] = f"{m[1]} из {m[2]}"
@@ -206,6 +245,7 @@ def build(out: Path, studio: str, *, force: bool = False, repo_public: bool = Fa
         if (ROOT / src).exists():
             shutil.copy2(ROOT / src, out / dst)
     html = apply_links(fill_numbers((out / "index.html").read_text(encoding="utf-8")), studio, repo_public)
+    html = html.replace("<!-- blind -->\n", blind_html())
     (out / "index.html").write_text(html, encoding="utf-8")
 
     (out / "report").mkdir()
@@ -217,7 +257,7 @@ def build(out: Path, studio: str, *, force: bool = False, repo_public: bool = Fa
         rep = gzip.decompress(gz.read_bytes()).decode("utf-8")
         if studio:  # кнопка «Открыть Studio» в отчёте ведёт на развёрнутую Studio, а не на localhost
             rep = rep.replace('href="http://localhost:8000/"', f'href="{studio}"').replace("Открыть Studio (localhost:8000)", "Открыть ReqLens Studio")
-        (out / "report" / "index.html").write_text(rep, encoding="utf-8")
+        (out / "report" / "index.html").write_text(report_siblings(rep, out / "report"), encoding="utf-8")
     else:
         md = md_path.read_text(encoding="utf-8") if md_path.exists() else "# Отчёт ещё не сформирован"
         title = (re.search(r"^#\s+(.+)$", md, re.M) or [None, "Отчёт"])[1]
