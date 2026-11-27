@@ -279,10 +279,14 @@ async def run_answers(rid: str, request: Request):
         raise err(404, "not_found", "Файлы исходного прогона не найдены")
     if src_run.get("mode", "llm") == "llm":
         enforce_limit(request)
-    qs = json.loads(src_json.read_text(encoding="utf-8")).get("questions", [])
-    keys = {(q.get("rid") or q.get("ref"), q.get("criterion")) for q in qs}
-    qids = {q.get("qid") for q in qs}
-    unknown = [k for k, v in parsed.items() if k not in qids and (v.get("key") not in keys)]
+    from types import SimpleNamespace
+
+    from ..answers import _resolve
+
+    qs = [SimpleNamespace(qid=q.get("qid", ""), rid=q.get("rid", ""), ref=q.get("ref", ""), criterion=q.get("criterion", ""),
+                          refs=q.get("refs", []) or [])
+          for q in json.loads(src_json.read_text(encoding="utf-8")).get("questions", [])]
+    _pairs, unknown = _resolve(qs, parsed)  # то же сопоставление, что и при перепроверке
     import uuid
 
     new_id = uuid.uuid4().hex[:12]

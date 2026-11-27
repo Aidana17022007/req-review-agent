@@ -222,17 +222,18 @@ def _resolve(questions, parsed: dict) -> list[tuple]:
     by_key = {(q.rid or q.ref, q.criterion): q for q in questions if not (q.rid or "").startswith("S-")}
     by_refs = {(q.criterion, ",".join(q.refs)): q for q in questions if (q.rid or "").startswith("S-") and q.refs}
     by_qid = {q.qid: q for q in questions}
-    out, unknown = [], []
+    out, unknown, used = [], [], set()
     for qid, v in parsed.items():
-        q = None
-        if v.get("key"):
+        if v.get("key"):  # метка шаблона есть — только по ней: номер Q-xx в другом прогоне может означать другой вопрос
             rid, crit, refs = v["key"]
             # замечания набора перенумеровываются от прогона к прогону — узнаём по критерию и затронутым требованиям
             q = by_refs.get((crit, refs)) if rid.startswith("S-") and refs else by_key.get((rid, crit))
-        q = q or by_qid.get(qid)
-        if q is None:
+        else:
+            q = by_qid.get(qid)
+        if q is None or q.qid in used:
             unknown.append(qid)
             continue
+        used.add(q.qid)
         out.append((q, v["answer"]))
     return out, unknown
 

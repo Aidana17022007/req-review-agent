@@ -142,3 +142,19 @@ def test_organizers_example_answers_classified_as_documented():
     assert sorted(got.values()).count("конкретный") == 6 and list(got.values()).count("противоречивый") == 2
     for v in parsed.values():  # метки шаблона: ID требования или критерий + затронутые требования
         assert v["key"] and (v["key"][0].startswith("R-") or v["key"][2])
+
+
+def test_label_mismatch_is_unknown_not_another_question():
+    """Метка шаблона не нашлась в новом прогоне → ответ «неизвестный», а не привязка к чужому вопросу с тем же Q-xx."""
+    from types import SimpleNamespace as NS
+
+    from req_review.answers import _resolve
+
+    qs = [NS(qid="Q-01", rid="R-005", ref="R-005", criterion="complete", refs=[]),
+          NS(qid="Q-02", rid="S-01", ref="S-01", criterion="set_consistent", refs=["R-003", "R-011"])]
+    parsed = {"Q-01": {"answer": "a", "key": ("R-011", "correct", "")},       # такого вопроса нет
+              "Q-07": {"answer": "b", "key": ("S-27", "set_consistent", "R-003,R-011")},  # S-27 → теперь S-01
+              "Q-09": {"answer": "c", "key": ("S-30", "set_consistent", "R-003,R-011")},  # тот же вопрос второй раз
+              "Q-02": {"answer": "d", "key": None}}  # без метки — по номеру
+    pairs, unknown = _resolve(qs, parsed)
+    assert [(q.qid, a) for q, a in pairs] == [("Q-02", "b")] and unknown == ["Q-01", "Q-09", "Q-02"]
