@@ -112,3 +112,31 @@ def test_headline_numbers_only_from_files(tmp_path):
     assert real["gold_recall"]["value"].startswith(f"{int(100 * g['recall'] + 0.5)} %")
     if g.get("unjudged"):  # пока проверены не все замечания — диапазон, а не лучшая цифра
         assert real["gold_precision"]["value"].startswith("от ")
+
+
+def test_site_evidence_section_numbers_from_files(monkeypatch, tmp_path):
+    """Сайт, раздел «Доказательства»: строки — из proof.evidence, у каждой подписи есть казахский перевод;
+    нет числа — «появится после прогона», а не выдуманное значение."""
+    import importlib.util
+    from html import escape
+
+    from req_review.ui import proof
+
+    spec = importlib.util.spec_from_file_location("build_site", ROOT / "scripts" / "build_site.py")
+    bs = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(bs)
+    sec, kk = bs.evidence_html()
+    rows = proof.evidence(ROOT)
+    assert sec.count("<tr data-ev=") == len(rows)
+    for r in rows:
+        assert f'data-i18n="ev.{r["id"]}.t"' in sec and kk[f"ev.{r['id']}.t"]
+        if r["value"]:
+            assert escape(r["value"]) in sec
+    keys = set(re.findall(r'data-i18n="([\w.-]+)"', sec))
+    assert keys <= set(kk), keys - set(kk)
+    assert not any(re.search(r"\bиз\b|проверено|критичных", v) for v in kk.values())  # казахский без русских связок
+
+    real = proof.evidence
+    monkeypatch.setattr(proof, "evidence", lambda root=None: real(tmp_path))  # пустой репозиторий
+    sec, kk = bs.evidence_html()
+    assert proof.PENDING in sec and "data-pending" in sec and "%" not in re.sub(r"<p class=\"note\".*", "", sec, flags=re.S)

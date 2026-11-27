@@ -145,6 +145,87 @@ def blind_html() -> str:
 """
 
 
+# v15: раздел «Доказательства» на главной — те же строки, что на стартовом экране Studio (req_review/ui/proof.py).
+EV_KK_TITLES = {
+    "organizers": "Ұйымдастырушылар құжаты: күтілген ақаулар",
+    "gold_recall": "150 ақаулық эталон: толықтық",
+    "gold_precision": "150 ақаулық эталон: тексерілген дәлдік",
+    "blind": "Соқыр жиын: команда көрмеген құжаттар",
+    "baseline": "«Жалаң» модель және ReqLens (ұйымдастырушылар құжаты)",
+    "answers": "Талдаушының бөгде жауаптары: жауап түрі дұрыс анықталды",
+    "speed": "Жылдамдық: ұйымдастырушылар құжаты бойынша прогон",
+    "models": "DeepSeek және Gemini (ұйымдастырушылар құжаты)",
+}
+EV_KK_PHRASES = (  # порядок важен: длинные фразы раньше коротких
+    (r"проверено (\d+) из (\d+) существенных замечаний", r"\2 елеулі ескертудің \1 тексерілді"),
+    (r"ещё (\d+) не проверены — нижняя граница считает их ложными", r"тағы \1 тексерілмеді — төменгі шек оларды жалған деп санайды"),
+    (r", верны (\d+)", r", дұрысы \1"),
+    (r"от (\d+) до (\d+) %", r"\1 % – \2 %"),
+    (r"95 % интервал", "95 % аралық"),
+    (r"критичных и противоречий", "критикалық және қайшылықтар"),
+    (r"критичных", "критикалық"),
+    (r"полнота на бенчмарке", "бенчмарктағы толықтық"),
+    (r"точность на бенчмарке", "бенчмарктағы дәлдік"),
+    (r"один промпт в ту же модель против агента", "сол модельге бір промпт және агент"),
+    (r"ложных к чистым требованиям", "таза талаптарға жалған ескертулер"),
+    (r"обращений к модели", "модельге сұраулар"),
+    (r"вручную ≈ ([\d.,]+) ч по норме (\d+) строк в час \(оценка\)", r"қолмен ≈ \1 сағ, сағатына \2 жол нормасымен (бағалау)"),
+    (r"ответы написал человек вне команды", "жауаптарды командадан тыс адам жазды"),
+    (r"(\d+) мин (\d+) с", r"\1 мин \2 с"),
+    (r"(\d+) из (\d+)", r"\2 ішінен \1"),
+)
+EV_PENDING_KK = "прогоннан кейін пайда болады"
+
+
+def ev_kk(text: str) -> str:
+    """Русская строка «Доказательств» → казахская: фиксированные фразы из proof.py; числа и имена моделей не меняются."""
+    for pat, rep in EV_KK_PHRASES:
+        text = re.sub(pat, rep, text)
+    return text
+
+
+def evidence_html() -> tuple[str, dict]:
+    """Таблица «Доказательства» для главной и казахские подписи к ней (ключи data-i18n → текст). Числа — только из файлов
+    репозитория (proof.evidence); нет числа — «появится после прогона», без выдуманного значения."""
+    from html import escape
+
+    from req_review.ui.proof import PENDING, evidence
+
+    kk, rows = {}, []
+    for r in evidence(ROOT):
+        i = r["id"]
+        kk[f"ev.{i}.t"] = EV_KK_TITLES.get(i, ev_kk(r["title"]))
+        if r["value"]:
+            kk[f"ev.{i}.v"] = ev_kk(r["value"])
+            val = f'<b data-i18n="ev.{i}.v">{escape(r["value"])}</b>'
+        else:
+            kk[f"ev.{i}.v"] = EV_PENDING_KK
+            val = f'<span class="dim" data-i18n="ev.{i}.v" data-pending>{escape(PENDING)}</span>'
+        det = ""
+        if r["detail"]:
+            kk[f"ev.{i}.d"] = ev_kk(r["detail"])
+            det = f'<div class="small" data-i18n="ev.{i}.d">{escape(r["detail"])}</div>'
+        rows.append(f'<tr data-ev="{escape(i)}"><td data-i18n="ev.{i}.t">{escape(r["title"])}</td><td>{val}{det}</td>'
+                    f'<td><code>{escape(r["source"])}</code><div class="small"><code>{escape(r["cmd"])}</code></div></td></tr>')
+    kk.update({"ev.eyebrow": "Дәлелдер", "ev.t": "Әр сан — репозиторий файлынан.", "ev.h.what": "Тексеру",
+               "ev.h.res": "Нәтиже", "ev.h.src": "Дереккөз және команда",
+               "ev.note": "Сандарды сайт жиналған сайын scripts/build_site.py файлдардан алады. Сан әлі жоқ болса — "
+                          "«прогоннан кейін пайда болады» жолы, қолмен ештеңе жазылмайды.",
+               "ev.more": "Барлық дәлелдер →"})
+    sec = f"""<section class="panel" id="evidence">
+  <p class="eyebrow" data-i18n="ev.eyebrow">Доказательства</p>
+  <h2 class="h1" data-i18n="ev.t">Каждая цифра — из файла репозитория.</h2>
+  <div class="table"><table>
+    <thead><tr><th scope="col" data-i18n="ev.h.what">Что проверяли</th><th scope="col" data-i18n="ev.h.res">Результат</th><th scope="col" data-i18n="ev.h.src">Источник и команда</th></tr></thead>
+    <tbody>{''.join(rows)}</tbody>
+  </table></div>
+  <p class="note" data-i18n="ev.note">Числа берёт из файлов scripts/build_site.py при каждой сборке сайта. Числа ещё нет — строка «появится после прогона», ничего не вписано руками.</p>
+  <p class="note"><a href="proof/" data-proof data-i18n="ev.more">Все доказательства →</a></p>
+</section>
+"""
+    return sec, kk
+
+
 _W = r"[\p{L}\p{N}_]"
 
 
@@ -245,6 +326,18 @@ def proof_html() -> str:
     from html import escape
 
     out = []
+    from req_review.ui.proof import PENDING, evidence
+
+    ev_rows = ""
+    ev = evidence(ROOT)
+    for r in ev if any(r["value"] for r in ev) else []:  # ни одного посчитанного числа — таблицы нет
+        val = f"<b>{escape(r['value'])}</b>" if r["value"] else escape(PENDING)
+        det = f'<div class="small">{escape(r["detail"])}</div>' if r["detail"] else ""
+        ev_rows += (f"<tr><td>{escape(r['title'])}</td><td>{val}{det}</td><td><code>{escape(r['source'])}</code>"
+                    f'<div class="small"><code>{escape(r["cmd"])}</code></div></td></tr>')
+    out += [] if not ev_rows else [f"""<section class="section"><div class="caption">req_review/ui/proof.py</div><h2>Главное в одной таблице</h2>
+<div class="md"><div class="tw"><table><thead><tr><th>Что проверяли</th><th>Результат</th><th>Источник и команда</th></tr></thead>
+<tbody>{ev_rows}</tbody></table></div><p class="small">Те же строки — на главной сайта и на стартовом экране Studio.</p></div></section>"""]
     res = _load("bench/results.json")
     if res:
         names = {"payments": "Оплата услуг", "credit": "Онлайн-кредит", "onboarding": "Открытие счёта",
@@ -430,7 +523,10 @@ def build(out: Path, studio: str, *, force: bool = False, repo_public: bool = Fa
         if (ROOT / src).exists():
             shutil.copy2(ROOT / src, out / dst)
     html = apply_links(fill_numbers((out / "index.html").read_text(encoding="utf-8")), studio, repo_public)
+    ev_sec, ev_kk_map = evidence_html()
+    ev_json = json.dumps(ev_kk_map, ensure_ascii=False).replace("</", "<\\/")
     html = html.replace("<!-- blind -->\n", blind_html()).replace("<!-- try -->\n", try_html())
+    html = html.replace("<!-- evidence -->\n", ev_sec + f'<script type="application/json" id="rl-kk">{ev_json}</script>\n')
     (out / "index.html").write_text(html, encoding="utf-8")
 
     (out / "report").mkdir()

@@ -37,6 +37,21 @@ UNTRANSLATED_JS = r"""(keys) => {
 }"""
 
 
+# сайт: подписи с data-i18n, у которых нет ключа в словаре KK (site.js + #rl-kk от build_site.py), остаются по-русски
+SITE_UNTRANSLATED_JS = r"""(keys) => {
+  const set = new Set(keys);
+  try { Object.keys(JSON.parse(document.getElementById("rl-kk").textContent)).forEach(k => set.add(k)); } catch (e) {}
+  return [...document.querySelectorAll("[data-i18n]")].filter(n => n.getClientRects().length && !set.has(n.dataset.i18n)
+    && /[А-Яа-яЁё]/.test(n.textContent)).map(n => n.dataset.i18n + ": " + n.textContent.trim().slice(0, 40));
+}"""
+
+
+def site_kk_keys() -> list[str]:
+    js = (ROOT / "site" / "site.js").read_text(encoding="utf-8")
+    m = re.search(r"var KK\s*=\s*\{(.*?)\n\s*\};", js, re.S)
+    return re.findall(r'"([\w.-]+)"\s*:', m[1] if m else "")
+
+
 def kk_keys(js_text: str) -> list[str]:
     """Ключи словаря KK из JS (report-i18n.js / Studio) с русским текстом; слова, одинаковые в обоих языках
     («Граф», «Модель», «Экспорт»), не считаются непереведёнными."""
@@ -64,7 +79,7 @@ def check_page(b, url: str, keys: list[str], errors: list, label: str, *, hashes
                     if sw > w + 1:
                         errors.append(f"{where}{h}: горизонтальный скролл {sw} > {w}")
                     if lang == "kk":
-                        left = page.evaluate(UNTRANSLATED_JS, keys)
+                        left = page.evaluate(SITE_UNTRANSLATED_JS if label.startswith("site") else UNTRANSLATED_JS, keys)
                         if left:
                             errors.append(f"{where}{h}: без перевода: {left[:8]}")
                     if shots and w == 1440 and theme == "dark" and h in shot_hashes:
@@ -78,12 +93,27 @@ def dead_links(site: Path) -> list[str]:
     for html in site.rglob("*.html"):
         text = html.read_text(encoding="utf-8", errors="replace")
         for u in re.findall(r'href="([^"#?]+)', text):
-            if re.match(r"(https?:|mailto:|data:|javascript:)", u):
+            if re.match(r"(https?:|mailto:|data:|javascript:)", u) or "${" in u:  # шаблон JS, а не ссылка
                 continue
             t = (html.parent / u).resolve()
             if not (t.exists() and (t.is_file() or (t / "index.html").exists())):
                 bad.append(f"{html.relative_to(site)} → {u}")
     return bad
+
+
+def serve(folder: Path):
+    """Статический http-сервер на свободном порту в фоне (остановится вместе с процессом)."""
+    import functools
+    import http.server
+    import threading
+
+    class Quiet(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, *a):  # noqa: D102
+            pass
+
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Quiet, directory=str(folder)))
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv
 
 
 def main() -> int:
@@ -111,9 +141,10 @@ def main() -> int:
         if a.site:
             site = Path(a.site)
             errors += [f"site: ссылка на 404: {x}" for x in dead_links(site)]
+            srv = serve(site)  # по http, как на хостинге: шрифты из file:// браузер не грузит (CORS)
             for page_rel in ("index.html", "proof/index.html"):
                 if (site / page_rel).exists():
-                    check_page(b, (site / page_rel).resolve().as_uri(), [], errors, f"site/{page_rel.split('/')[0]}",
+                    check_page(b, f"http://127.0.0.1:{srv.server_port}/{page_rel.replace('index.html', '')}", site_kk_keys(), errors, f"site/{page_rel.split('/')[0]}",
                                shots=shots, shot_hashes=("",))
         b.close()
     for e in errors:
