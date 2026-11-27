@@ -18,6 +18,10 @@
 `kind: "bank_rule"` (scope `document`). Их `source` — «правило банка: <id>». Если замечание совпало с уже найденным
 (тот же критерий и цитата), к его `source` добавляется « + правило банка: <id>». Цитаты дословные (`verify.quote_in`).
 
+`passport.time_estimate` (v10, есть в каждом прогоне) — **оценка**, не замер: `doc_lines` (непустые строки документа),
+`lines_per_hour` (норма из `REVIEW_LINES_PER_HOUR`, по умолчанию 40), `norm_source`, `manual_hours` = doc_lines ÷
+lines_per_hour (1 знак), `agent_minutes` (фактическая длительность прогона агента), `estimate: true`.
+
 ## Что добавлено в 2.4 (v9: ответы аналитика, решения, журнал)
 
 Пример со всеми полями — `tests/fixtures/report_v9.json` (mock-прогон; по нему можно делать интерфейс, не дожидаясь

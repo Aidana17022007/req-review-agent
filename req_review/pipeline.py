@@ -300,6 +300,23 @@ def before_after_md(ctx) -> str:
     return "\n".join(L) + "\n"
 
 
+LINES_PER_HOUR = 40  # норма ручного ревью по умолчанию: ≈ 1 страница (≈ 40 строк) в час
+
+
+def time_estimate(doc, duration_s: float) -> dict:
+    """v10: оценка экономии времени — строки документа ÷ норма ручного ревью против фактического времени агента.
+
+    Норма — REVIEW_LINES_PER_HOUR из .env (по умолчанию 40 строк/ч). Это оценка, а не замер: в отчёте подписана так."""
+    try:
+        rate = max(1, int(os.getenv("REVIEW_LINES_PER_HOUR", "") or LINES_PER_HOUR))
+        src = "REVIEW_LINES_PER_HOUR" if os.getenv("REVIEW_LINES_PER_HOUR") else "по умолчанию"
+    except ValueError:
+        rate, src = LINES_PER_HOUR, "по умолчанию (REVIEW_LINES_PER_HOUR не число)"
+    lines = sum(1 for line in doc.lines if line.text.strip())
+    return {"doc_lines": lines, "lines_per_hour": rate, "norm_source": src, "manual_hours": round(lines / rate, 1),
+            "agent_minutes": max(0.1, round(duration_s / 60, 1)), "estimate": True}
+
+
 def _ctx_info(doc) -> dict:
     st = getattr(doc, "_ctx_stats", None) or {}
     pc = st.get("prompt_chars") or []
@@ -333,6 +350,7 @@ def build_context(rv, llm, opts: Options, started: datetime, t0: float, input_pa
         "model_switches": list(getattr(llm.stats, "switches", [])),
         "rag": getattr(rv, "rag", None) or {"enabled": False},
         "context": _ctx_info(rv.doc),
+        "time_estimate": time_estimate(rv.doc, time.monotonic() - t0),  # v10: оценка, не замер
         "split_method": rv.split.method, "dropped": len(rv.dropped), "rejected": len(rv.rejected),
         "critic": rv.critic_used, "domain": opts.domain,
     }
