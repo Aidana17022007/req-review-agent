@@ -117,3 +117,28 @@ def test_missing_or_empty_answers_file_is_a_clear_error(tmp_path):
         _apply_answers(None, None, str(p), print)
     with pytest.raises(FileNotFoundError):
         _apply_answers(None, None, str(tmp_path / "нет.md"), print)
+
+
+def test_organizers_example_answers_classified_as_documented():
+    """examples/answers/organizers_answers.md: 10 ответов (6 конкретных, 2 уклончивых, 2 противоречивых) — правила агента
+    на вопросах отчёта для сдачи дают ровно те типы, что записаны в examples/answers/README.md."""
+    from types import SimpleNamespace as NS
+
+    from req_review.answers import classify_rules, parse_answers
+
+    d = json.loads((ROOT / "reports" / "requirements-report.json").read_text(encoding="utf-8"))
+    rv = NS(req_results=[NS(req=NS(rid=r["rid"], text=r["text"])) for r in d["requirements"]],
+            set_findings=[NS(criterion=f["criterion"], values=f.get("values") or []) for f in d["set_findings"]])
+    refs = {f"S-{i:02d}": sorted({r["req_id"] for r in f["refs"] if r["req_id"] != "DOC"}) for i, f in enumerate(d["set_findings"], 1)}
+    qs = {f"Q-{i:02d}": NS(qid=f"Q-{i:02d}", rid=q["rid"], criterion=q["criterion"], text=q["text"], refs=refs.get(q["rid"], []))
+          for i, q in enumerate(d["questions"], 1)}
+    parsed = parse_answers((ROOT / "examples" / "answers" / "organizers_answers.md").read_text(encoding="utf-8"))
+    readme = (ROOT / "examples" / "answers" / "README.md").read_text(encoding="utf-8")
+    expected = {m[0]: m[1] for m in re.findall(r"^\| (Q-\d{2}) \|[^|]*\|[^|]*\| (\w+) \|", readme, re.M)}
+    ru = {"concrete": "конкретный", "evasive": "уклончивый", "contradictory": "противоречивый"}
+    assert len(parsed) == 10 and len(expected) == 10
+    got = {qid: ru[classify_rules(qs[qid], v["answer"], rv)[0]] for qid, v in parsed.items()}
+    assert got == expected
+    assert sorted(got.values()).count("конкретный") == 6 and list(got.values()).count("противоречивый") == 2
+    for v in parsed.values():  # метки шаблона: ID требования или критерий + затронутые требования
+        assert v["key"] and (v["key"][0].startswith("R-") or v["key"][2])

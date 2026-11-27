@@ -29,7 +29,8 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--no-rescore", dest="rescore", action="store_false",
                     help="не перепроверять исправленный документ (экономит запросы к модели)")
     ap.add_argument("--no-cache", action="store_true",
-                    help="не брать ответы модели из кэша: свежий прогон (для отчёта, который сдаётся)")
+                    help="не брать ответы модели из кэша: свежий прогон (для отчёта, который сдаётся); "
+                         "ответы при этом записываются в кэш — повторный прогон того же документа квоту не тратит")
     ap.add_argument("--no-tests", action="store_true", help="не включать тест-пробу (Gherkin) в отчёт")
     ap.add_argument("--pdf", dest="pdf", action="store_true", default=None,
                     help="записать PDF-версию отчёта рядом с .md (в профиле deep — по умолчанию)")
@@ -65,7 +66,7 @@ def main(argv: list[str] | None = None) -> int:
 
     load_dotenv(args.env or ROOT / ".env")
     if args.no_cache:
-        os.environ["LLM_CACHE"] = "0"
+        os.environ["LLM_CACHE"] = "refresh"  # не читать кэш (свежий прогон), но записать ответы для повторов
 
     from .console import Console
     from .errors import DocumentError

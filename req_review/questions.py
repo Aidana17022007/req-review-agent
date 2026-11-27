@@ -30,6 +30,7 @@ class Question:
     criterion: str = ""
     qid: str = ""  # v9: Q-01, Q-02 … — заголовок «### Q-01» в шаблоне ответов
     closes: list = field(default_factory=list)  # v9: ID замечаний (R-xxx.N / S-xx), которые закроет конкретный ответ
+    refs: list = field(default_factory=list)  # v9: требования замечания набора (R-xxx) — опознать вопрос в новом прогоне
 
 
 def _short(q: str, n: int = 70) -> str:
@@ -64,7 +65,8 @@ def build_questions(rv: ReviewResult) -> list[Question]:
         ids = ", ".join(ref.req_id for ref in f.refs if ref.req_id != "DOC") or "документ"
         out.append(Question("Набор требований", f"S-{i:02d}",
                             f"{criterion_name(f.criterion)} ({ids}): {_short(f.problem, 220)} Как исправить: {_short(f.fix, 200)}",
-                            f.severity, f"S-{i:02d}", f.criterion, closes=[f"S-{i:02d}"]))
+                            f.severity, f"S-{i:02d}", f.criterion, closes=[f"S-{i:02d}"],
+                            refs=sorted({ref.req_id for ref in f.refs if ref.req_id != "DOC"})))
     if rv.domain:
         for a in rv.domain.areas:
             if a.status == "missing":

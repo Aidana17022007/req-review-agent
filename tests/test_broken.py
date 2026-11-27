@@ -63,7 +63,7 @@ def test_studio_error_event_has_hint(tmp_path, mock_env):
 def test_run_log_written_without_keys_and_document_text(tmp_path, mock_env, monkeypatch):
     from req_review.pipeline import Options, run
 
-    monkeypatch.setenv("GEMINI_API_KEY", "AIzaSyFAKE-not-a-real-key-1234567890")
+    monkeypatch.setenv("GEMINI_API_KEY", "AIzaFAKE-not-real-42")
     doc = ROOT / "tests" / "fixtures" / "sample_requirements.md"
     out = tmp_path / "report.md"
     run(str(doc), str(out), Options(html=False, xlsx=False, jira=False, pdf=False), log=lambda m: None)

@@ -296,3 +296,32 @@ def test_compare_cli(tmp_path, monkeypatch):
     assert res["defects_new"] == [] and res["defects_fixed"] == []
     assert cmp_main([str(tmp_path / "r.json"), str(tmp_path / "r.json"), "--md", str(tmp_path / "c.md")]) == 0
     assert (tmp_path / "r_tests.feature").read_text(encoding="utf-8").startswith("# language: ru")
+
+
+def test_cache_refresh_mode_writes_but_does_not_read(tmp_path, monkeypatch):
+    """v9: --no-cache (LLM_CACHE=refresh) — свежие ответы модели, кэш пополняется для следующего прогона."""
+    from req_review.llm import BaseLLM
+
+    class Fake(BaseLLM):
+        provider, model = "fake", "m"
+
+        def __init__(self):
+            super().__init__(max_retries=0)
+            self.n = 0
+
+        def _call(self, system, prompt, *, task, context):
+            self.n += 1
+            return '{"n": %d}' % self.n
+
+    monkeypatch.setenv("LLM_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("LLM_CACHE", "1")
+    a = Fake()
+    assert a.generate_json("s", "p") == {"n": 1}
+    monkeypatch.setenv("LLM_CACHE", "refresh")
+    b = Fake()
+    assert b.generate_json("s", "p") == {"n": 1} and b.n == 1 and b.stats.cached == 0  # не из кэша — свежий вызов
+    (tmp_path.glob("*.json").__next__()).write_text('{"n": 42}', encoding="utf-8")
+    assert Fake().generate_json("s", "p") == {"n": 1}  # refresh снова идёт в модель и перезаписывает кэш
+    monkeypatch.setenv("LLM_CACHE", "1")
+    c = Fake()
+    assert c.generate_json("s", "p") == {"n": 1} and c.n == 0 and c.stats.cached == 1  # обычный прогон берёт из кэша

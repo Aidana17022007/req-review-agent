@@ -21,14 +21,15 @@ from dataclasses import asdict, dataclass, field
 from .checker import SetFinding, SetRef
 
 HEAD_RE = re.compile(r"^#{2,4}\s*(Q-\d{2,3})\b[^\n]*$", re.M)
-KEY_RE = re.compile(r"<!--\s*reqlens:\s*(\S+)\s+(\S*)\s*-->")
+KEY_RE = re.compile(r"<!--\s*reqlens:\s*(\S+)\s+(\S*)(?:\s+(\S+))?\s*-->")
 EVASIVE_RE = re.compile(
     r"уточн\w*\s+(позже|потом|после|дополнительно|с\s)|позже|после пилота|\bTBD\b|\bTBA\b|не знаю|затрудня\w*|обсуд\w*|"
     r"на усмотрение|по согласованию|решим|пока не (определ|решен|извест)|будет определ\w*|определ\w* позже|"
     r"в процессе|нет информации|не готов\w*|вернёмся|вернемся|\?\s*$", re.I)
 CONCRETE_RE = re.compile(
     r"\d|только|не используется|не требуется|не нужн|обязательн|не более|не менее|не позднее|в течение|≤|≥|<=|>=|"
-    r"\bда\b|\bнет\b|допускается|запрещ\w*|исключ\w*|отказ\w*|должн\w*", re.I)
+    r"\bда\b|\bнет\b|допускается|запрещ\w*|исключ\w*|отказ\w*|должн\w*|https?://|согласован\w*|\bметод\w*|"
+    r"\b(GET|PUT|POST|PATCH|DELETE)\b", re.I)
 NUM_RE = re.compile(r"(\d[\d\s\u00a0\u202f]*(?:[.,]\d+)?)\s*(%|тенге|₸|тг|руб\w*|сек\w*|с\b|мин\w*|час\w*|дн\w*|сут\w*|"
                     r"мс\b|раз\w*|попыт\w*|символ\w*|запрос\w*|МБ|ГБ)?", re.I)
 TYPES = ("concrete", "evasive", "contradictory")
@@ -65,7 +66,7 @@ def template_md(questions, title: str) -> str:
            "> Вопросы без ответа можно удалить или оставить пустыми. Служебные строки `<!-- reqlens … -->` не трогайте.", ""]
     for q in questions:
         out += [f"### {q.qid}. {q.ref} — {q.section}", "",
-                f"<!-- reqlens: {q.rid or q.ref} {q.criterion} -->",
+                f"<!-- reqlens: {q.rid or q.ref} {q.criterion}" + (f" {','.join(q.refs)}" if q.refs else "") + " -->",
                 f"**Вопрос.** {q.text}", "",
                 f"*Закроет замечания:* {', '.join(q.closes) if q.closes else '—'}", "",
                 "Ответ: ", ""]
@@ -79,7 +80,7 @@ def parse_answers(text: str) -> dict[str, dict]:
     for i, m in enumerate(heads):
         body = text[m.end(): heads[i + 1].start() if i + 1 < len(heads) else len(text)]
         km = KEY_RE.search(body)
-        key = (km.group(1), km.group(2)) if km else None
+        key = (km.group(1), km.group(2), km.group(3) or "") if km else None
         lines = []
         for ln in body.splitlines():
             s = ln.strip()
@@ -120,8 +121,24 @@ def _sentence(answer: str, pat: re.Pattern) -> str:
     return parts[0].strip().rstrip(".;")
 
 
+UNIT_GROUPS = {"money": r"тенге|₸|тг|тиын\w*", "percent": r"%", "time": r"сек\w*|с\b|мин\w*|час\w*|мс\b|дн\w*|сут\w*"}
+_UNIT_NUM = re.compile(r"(\d[\d\s\u00a0\u202f]*(?:[.,]\d+)?)\s*(" + "|".join(UNIT_GROUPS.values()) + ")", re.I)
+NUMERIC_CHECK = {"set_consistent", "correct"}  # вопросы «что верно» — новое значение той же единицы = противоречие
+
+
+def _unit_numbers(s: str) -> dict[str, set[float]]:
+    out: dict[str, set[float]] = {}
+    for m in _UNIT_NUM.finditer(s or ""):
+        unit = next(g for g, p in UNIT_GROUPS.items() if re.fullmatch(p, m.group(2), re.I))
+        try:
+            out.setdefault(unit, set()).add(float(re.sub(r"[\s\u00a0\u202f]", "", m.group(1)).replace(",", ".")))
+        except ValueError:
+            continue
+    return out
+
+
 def _conflict_values(q, rv) -> list[float]:
-    """Значения документа, с которыми должен совпасть ответ: противоречие набора (values) или числа в требовании."""
+    """Значения документа, с которыми должен совпасть ответ: противоречие набора (values)."""
     if q.rid.startswith("S-"):
         try:
             f = rv.set_findings[int(q.rid[2:]) - 1]
@@ -132,6 +149,22 @@ def _conflict_values(q, rv) -> list[float]:
     return []
 
 
+def _unit_conflict(q, answer: str, rv) -> str:
+    """Для вопросов «что верно»: число с единицей (₸, %, время), которого нет в затронутых требованиях, — противоречие."""
+    if getattr(q, "criterion", "") not in NUMERIC_CHECK:
+        return ""
+    texts = {rr.req.rid: rr.req.text for rr in rv.req_results} if hasattr(rv, "req_results") else {}
+    rids = [q.rid] if q.rid in texts else list(getattr(q, "refs", []) or [])
+    doc = _unit_numbers(" ".join(texts.get(r, "") for r in rids))
+    ans = _unit_numbers(answer)
+    for unit, vals in ans.items():
+        new = vals - doc.get(unit, set())
+        if doc.get(unit) and new:
+            shown = ", ".join(f"{v:,.0f}".replace(",", " ") for v in sorted(doc[unit]))
+            return f"В ответе {', '.join(f'{v:,.0f}'.replace(',', ' ') for v in sorted(new))}, а в документе — {shown}"
+    return ""
+
+
 def classify_rules(q, answer: str, rv) -> tuple[str, str, str]:
     """(type, quote, note) по правилам; quote — дословная подстрока ответа."""
     nums = _numbers(answer)
@@ -140,6 +173,9 @@ def classify_rules(q, answer: str, rv) -> tuple[str, str, str]:
         quote = _sentence(answer, re.compile(r"\d"))
         shown = ", ".join(f"{v:,.0f}".replace(",", " ") for v in sorted(set(doc_vals)))
         return "contradictory", quote, f"Значение ответа не совпадает ни с одним из значений документа ({shown})"
+    why = _unit_conflict(q, answer, rv)
+    if why:
+        return "contradictory", _sentence(answer, re.compile(r"\d")), why
     if EVASIVE_RE.search(answer) and not nums:
         return "evasive", _sentence(answer, EVASIVE_RE), "Остаётся открытым: значение не названо"
     if len(answer) >= 8 and (nums or CONCRETE_RE.search(answer)):
@@ -183,11 +219,16 @@ def classify(items: list[tuple], rv, llm=None, log=print) -> list[tuple[str, str
 
 def _resolve(questions, parsed: dict) -> list[tuple]:
     """Сопоставить ответы с вопросами: по метке (rid, criterion) из шаблона, иначе по Q-xx."""
-    by_key = {(q.rid or q.ref, q.criterion): q for q in questions}
+    by_key = {(q.rid or q.ref, q.criterion): q for q in questions if not (q.rid or "").startswith("S-")}
+    by_refs = {(q.criterion, ",".join(q.refs)): q for q in questions if (q.rid or "").startswith("S-") and q.refs}
     by_qid = {q.qid: q for q in questions}
     out, unknown = [], []
     for qid, v in parsed.items():
-        q = by_key.get(v["key"]) if v.get("key") else None
+        q = None
+        if v.get("key"):
+            rid, crit, refs = v["key"]
+            # замечания набора перенумеровываются от прогона к прогону — узнаём по критерию и затронутым требованиям
+            q = by_refs.get((crit, refs)) if rid.startswith("S-") and refs else by_key.get((rid, crit))
         q = q or by_qid.get(qid)
         if q is None:
             unknown.append(qid)
