@@ -120,8 +120,13 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
     from .reader import read_document
     from .splitter import split_requirements
 
+    stt: dict[str, tuple] = {}  # v12: время этапов {этап: (начало, конец, обращений к модели)}
+    calls = lambda: getattr(getattr(llm, "stats", None), "calls", 0)  # noqa: E731
+    a, c = time.monotonic(), calls()
     step(0)
     doc = read_document(path)
+    stt["Чтение"] = (a, time.monotonic(), 0)
+    a, c = time.monotonic(), calls()
     log(f"«{doc.title}», строк: {len(doc.lines)}")
     step(1)
     split = split_requirements(doc)
@@ -140,24 +145,33 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
     from .depth import recover_uncovered  # v5: «дорезка» строк, не вошедших в нарезку
 
     recovered = recover_uncovered(doc, split, llm, log=log)
+    stt["Нарезка"] = (a, time.monotonic(), calls() - c)
     step(2)
+    c = calls()
     # размер пакета: явный LLM_BATCH_SIZE важнее профиля; deep — 6 требований на запрос
     batch = opts.batch_size if os.getenv("LLM_BATCH_SIZE") else PROFILES.get(opts.profile, {}).get("batch_size", opts.batch_size)
     rv = run_review(doc, split, llm, batch_size=batch, log=log, on_set=lambda: step(3))
+    stt.update({k: (*v, None) for k, v in rv.stage_times.items()})  # параллельные ветки: обращения — общим числом ниже
+    stt["Проверка требований ‖ набора (обращений)"] = (0, 0, calls() - c)
     prof = PROFILES.get(opts.profile, {})
     if prof.get("self_check"):
         from .focus import self_consistency
 
+        a, c = time.monotonic(), calls()
         rv.self_check = self_consistency(rv, llm, batch, log=log)
+        stt["Самосогласованность"] = (a, time.monotonic(), calls() - c)
     if prof.get("focused"):
         from .focus import focused_passes
 
+        a, c = time.monotonic(), calls()
         rv.focus = focused_passes(split, doc, llm, rv.dropped, rv.set_findings, log=log)
         rv.set_findings.sort(key=lambda f: {"critical": 0, "major": 1, "minor": 2}[f.severity])
+        stt["Узкие проходы"] = (a, time.monotonic(), calls() - c)
     if not opts.tests:
         for rr in rv.req_results:
             rr.test_possible, rr.test_gherkin, rr.test_blocker, rr.test_reason = None, "", "", ""
     step(4)
+    a, c = time.monotonic(), calls()
     domain = load_domain(opts.domain)
     run_extras(rv, llm, domain, log=log)
     # R4: категории требований и карта покрытия процесса (без обращений к модели)
@@ -182,6 +196,8 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
     if gap := acceptance_gap(rv, acc):
         rv.set_findings.append(gap)
     critic = PROFILES[opts.profile]["critic"] if opts.critic is None else opts.critic
+    stt["Домен, глоссарий, покрытие"] = (a, time.monotonic(), calls() - c)
+    a, c = time.monotonic(), calls()
     step(5)
     if critic:
         run_critic(rv, llm, log=log)
@@ -203,6 +219,8 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
                 else:
                     keep.append(f)
             rr.findings = keep
+    stt["Критик"] = (a, time.monotonic(), calls() - c)
+    a = time.monotonic()
     if folded:
         log(f"  свёрнуто замечаний об оформлении пунктов без ID: {folded}")
     from .depth import calibrate_severity  # v8: тест-проба только к требованиям, дубли с S-xx, потолок серьёзности
@@ -217,6 +235,13 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
         from .bank_rules import apply_rules, load_rules
 
         rv.bank_rules = apply_rules(rv, load_rules(spec), log=log)
+    if os.getenv("REQLENS_TRACE", "1") != "0":  # v12: граф трассировки (код, без модели) — разрывы как замечания набора
+        from .traceability import build as build_trace
+
+        rv.traceability = build_trace(rv)
+        ts = rv.traceability["stats"]
+        log(f"  трассировка: узлов {sum(ts['nodes'].values())}, связей {sum(ts['edges'].values())}, разрывов "
+            f"{ts['gaps']} (новых замечаний {ts['new_findings']}, связано с найденными {ts['linked']})")
     default_confidence(rv)
     rv.depth = depth_summary(rv, acc)
     rv.depth["review_stats"]["calibration"] = rv.calibration  # v8: калибровка серьёзности
@@ -239,7 +264,35 @@ def review_document(path, llm, opts: Options, log=print, step=lambda i, label=""
     from .depth import fix_plan  # после RAG: к пунктам плана подставляются шаблоны правок kb/patterns
 
     rv.depth["fix_plan"] = fix_plan(rv)
+    stt["Калибровка, RAG, план"] = (a, time.monotonic(), 0)
+    rv.stage_times = stt
     return rv
+
+
+def stage_report(st: dict) -> dict:
+    """v12: время каждого этапа и «критический путь» — цепочка этапов, определяющая длительность прогона
+    (из параллельных веток — самая долгая). sum_s > critical_path_s — выигрыш от параллельности."""
+    rows = sorted(((k, v) for k, v in st.items() if v[1] > 0), key=lambda kv: kv[1][0])
+    if not rows:
+        return {}
+    base = rows[0][1][0]
+    pair_calls = st.get("Проверка требований ‖ набора (обращений)", (0, 0, None))[2]
+    stages, groups = [], []
+    for name, (s, e, n) in rows:
+        stages.append({"stage": name, "start_s": round(s - base, 2), "seconds": round(e - s, 2), "calls": n})
+        if groups and s < groups[-1][1] - 1e-6:  # перекрывается с предыдущей группой — параллельная ветка
+            groups[-1][1] = max(groups[-1][1], e)
+            groups[-1][2].append(stages[-1])
+        else:
+            groups.append([s, e, [stages[-1]]])
+    for g in groups:
+        if len(g[2]) > 1:
+            for x in g[2]:
+                x["parallel"] = True
+    path = [max(g[2], key=lambda x: x["seconds"]) for g in groups]
+    return {"stages": stages, "critical_path": [x["stage"] for x in path],
+            "critical_path_s": round(sum(x["seconds"] for x in path), 2),
+            "sum_s": round(sum(x["seconds"] for x in stages), 2), "parallel_calls": pair_calls}
 
 
 def depth_summary(rv, acc: dict | None = None) -> dict:
@@ -373,9 +426,18 @@ def _apply_answers(rv, llm, path: str, log) -> dict:
                          "Возьмите шаблон <отчёт>_answers_template.md и впишите ответы под вопросами.")
     questions = build_questions(rv)
     before = summary_state(rv, compute(rv))
+    all_before = [f for rr in rv.req_results for f in rr.findings] + list(rv.set_findings)
     result = apply_answers(rv, questions, parsed, llm=llm, log=log)
+    # v12: исправленная редакция ТЗ — «было → стало», новые требования, критерии приёмки, что осталось уточнить
+    from . import revised as rev
+
+    revised = rev.write(rv, rev.plan(rv, questions, result, result["closed_list"]), llm=llm, log=log)
     refresh_depth(rv)
-    return {"questions": questions, "before": before, "result": result}
+    open_after = sum(len(rr.findings) for rr in rv.req_results) + len(rv.set_findings)
+    blockers = [c for c in result["closed_list"] if c["severity"] == "critical"]
+    summary = {"blockers_total": sum(f.severity == "critical" for f in all_before), "blockers_closed": len(blockers),
+               "open_before": len(all_before), "open_after": open_after, "closed_blockers": blockers}
+    return {"questions": questions, "before": before, "result": result, "revised": revised, "summary": summary}
 
 
 def run(input_path: str, output_path: str, opts: Options, log=print, step=lambda i, label="": None, llm_wrap=None,
@@ -478,6 +540,8 @@ def _run(input_path, output_path, opts: Options, log, step, llm_wrap, make_llm, 
         ctx.questions = ans_state["questions"]  # исходные вопросы: Q-xx и closes — по нумерации до ответов
         ctx.answers = answers_json(Path(opts.answers).name, ans_state["result"], ans_state["before"],
                                    summary_state(rv, ctx.scores))
+        ctx.answers["revised"] = ans_state["revised"]  # v12: исправленная редакция ТЗ (SCHEMA 2.5)
+        ctx.answers["summary"] = ans_state["summary"]
         ctx.passport["answers"] = {"file": Path(opts.answers).name, "items": len(ctx.answers["items"]),
                                    "closed": ans_state["result"]["closed"]}
     from .decisions import build_decisions, rephrase
@@ -525,6 +589,15 @@ def _run(input_path, output_path, opts: Options, log, step, llm_wrap, make_llm, 
 
     tstep(6)
     ctx.passport["duration_s"] = round(time.monotonic() - t0)
+    if sr := stage_report(rv.stage_times):  # v12: время этапов и критический путь
+        from .parallel import concurrency
+
+        ctx.passport["stages"] = sr["stages"]
+        ctx.passport["critical_path"] = {"stages": sr["critical_path"], "seconds": sr["critical_path_s"],
+                                         "stages_sum_s": sr["sum_s"], "concurrency": concurrency()}
+        log("этапы: " + " · ".join(f"{x['stage']} {x['seconds']:.1f} с" + (" ‖" if x.get("parallel") else "")
+                                   for x in sr["stages"])
+            + f" | критический путь {sr['critical_path_s']:.1f} с: " + " → ".join(sr["critical_path"]))
     out = Path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)
     stem = out.with_suffix("")
@@ -554,6 +627,23 @@ def _run(input_path, output_path, opts: Options, log, step, llm_wrap, make_llm, 
         p = out.parent / f"{stem.name}_fixed.diff"
         p.write_text(document_diff(rv, ctx.fixed_text), encoding="utf-8")
         ctx.artifacts["Исправления (unified diff)"] = p
+    if ctx.answers and ctx.answers.get("revised"):  # v12: исправленная редакция ТЗ после ответов
+        from .revised import agent_suggestions, revised_md
+
+        done = {c["rid"] for c in ctx.answers["revised"]["changed"]}
+        p = out.parent / f"{stem.name}_revised.md"
+        ctx.answers["revised"]["suggestions"] = agent_suggestions(rv, done)
+        p.write_text(revised_md(rv.doc.title, ctx.answers["revised"], ctx.answers["summary"],
+                                ctx.answers["revised"]["suggestions"]), encoding="utf-8")
+        ctx.artifacts["Исправленная редакция ТЗ"] = p
+        if opts.pdf if opts.pdf is not None else PROFILES.get(opts.profile, {}).get("pdf", False):
+            try:
+                from .pdf_report import PdfFontError, markdown_to_pdf
+
+                ctx.artifacts["Исправленная редакция ТЗ (PDF)"] = markdown_to_pdf(
+                    p.read_text(encoding="utf-8"), p.with_suffix(".pdf"), f"Исправленная редакция — {rv.doc.title}")
+            except PdfFontError as e:
+                log(f"PDF исправленной редакции не создан: {e}")
     if ctx.decisions:  # v9: повестка решений для владельца продукта
         from .decisions import decisions_file
 
@@ -561,10 +651,13 @@ def _run(input_path, output_path, opts: Options, log, step, llm_wrap, make_llm, 
         p.write_text(decisions_file(ctx.decisions, rv.doc.title), encoding="utf-8")
         ctx.artifacts["Решения для владельца продукта"] = p
     if ctx.questions:  # v9: шаблон ответов аналитика — вписать ответы и запустить --answers
-        from .answers import template_md
+        from .answers import question_options, template_md
 
+        set_values = {f"S-{i:02d}": [str(v.get("value", "")) for v in f.values if v.get("value")]
+                      for i, f in enumerate(rv.set_findings, 1) if f.values}
         p = out.parent / f"{stem.name}_answers_template.md"
-        p.write_text(template_md(ctx.questions, rv.doc.title), encoding="utf-8")
+        p.write_text(template_md(ctx.questions, rv.doc.title, question_options(ctx.questions, ctx.decisions, set_values)),
+                     encoding="utf-8")
         ctx.artifacts["Шаблон ответов аналитика"] = p
     if opts.tests and any(rr.test_possible for rr in rv.req_results):
         from .exports import feature_text

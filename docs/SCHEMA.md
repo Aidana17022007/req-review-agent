@@ -2,6 +2,45 @@
 
 Версия схемы: **2.5**. Правило: изменения только добавляющие — поля 2.0 не переименовываются и не удаляются.
 
+## Что добавлено в 2.5 · v12 (трассировка, время этапов)
+
+Поля только добавлены; версия схемы не меняется.
+
+| Поле | Тип | Смысл |
+|---|---|---|
+| `traceability` | объект | граф трассировки (код, без модели); нет поля — `REQLENS_TRACE=0` |
+| `traceability.nodes[]` | объект | `{"id","type","label","quote","line", …}`; `type`: `requirement`, `acceptance`, `ui_field`, `ui_action`, `api_method` (+`verb`, `path`), `api_param` (+`datatype`, `description`, `direction`: `request`/`response`), `http_status` (+`described`, `example`, `mention`). `id`: `R-xxx`, `UI:<название>`, `API:<МЕТОД> <путь>`, `P:req:<имя>` / `P:resp:<имя>`, `HTTP:<код>` |
+| `traceability.edges[]` | объект | `{"from","to","kind","why"}`; `kind`: `в документе` (явная ссылка) или `выведено кодом` (общие термины, поле ↔ параметр, операция ↔ метод) |
+| `traceability.gaps[]` | объект | `{"type","node","quote","problem","fix","severity","criterion","new","finding"}`; `type`: `rule_without_acceptance`, `ui_field_without_param`, `operation_without_method`, `status_without_description`, `param_without_type`; `finding` — `S-xx` замечания (новое — `new: true`, источник «трассировка (код)»; уже найденное — `new: false`) |
+| `traceability.stats` | объект | `{"nodes":{type: n},"edges":{kind: n},"gaps","new_findings","linked"}` |
+| `passport.stages[]` | объект | `{"stage","start_s","seconds","calls","parallel"?}` — время этапов; `parallel: true` у веток, шедших одновременно; `calls` у параллельных веток — `null` |
+| `passport.critical_path` | объект | `{"stages":[…],"seconds","stages_sum_s","concurrency"}` — цепочка этапов, определяющая длительность; `stages_sum_s − seconds` — выигрыш от параллельности |
+
+## Что добавлено в 2.5 · v12 (исправленное ТЗ после ответов)
+
+Только при `--answers`; версия схемы не меняется (поля только добавлены в объект `answers`).
+
+| Поле | Тип | Смысл |
+|---|---|---|
+| `answers.revised.changed[]` | объект | `{"rid","doc_id","before","after","fixes","qids","quotes","source"}` — требование, изменённое ответом: `before` — дословно из документа, `after` — новая формулировка со значениями из ответа, `fixes` — закрытые замечания (`R-xxx.N`, `S-xx`), `qids` — вопросы, `quotes` — дословные цитаты ответов, `source` — `"ответ"` |
+| `answers.revised.added[]` | объект | `{"id","text","from","fixes","quote"}` — новое требование (`NEW-01` …) по пропуску набора, закрытому ответом `from` (Q-xx) |
+| `answers.revised.acceptance[]` | объект | `{"rid","gherkin","source"}` — критерий приёмки Дано / Когда / Тогда к изменённому (`R-xxx`) или новому (`NEW-xx`) требованию; есть только при прогоне с моделью |
+| `answers.revised.open[]` | объект | `{"qid","rid","type","placeholder","quote","text"}` — что осталось уточнить: `type` — `evasive`, `contradictory` или `без ответа` (критичный вопрос без ответа); `placeholder` — «[уточнить: Q-xx …]»; `text` — текст требования с плейсхолдером |
+| `answers.revised.suggestions[]` | объект | `{"rid","doc_id","before","after","source":"предложение агента"}` — правки, которые агент предлагает сам, без ответа аналитика |
+| `answers.summary` | объект | `{"blockers_total","blockers_closed","open_before","open_after","closed_blockers"}`: критичных до ответов / закрыто ответами; открытых замечаний до / после; `closed_blockers[]` — `{"id","qid","quote","severity","criterion","problem"}` |
+
+**Проверка «Стало».** Формулировку пишет модель (задача `revise`); каждое число в `after` и `gherkin` должно быть в
+исходном требовании или в цитате ответа (идентификаторы R-/Q-/S- не считаются), иначе формулировка отклоняется и
+остаётся шаблон «исходный текст + решение из ответа». Без модели — только шаблон, критериев приёмки нет.
+
+**Варианты ответа.** В `<имя>_answers_template.md` у вопросов с повесткой решений (`decisions`) или противоречием с
+двумя значениями — блок «*Варианты (можно ответить буквой):*» и строки «- а) …», «- б) …», «- в) свой ответ». Ответ
+«б» или «б, но …» разбирается в текст варианта (+ уточнение) и считается конкретным (в `answers.items[].note` — «выбран вариант б)»).
+
+Артефакты: `<имя>_revised.md` (и `<имя>_revised.pdf` в профиле deep) — разделы «Изменённые требования» (Было → Стало,
+«Устраняет: … · по ответу Q-xx: «цитата»»), «Новые требования», «Новые критерии приёмки», «Осталось уточнить»,
+«Предложения агента». В `<имя>.md` перед разделом 1 — блок «Кратко: что изменилось после ответов аналитика».
+
 ## Что добавлено в 2.5 (v10: чек-лист банка)
 
 `bank_rules` — есть только при прогоне с `--rules ФАЙЛ` (или `REQLENS_RULES`); без флага поля нет.
