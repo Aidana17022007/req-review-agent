@@ -82,6 +82,16 @@
 .ans-qi .chip[hidden]{display:none}
 .ans-ta{width:100%;min-height:64px;margin-top:8px;resize:vertical;font:var(--t-small);line-height:1.5}
 .ans-cmp .ans-tbl td{vertical-align:top}
+/* v13: подробности прогона — полоса этапов, трассировка, итог ответов (поля report.json v12) */
+.stg{display:grid;gap:6px}
+.stg-row{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1.6fr) auto;gap:8px;align-items:center}
+.stg-row>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stg-track{position:relative;height:8px;border-radius:8px;background:var(--neutral-bar)}
+.stg-track i{position:absolute;top:0;bottom:0;border-radius:8px;background:var(--text-3)}
+.stg-row.cp .stg-track i{background:var(--brand)}
+.stg-row.cp>span:first-child{font-weight:600}
+.gap{padding:6px 10px;border-radius:10px;border-left:3px solid var(--minor);background:var(--surface-2)}
+.gap.critical{border-left-color:var(--critical)}.gap.major{border-left-color:var(--major)}
 .ans-cmp .kpi-num{font-size:clamp(26px,2.6vw,36px);line-height:1.15;white-space:nowrap}
 .ans-cmp .kpi .chip{font-size:11px}
 mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2px;box-shadow:inset 0 -2px 0 var(--ok)}
@@ -151,6 +161,7 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
             </div>
             <div class="banner-err banner-warn privacy" id="privacy" role="note">{{ icon("shield", 18) }}<div><b>Текст документа уходит в модель — не загружайте конфиденциальное.</b>
               <span class="small">Для банковского контура — офлайн-режим (Ollama): профиль «Офлайн», документ не покидает ваш сервер.</span></div></div>
+            <p class="small faint" id="up-policy" hidden></p>
             <div class="row wrap" style="justify-content:flex-end">
               <button class="btn btn-outline" id="example" type="button">{{ icon("eye", 16) }}Открыть готовый пример</button>
               <button class="btn btn-outline" id="demo" type="button" hidden>{{ icon("play", 16) }}Демо</button>
@@ -248,6 +259,10 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
                 <button class="btn btn-sm btn-outline" id="ans-open" type="button">{{ icon("chat", 14) }}Ответить на вопросы</button>
                 <a class="btn btn-sm btn-ghost" id="ans-tpl" href="#" hidden download>{{ icon("download", 14) }}Скачать шаблон ответов</a>
               </div>
+            </section>
+            <section class="card" id="det-card" aria-label="Подробности прогона" hidden>
+              <div class="card-title">{{ icon("trace") }}<span class="h2 grow">Подробности прогона</span></div>
+              <div id="det-body" class="stack" style="gap:12px"></div>
             </section>
             <section class="card" id="cmp-card" aria-label="Сравнение версий">
               <div class="card-title">{{ icon("compare") }}<span class="h2">Сравнить версии</span></div>
@@ -370,6 +385,12 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
   // состояние модели: нет ключа — предупреждаем до запуска
   api("/health").then(h=>{
     if(h.max_upload_mb)$("#max-mb").textContent=h.max_upload_mb;
+    // v13: правила публичного демо — лимиты, удаление документа, что будет при исчерпании
+    const L=h.limits||{},pol=[];
+    if(h.purge_minutes!=null)pol.push(h.purge_minutes?`Загруженный документ удаляется с сервера через ${h.purge_minutes} мин после проверки.`:"Загруженный документ удаляется с сервера сразу после проверки.");
+    if(L.per_hour||L.per_day||L.total)pol.push(`Проверок с моделью: ${[L.per_hour?`${L.per_hour} в час`:"",L.per_day?`${L.per_day} в сутки`:""].filter(Boolean).join(", ")} с одного адреса${L.total?`, ${L.total} в сутки всего`:""}.`);
+    if(L.fallback==="rules")pol.push("Когда лимит исчерпан, файл проверяется только правилами — без модели и без квоты.");
+    if(pol.length){const p=$("#up-policy");p.textContent=pol.join(" ");p.hidden=false;}
     $("#model-chip").innerHTML=ic(h.mock?"flask":"cpu",13)+esc(h.mock?"mock-режим (без модели)":h.model);
     if(!h.key_ok)$("#health").insertAdjacentHTML("beforeend",`<div class="banner-err banner-warn" role="alert">${ic("key",18)}<div><b>Ключ модели не найден.</b> Проверка с моделью завершится ошибкой: в .env сервера не задан ${esc(h.key_name||"ключ API")}.
       <div class="small" style="margin-top:4px">Скопируйте .env.example в .env, впишите ${esc(h.key_name||"ключ")} и перезапустите Studio. Без ключа работает режим «Только правила» и <code class="mono">LLM_PROVIDER=mock</code>.</div></div></div>`);
@@ -406,7 +427,7 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
         meta:verdictChip(vd)+`<span class="small muted">требований: ${s.reqs} · критичных: ${s.critical} · существенных: ${s.major}${d.model?" · "+esc(d.model):""}${d.started?" · "+esc(d.started):""}</span>`,
         files,frame:html?`${html[1]}?embed=studio`:"",canFixed:false,fixedTitle:"В готовом примере недоступно",
         hello:"Это готовый отчёт по документу организаторов: модель не вызывалась, квота не тратится. Спрашивайте — отвечу по данным отчёта, офлайн."});
-      show("s-result");try{history.replaceState(null,"","/?example=1");}catch(x){}}
+      renderDetails(state.report);show("s-result");try{history.replaceState(null,"","/?example=1");}catch(x){}}
     catch(e){show("s-upload");showErr(e.code==="not_found"?"noexample":"error",e.message);}
     finally{b.classList.remove("loading");}}
   $("#example").onclick=openExample;
@@ -615,8 +636,9 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
       loadProjects();
       // тот же файл уже проверен в проекте: новый прогон не запускается, квота не тратится
       if(res.duplicate){await openRun(res.run.id,{dup:res.message,cmp:o.cmp});return;}
-      state.job=res.job;
-      resetProgress(o.name||f.name,(o.caption||(res.compare_with?"Новая версия · сравнение с прошлой":"Живой прогон"))+(mode==="rules"?" · только правила":""),true);
+      state.job=res.job;state.limited=res.limited?{rid:res.run.id,...res.limited}:null;
+      if(res.limited)toast("Лимит проверок с моделью исчерпан — файл проверяется только правилами","err");
+      resetProgress(o.name||f.name,(o.caption||(res.compare_with?"Новая версия · сравнение с прошлой":"Живой прогон"))+(mode==="rules"||res.limited?" · только правила":""),true);
       enable("#nav-run",()=>show("s-progress"));show("s-progress");follow(res.job,{rid:res.run.id,cmp:o.cmp});
     }catch(e){show(o.back||"s-upload");showErr(e.code||"error",e.message,e.extra||{});}
     finally{$("#go").classList.remove("loading");}
@@ -701,6 +723,9 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
     if(o.dup){$("#r-note").innerHTML=`<div class="banner-err banner-demo" role="status" style="margin-bottom:16px;align-items:center">${ic("history",18)}<div class="grow"><b>Этот файл уже проверялся.</b> Открыт прошлый результат — квота модели не потрачена.</div>
         ${state.src&&state.src.file?`<button class="btn btn-sm btn-outline" type="button" id="r-force">${ic("refresh",14)}Проверить заново</button>`:""}</div>`;
       const b=$("#r-force");if(b)b.onclick=()=>launch(state.src.file,{pid:state.src.pid,force:true,mode:state.src.mode,cmp:state.src.cmp});}
+    if(state.limited&&state.limited.rid===run.id&&!o.dup)$("#r-note").innerHTML=`<div class="banner-err banner-warn" role="status" style="margin-bottom:16px">${ic("clock",18)}<div class="grow">
+        <b>Лимит проверок с моделью на сегодня исчерпан — этот отчёт собран только правилами.</b> <span class="small">${esc(state.limited.message||"")}</span></div>
+        <button class="btn btn-sm btn-outline" type="button" id="r-example">${ic("eye",14)}Открыть готовый пример</button></div>`,$("#r-example").onclick=openExample;
     const qp=loadQuestions(run,files);
     if(run.compare)enable("#nav-compare",()=>renderCompare(run.compare,{run,answers:state.report&&state.report.answers}));
     if(o.answers&&!o.dup){await qp;if(state.report&&state.report.answers)return renderCompare(run.compare,{run,answers:state.report.answers});}
@@ -712,7 +737,7 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
     $("#downloads").innerHTML=R.files.map(([k,url,name],i)=>`<a class="btn btn-sm ${i===0?"btn-primary":"btn-outline"}" href="${esc(url)}" ${name.endsWith(".html")?'target="_blank" rel="noopener"':`download="${esc(name)}"`}>${ic(name.endsWith(".html")?"arrow-up-right":"download",14)}${esc(k)}</a>`).join("");
     if(R.frame)$("#frame").src=R.frame;
     const b=$("#cmp-fixed");b.disabled=!R.canFixed;b.title=R.fixedTitle||"";
-    $("#cmp-card").hidden=!!R.example;$("#ans-card").hidden=true;
+    $("#cmp-card").hidden=!!R.example;$("#ans-card").hidden=true;$("#det-card").hidden=true;
     $("#cmp-open").hidden=!R.compare;$("#r-proj").hidden=!R.pid;
     $("#chat-log").innerHTML=`<div class="msg ai">${esc(R.hello)}</div>`;$("#chat-sugg").innerHTML="";
     if(R.example)sugg(["Что исправить первым?","Какие есть противоречия?","Можно ли начинать разработку?","Какие вопросы аналитику?"]);else loadSuggest();
@@ -796,10 +821,34 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
     if(state.res.v1)launch(f,{pid:state.res.pid,cmp:true,back:"s-result",caption:"Проверка новой версии"});else legacyCompare(f);};
 
   // ---------------- ответы аналитика (v9): вопросы прогона → ответы (черновик в localStorage) → перепроверка
+  // v13: поля report.json v12 — этапы и критический путь, трассировка (разрывы), итог ответов, сильная модель
+  const GAP={rule_without_acceptance:"правило без критерия приёмки",ui_field_without_param:"поле экрана без параметра API",
+    operation_without_method:"операция без метода API",status_without_description:"HTTP-статус без описания",param_without_type:"параметр API без типа"};
+  const TRN={requirement:"требований",acceptance:"критериев приёмки",ui_field:"полей экрана",ui_action:"действий",api_method:"методов API",api_param:"параметров API",http_status:"HTTP-статусов"};
+  function detailsHTML(d){
+    if(!d)return "";const p=d.passport||{},parts=[];
+    const st=(p.stages||[]).filter(s=>s&&s.stage);
+    if(st.length){const tot=Math.max(0.001,...st.map(s=>(+s.start_s||0)+(+s.seconds||0))),cp=new Set((p.critical_path&&p.critical_path.stages)||[]),c=p.critical_path;
+      parts.push(`<div><div class="caption" style="margin-bottom:6px">Этапы прогона</div><div class="stg">${st.map(s=>`<div class="stg-row${cp.has(s.stage)?" cp":""}" title="${esc(s.stage)}: начало ${(+s.start_s||0).toFixed(1)} с, длительность ${(+s.seconds||0).toFixed(1)} с${s.parallel?" (параллельно)":""}">
+        <span class="small">${esc(s.stage)}</span><div class="stg-track"><i style="left:${(100*(+s.start_s||0)/tot).toFixed(1)}%;width:${Math.max(1.5,100*(+s.seconds||0)/tot).toFixed(1)}%"></i></div>
+        <span class="small faint">${(+s.seconds||0).toFixed(1)} с</span></div>`).join("")}</div>
+        ${c?`<p class="small muted" style="margin-top:6px">Критический путь — ${(+c.seconds).toFixed(1)} с (выделен); этапы по отдельности — ${(+c.stages_sum_s).toFixed(1)} с: параллельность сэкономила ${Math.max(0,c.stages_sum_s-c.seconds).toFixed(1)} с.</p>`:""}</div>`);}
+    const t=d.traceability;
+    if(t&&t.stats){const n=t.stats.nodes||{},g=t.gaps||[];
+      parts.push(`<div><div class="caption" style="margin-bottom:6px">Трассировка требование ↔ поле ↔ метод ↔ статус</div>
+        <p class="small">${Object.entries(n).map(([k,v])=>`${esc(TRN[k]||k)}: <b>${+v}</b>`).join(" · ")} · связей: <b>${+(t.stats.linked||0)}</b> · разрывов: <b>${g.length}</b></p>
+        ${g.slice(0,5).map(x=>`<div class="gap ${esc(x.severity||"minor")}"><b class="small">${esc(GAP[x.type]||x.type)}</b>${x.quote?` <span class="small muted">«${esc(clip(x.quote,90))}»</span>`:""}${x.finding?` <button type="button" class="linkish small" data-ref="${esc(x.finding)}">${esc(x.finding)}</button>`:""}</div>`).join("")}
+        ${g.length>5?`<p class="small faint">и ещё ${g.length-5} — в отчёте</p>`:""}</div>`);}
+    const a=d.answers,sm=a&&a.summary,rv=a&&a.revised;
+    if(sm||rv)parts.push(`<div><div class="caption" style="margin-bottom:6px">После ответов аналитика</div><p class="small">${sm?`Блокеров закрыто: <b>${+sm.blockers_closed}</b> из <b>${+sm.blockers_total}</b> · открытых замечаний: ${+sm.open_before} → <b>${+sm.open_after}</b>`:""}${sm&&rv?"<br>":""}${rv?`Исправленное ТЗ: изменено <b>${(rv.changed||[]).length}</b>, новых требований <b>${(rv.added||[]).length}</b>, осталось уточнить <b>${(rv.open||[]).length}</b>`:""}</p></div>`);
+    if(p.strong)parts.push(`<div><span class="chip chip-brand">${ic("cpu",13)}сильная модель${typeof p.strong==="string"?": "+esc(p.strong):p.strong.model?": "+esc(p.strong.model):""}</span></div>`);
+    return parts.join("");}
+  function renderDetails(d){const h=detailsHTML(d);$("#det-body").innerHTML=h;$("#det-card").hidden=!h;}
+  $("#det-body").onclick=e=>{const b=e.target.closest("[data-ref]");if(b&&/^(R-\d+|S-\d+)$/.test(b.dataset.ref))frameGo(b.dataset.ref);};
   async function loadQuestions(run,files){
     const j=files.find(f=>f[2].endsWith(".json")),tpl=files.find(f=>f[2].endsWith("_answers_template.md"));
     state.report=null;if(!j)return;
-    try{const r=await fetch(j[1]);if(!r.ok)return;const d=await r.json();if(state.run!==run)return;state.report=d;
+    try{const r=await fetch(j[1]);if(!r.ok)return;const d=await r.json();if(state.run!==run)return;state.report=d;renderDetails(d);
       const qs=(d.questions||[]).filter(q=>q.qid);
       $("#ans-card").hidden=!qs.length;$("#ans-count").textContent=qs.length;
       for(const id of ["#ans-tpl","#a-tpl"]){const t=$(id);t.hidden=!tpl;if(tpl){t.href=tpl[1];t.setAttribute("download",tpl[2]);}}
@@ -834,12 +883,12 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
     if(!parts.length)return showErr("answers","Впишите хотя бы один ответ.");
     const text=parts.map(([q,a])=>`### ${q}\n${a}\n`).join("\n"),b=$("#a-go");b.classList.add("loading");b.disabled=true;
     try{const res=await jpost(`/runs/${run.id}/answers`,{text});
-      state.unknown=res.unknown_qids||[];state.src=null;state.job=res.job;
+      state.unknown=res.unknown_qids||[];state.src=null;state.job=res.job;state.limited=res.limited?{rid:res.run.id,...res.limited}:null;
       resetProgress(run.doc_name,`Перепроверка с ответами аналитика · учтено ответов: ${res.matched}`,true);
       enable("#nav-run",()=>show("s-progress"));show("s-progress");
       if(state.unknown.length)toast(`Нет таких вопросов: ${state.unknown.join(", ")} — эти ответы не учтены`,"err");
       follow(res.job,{rid:res.run.id,answers:true});loadProjects();}
-    catch(e){showErr(e.code==="limit"?"limit":"answers",e.message,e.extra||{});}
+    catch(e){showErr(e.code==="limit"?"limit":e.code==="purged"?"upload":"answers",e.message,e.extra||{});}
     finally{b.classList.remove("loading");aProgress();}};
   // «было → стало» по ответам: answers.before / after и таблица ответов нового прогона
   const ATYPE={concrete:["sev-ok","check","конкретный"],evasive:["sev-major","clock","уклончивый"],contradictory:["sev-critical","x","противоречивый"]};
@@ -982,6 +1031,12 @@ mark.ans-q{background:var(--ok-soft);color:inherit;border-radius:4px;padding:0 2
     "Под заголовком «### Q-xx» должен быть текст ответа — пустые вопросы не учитываются.":"«### Q-xx» тақырыбының астында жауап мәтіні болуы керек — бос сұрақтар есепке алынбайды.",
     "Если исходный прогон ещё идёт — дождитесь отчёта и отправьте ответы снова.":"Бастапқы прогон әлі жүріп жатса — есепті күтіп, жауаптарды қайта жіберіңіз.",
     // проекты
+    "Лимит проверок с моделью на сегодня исчерпан — этот отчёт собран только правилами.":"Бүгінгі модельмен тексеру лимиті таусылды — бұл есеп тек ережелермен жасалды.",
+    "Лимит проверок с моделью исчерпан — файл проверяется только правилами":"Модельмен тексеру лимиті таусылды — файл тек ережелермен тексеріледі",
+    "Когда лимит исчерпан, файл проверяется только правилами — без модели и без квоты.":"Лимит таусылғанда файл тек ережелермен — модельсіз және квотасыз тексеріледі.",
+    "Загруженный документ удаляется с сервера сразу после проверки.":"Жүктелген құжат тексерілген соң серверден бірден өшіріледі.",
+    "Подробности прогона":"Прогон егжей-тегжейі","Этапы прогона":"Прогон кезеңдері","Трассировка требование ↔ поле ↔ метод ↔ статус":"Талап ↔ өріс ↔ әдіс ↔ күй трассировкасы",
+    "После ответов аналитика":"Аналитик жауаптарынан кейін","сильная модель":"күшті модель",
     "Проекты и история проверок":"Жобалар және тексерулер тарихы","Проект — один документ требований и все его версии.":"Жоба — бір талаптар құжаты және оның барлық нұсқалары.",
     "Новый проект":"Жаңа жоба","Проверить новую версию":"Жаңа нұсқаны тексеру","Удалить проект":"Жобаны жою","Динамика по версиям":"Нұсқалар бойынша динамика",
     "Версия":"Нұсқа","Документ":"Құжат","Проверено":"Тексерілді","Режим и статус":"Режим және күй","Удалить безвозвратно":"Біржола жою","Отмена":"Болдырмау",

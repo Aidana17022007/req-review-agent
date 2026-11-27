@@ -45,7 +45,7 @@ PAGE = """<!doctype html>
 <style>
 {{ tokens_css()|safe }}
 {{ asset("base.css")|safe }}
-body{background:var(--grad-page) fixed;color:var(--text);margin:0}
+body{background:var(--bg);color:var(--text);margin:0}
 .site{max-width:var(--max-width);margin:0 auto;padding:0 16px 24px}
 .pagebar{position:sticky;top:8px;z-index:5}
 .pagebar nav{display:flex;gap:4px;margin-left:auto;align-items:center;flex-wrap:wrap}
@@ -53,8 +53,8 @@ body{background:var(--grad-page) fixed;color:var(--text);margin:0}
 .k{font:800 clamp(32px,5.2vw,64px)/1.05 var(--font-sans);letter-spacing:-.035em;margin:12px 0 0}
 .lead{font:400 clamp(16px,1.6vw,20px)/1.55 var(--font-sans);color:var(--text-2);max-width:860px;margin:18px 0 0}
 .cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
-.section{margin-top:48px}.section h2{font:500 clamp(28px,3.4vw,44px)/1.1 var(--font-sans);letter-spacing:-.035em;margin:6px 0 18px;color:#fff}
-.section>.caption,.section>p a{color:#E3E6FF}
+.section{margin-top:48px}.section h2{font:500 clamp(28px,3.4vw,44px)/1.1 var(--font-sans);letter-spacing:-.035em;margin:6px 0 18px;color:var(--text)}
+.section>.caption{color:var(--text-3)}.section>p a{color:var(--brand)}
 .feat .ic{color:var(--brand)}.feat .h3{margin:10px 0 6px}.feat p{margin:0}
 .shot{border-radius:16px;border:1px solid var(--border);box-shadow:var(--shadow-lg);width:100%;height:auto;display:block;background:var(--surface)}
 .shots figure{margin:0}.shots figcaption{margin-top:8px}
@@ -72,13 +72,14 @@ pre.cmd{background:var(--surface);border:1px solid var(--border);border-radius:1
   <a class="logo" href="{{ root }}" style="text-decoration:none"><span class="logo-mark">{{ logo_mark(36) }}</span><span>ReqLens<small>ИИ-ревью требований</small></span></a>
   <nav>
     <a class="btn btn-ghost btn-sm" href="{{ root }}report/">Отчёт</a>
+    <a class="btn btn-ghost btn-sm" href="{{ root }}proof/">Доказательства</a>
     <a class="btn btn-ghost btn-sm" href="{{ root }}slides/">Слайды</a>
     <button class="btn btn-round" id="theme" type="button" aria-label="Сменить тему">{{ icon("moon", 18) }}</button>
     {% if studio %}<a class="btn btn-primary btn-sm" href="{{ studio }}">Studio {{ icon("arrow-up-right", 16) }}</a>{% else %}<a class="btn btn-primary btn-sm" href="{{ root }}">На главную</a>{% endif %}
   </nav>
 </header>
 {{ body|safe }}
-<footer class="footer" style="color:#0A0D2A">ReqLens · хакатон BCC-HUB × MNU · ISO/IEC/IEEE 29148:2018, IEEE Std 830-1998 · сайт собирается из репозитория при каждом деплое</footer>
+<footer class="footer" style="color:var(--text-3)">ReqLens · хакатон BCC-HUB × MNU · ISO/IEC/IEEE 29148:2018, IEEE Std 830-1998 · сайт собирается из репозитория при каждом деплое</footer>
 </div>
 <script>document.getElementById("theme").onclick=function(){var d=document.documentElement,t=d.dataset.theme==="dark"?"light":"dark";d.dataset.theme=t;try{localStorage.setItem("reqlens-theme",t)}catch(e){}}</script>
 </body>
@@ -142,6 +143,190 @@ def blind_html() -> str:
   <p class="note">{escape(b["meta"])}</p>
 </section>
 """
+
+
+_W = r"[\p{L}\p{N}_]"
+
+
+def js_regex(p: str) -> str:
+    r"""Регулярное выражение Python → JS (флаг u): \w и \b в JS не знают кириллицу, заменяем на классы Unicode."""
+    out, cls, i = [], False, 0
+    while i < len(p):
+        t = p[i:i + 2]
+        if t == r"\w":
+            out.append(_W[1:-1] if cls else _W)  # внутри [...] — без собственных скобок
+        elif t == r"\b" and not cls:
+            out.append(f"(?:(?<={_W})(?!{_W})|(?<!{_W})(?={_W}))")
+        elif p[i] == "\\":
+            out.append(t)  # прочие экранирования — как есть
+        else:
+            cls = (cls or p[i] == "[") and not (cls and p[i] == "]")
+            out.append(p[i])
+            i += 1
+            continue
+        i += 2
+    return "".join(out)
+
+
+def rules_payload() -> dict:
+    """Словарные правила агента (req_review/rules.py — только чтение) для виджета «Проверьте одну фразу» на сайте."""
+    from req_review import rules as R
+    from req_review.criteria import criterion_name
+
+    return {"rules": [{"p": js_regex(r.pattern), "crit": r.criterion, "name": criterion_name(r.criterion), "sev": r.severity,
+                       "problem": r.problem, "fix": r.fix, "num": bool(r.skip_if_number_near)} for r in R.RULES],
+            "and": js_regex(R._AND_SPLIT.pattern), "kk": js_regex(R._KK_SPLIT.pattern),
+            "sent": js_regex(R._SENT.pattern), "id": js_regex(r"\s*\**\s*[\w-]{1,10}\s*[-.]?\s*\d+[.)]?\**\s*"),
+            "atomic": {"crit": "singular", "name": criterion_name("singular"), "sev": "minor",
+                       "problem": "Неатомарное требование: в одном пункте несколько самостоятельных правил — их нельзя по отдельности "
+                                  "трассировать к критериям приёмки и изменять, не задев соседние.",
+                       "fix": "Разбить пункт на отдельные требования — по одному правилу в каждом, с собственным критерием приёмки."},
+            "singular": {"crit": "singular", "name": criterion_name("singular"), "sev": "minor",
+                         "problem": "Похоже, в одной формулировке объединено несколько требований.",
+                         "fix": "Разделить на отдельные требования с собственными идентификаторами."}}
+
+
+def try_html() -> str:
+    """Секция «Проверьте одну фразу»: правила агента работают в браузере — без модели, сервера и ключа.
+    Без JS секция скрыта (атрибут hidden снимает site.js), правила вшиты в страницу — отдельного запроса нет."""
+    try:
+        data = json.dumps(rules_payload(), ensure_ascii=False).replace("</", "<\\/")
+    except Exception as e:  # noqa: BLE001 — без правил сайт собирается, просто без виджета
+        print(f"Виджет «Проверьте одну фразу» пропущен: {e}")
+        return ""
+    ex = ["Система должна быстро проверять получателя и показывать удобный экран подтверждения.",
+          "Комиссия взимается при необходимости, её размер — TBD.",
+          "Поддерживаются карты Visa, Mastercard и т.д., оплата картой и/или по QR-коду."]
+    chips = "".join(f'<button class="try-chip" type="button" data-try="{i}">{i + 1}</button>' for i in range(len(ex)))
+    return f"""<section class="panel try" id="try" hidden>
+  <p class="eyebrow" data-i18n="try.eyebrow">Попробуйте сами</p>
+  <h2 class="h1" data-i18n="try.t">Проверьте одну фразу — прямо здесь.</h2>
+  <p class="lead" data-i18n="try.lead">Впишите требование: словарные правила агента подсветят размытые слова и объяснят, как исправить. Без модели, сервера и ключа — всё считается в браузере.</p>
+  <form class="try-form" id="try-form">
+    <label class="sr-only" for="try-q" data-i18n="try.label">Текст требования</label>
+    <textarea id="try-q" rows="3" maxlength="1000" spellcheck="false">{ex[0]}</textarea>
+    <div class="try-bar"><span class="note" style="margin:0" data-i18n="try.ex">Примеры:</span>{chips}<span class="grow"></span>
+      <button class="btn btn-white btn-sm" type="submit"><span data-i18n="try.go">Проверить</span><i aria-hidden="true">›</i></button></div>
+  </form>
+  <div class="try-out" id="try-out" aria-live="polite"></div>
+  <p class="note" data-i18n="try.note">Это только первый, словарный слой агента. Полная проверка — модель, тест-проба, противоречия между требованиями — в Studio или одной командой ниже.</p>
+  <script type="application/json" id="rl-rules">{data}</script>
+  <script type="application/json" id="rl-examples">{json.dumps(ex, ensure_ascii=False)}</script>
+</section>
+"""
+
+
+def _load(rel: str) -> dict | None:
+    p = ROOT / rel
+    try:
+        return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
+    except (OSError, ValueError):
+        return None
+
+
+def _pct(x) -> str:
+    return f"{round(100 * x)} %" if isinstance(x, (int, float)) else "—"
+
+
+def _generic_block(title: str, rel: str, cmd: str, d) -> str:
+    """Блок для файла бенчмарка, формат которого задаёт движок (v13): числовые поля верхнего уровня таблицей."""
+    from html import escape
+
+    rows = "".join(f"<tr><td>{escape(str(k))}</td><td>{escape(str(v if not isinstance(v, float) else round(v, 4)))}</td></tr>"
+                   for k, v in (d.items() if isinstance(d, dict) else []) if isinstance(v, (int, float, str)) and len(str(v)) < 80)
+    return (f'<section class="section"><div class="caption">{escape(rel)}</div><h2>{escape(title)}</h2>'
+            f'<div class="md"><div class="tw"><table><tbody>{rows}</tbody></table></div>'
+            f'<p class="small">Пересчитать: <code>{escape(cmd)}</code></p></div></section>')
+
+
+def proof_html() -> str:
+    """v13: страница «Доказательства» — только цифры из файлов, которые пересчитываются командой (рядом — команда).
+    Файла нет — блока нет (а не пустая таблица)."""
+    from html import escape
+
+    out = []
+    res = _load("bench/results.json")
+    if res:
+        names = {"payments": "Оплата услуг", "credit": "Онлайн-кредит", "onboarding": "Открытие счёта",
+                 "deposit_kk": "Онлайн-депозит (қазақ тілі)", "cards": "Перевыпуск карты (DOCX, таблицы)", "cashback": "Кэшбэк по категориям"}
+        rows = "".join(f"<tr><td>{escape(names.get(k, k))}</td><td>{c['tp']} из {c['total']}</td><td>{_pct(c['recall'])}</td>"
+                       f"<td>{_pct(c['precision'])}</td></tr>" for k, c in res.get("cases", {}).items())
+        out.append(f"""<section class="section"><div class="caption">bench/results.json</div><h2>Бенчмарк: документы с известными дефектами</h2>
+<div class="grid g-4">
+  <article class="kpi"><span class="lbl">Полнота (recall)</span><div class="kpi-num">{_pct(res.get("recall"))}</div><div class="sub">{res.get("tp")} из {res.get("total")} дефектов</div></article>
+  <article class="kpi"><span class="lbl">Точность (precision)</span><div class="kpi-num">{_pct(res.get("precision"))}</div><div class="sub">F1 {_pct(res.get("f1"))}</div></article>
+  <article class="kpi"><span class="lbl">Ложные тревоги на чистых</span><div class="kpi-num">{res.get("fp_on_clean", "—")}</div><div class="sub">на {res.get("clean", "—")} заведомо чистых требованиях</div></article>
+  <article class="kpi"><span class="lbl">Модель</span><div class="small" style="margin-top:10px">{escape(str(res.get("label", "")))}</div><div class="sub">{escape(str(res.get("date", "")))}</div></article>
+</div>
+<div class="md"><div class="tw"><table><thead><tr><th>Документ</th><th>Найдено</th><th>Recall</th><th>Precision</th></tr></thead><tbody>{rows}</tbody></table></div>
+<p class="small">Пересчитать: <code>python bench/run.py</code></p></div></section>""")
+    base = _load("bench/baseline/results.json")
+    if base and all(k in base for k in ("A_rules", "B_bare", "C_reqlens")):
+        lab = {"A_rules": "Только правила (без модели)", "B_bare": "Один промпт в ту же модель", "C_reqlens": "ReqLens (агент)"}
+        rows = ""
+        for k in ("A_rules", "B_bare", "C_reqlens"):
+            b, o = base[k].get("bench", {}), base[k].get("organizers", {})
+            rows += (f"<tr><td>{'<b>' if k == 'C_reqlens' else ''}{lab[k]}{'</b>' if k == 'C_reqlens' else ''}</td><td>{_pct(b.get('recall'))}</td>"
+                     f"<td>{_pct(b.get('precision'))}</td><td>{o.get('found', '—')} из {o.get('total', '—')}</td>"
+                     f"<td>{o.get('critical_found', '—')} из {o.get('critical_total', '—')}</td></tr>")
+        out.append(f"""<section class="section"><div class="caption">bench/baseline/results.json</div><h2>ReqLens против одного промпта в ту же модель</h2>
+<div class="md"><div class="tw"><table><thead><tr><th>Как проверяли</th><th>Recall (бенчмарк)</th><th>Precision</th><th>Документ организаторов</th><th>Критичные</th></tr></thead>
+<tbody>{rows}</tbody></table></div><p class="small">Пересчитать: <code>python bench/baseline_eval.py</code></p></div></section>""")
+    rep = _load("reports/requirements-report.json")
+    if rep:
+        pp, ca = rep.get("passport", {}), rep.get("citation_audit") or {}
+        found = ""
+        try:
+            sys.path.insert(0, str(ROOT / "bench"))
+            from real_eval import evaluate
+
+            ev = evaluate(rep)
+            found = f"{ev['found']} из {ev['total']}"
+        except Exception:  # noqa: BLE001
+            pass
+        out.append(f"""<section class="section"><div class="caption">reports/requirements-report.json</div><h2>Документ организаторов: отчёт для сдачи</h2>
+<div class="grid g-4">
+  <article class="kpi"><span class="lbl">Ожидаемые дефекты</span><div class="kpi-num">{escape(found or "—")}</div><div class="sub">сверка кодом: <code>python bench/real_eval.py</code></div></article>
+  <article class="kpi"><span class="lbl">Цитаты найдены в тексте</span><div class="kpi-num">{ca.get("verified", "—")} / {ca.get("total", "—")}</div><div class="sub">аудит цитат кодом</div></article>
+  <article class="kpi"><span class="lbl">Время прогона</span><div class="kpi-num">{pp.get("duration_s", "—")} с</div><div class="sub">профиль {escape(str(pp.get("profile", "")))} · обращений {pp.get("calls", "—")}</div></article>
+  <article class="kpi"><span class="lbl">Модель</span><div class="small" style="margin-top:10px">{escape(str(pp.get("model", "")))}</div><div class="sub">{escape(str(pp.get("started", "")))}</div></article>
+</div></section>""")
+    # v13 (движок, PR v13-engine): блоки появятся, когда файлы будут пересчитаны командой
+    for rel, title, cmd in (("bench/score.json", "Полнота и точность с доверительными интервалами", "python bench/score.py"),
+                            ("bench/ablation.json", "Вклад каждого слоя агента", "python bench/ablation.py"),
+                            ("bench/transitions.json", "Реакция на исправления", "python bench/transitions.py"),
+                            ("bench/stability.json", "Устойчивость: одно и то же замечание в N прогонах", "python bench/stability.py"),
+                            ("bench/real/verify.json", "verify: цитаты и SHA-256 отчёта для сдачи", "python review.py verify …")):
+        d = _load(rel)
+        if d:
+            out.append(_generic_block(title, rel, cmd, d))
+    if not out:
+        return ""
+    body = ('<section class="hero"><div class="caption">Доказательства</div><h1 class="k">Цифры, которые можно пересчитать.</h1>'
+            '<p class="lead">Каждая цифра на этой странице взята из файла репозитория и пересчитывается командой, указанной рядом. '
+            'Нет файла — нет блока.</p></section>' + "\n".join(out))
+    from req_review.ui import env
+
+    return env().from_string(PAGE).render(title="ReqLens · Доказательства", root="../", studio="", body=body)
+
+
+def report_pdf(out_dir: Path) -> bool:
+    """PDF отчёта для сдачи рядом с /report/: готовый reports/requirements-report.pdf или сборка из Markdown."""
+    pdf = ROOT / "reports" / "requirements-report.pdf"
+    if pdf.exists():
+        shutil.copy2(pdf, out_dir / "report.pdf")
+        return True
+    md = ROOT / "reports" / "requirements-report.md"
+    if not md.exists():
+        return False
+    try:
+        from req_review.pdf_report import markdown_to_pdf
+
+        markdown_to_pdf(md.read_text(encoding="utf-8"), out_dir / "report.pdf", "Отчёт ReqLens — документ организаторов")
+        return (out_dir / "report.pdf").exists()
+    except Exception as e:  # noqa: BLE001 — без шрифта/reportlab сайт собирается без PDF
+        print(f"PDF отчёта не собран: {e}")
+        return False
 
 
 def report_siblings(rep: str, out_dir: Path) -> str:
@@ -245,7 +430,7 @@ def build(out: Path, studio: str, *, force: bool = False, repo_public: bool = Fa
         if (ROOT / src).exists():
             shutil.copy2(ROOT / src, out / dst)
     html = apply_links(fill_numbers((out / "index.html").read_text(encoding="utf-8")), studio, repo_public)
-    html = html.replace("<!-- blind -->\n", blind_html())
+    html = html.replace("<!-- blind -->\n", blind_html()).replace("<!-- try -->\n", try_html())
     (out / "index.html").write_text(html, encoding="utf-8")
 
     (out / "report").mkdir()
@@ -263,6 +448,17 @@ def build(out: Path, studio: str, *, force: bool = False, repo_public: bool = Fa
         title = (re.search(r"^#\s+(.+)$", md, re.M) or [None, "Отчёт"])[1]
         (out / "report" / "index.html").write_text(md_page(md, title=title, caption="Отчёт", download="report.md" if md_path.exists() else None,
                                                            root="../", studio=studio), encoding="utf-8")
+    has_pdf = report_pdf(out / "report")
+    if not has_pdf:  # ссылки на PDF без файла — убираем (без 404)
+        html = re.sub(r'<a\b[^>]*\bdata-pdf\b[^>]*>.*?</a>\s*', "", (out / "index.html").read_text(encoding="utf-8"), flags=re.S)
+        (out / "index.html").write_text(html, encoding="utf-8")
+    proof = proof_html()
+    if proof:
+        (out / "proof").mkdir()
+        (out / "proof" / "index.html").write_text(proof, encoding="utf-8")
+    else:
+        html = re.sub(r'<a\b[^>]*\bdata-proof\b[^>]*>.*?</a>\s*', "", (out / "index.html").read_text(encoding="utf-8"), flags=re.S)
+        (out / "index.html").write_text(html, encoding="utf-8")
     tz = ROOT / "docs" / "TZ_COMPLIANCE.md"
     if tz.exists():
         (out / "tz").mkdir()
